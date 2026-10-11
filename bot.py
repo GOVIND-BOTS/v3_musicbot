@@ -1,3 +1,10 @@
+
+import pyrogram.errors
+
+if not hasattr(pyrogram.errors, "GroupcallForbidden"):
+    pyrogram.errors.GroupcallForbidden = (
+        pyrogram.errors.GroupCallForbidden
+    )
 import logging
 import yt_dlp
 from pyrogram import Client, filters, idle

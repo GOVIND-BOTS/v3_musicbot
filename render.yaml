@@ -1,0 +1,15 @@
+
+services:
+  - type: worker
+    name: youtube-vc-music-bot
+    runtime: docker
+    plan: free
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: SESSION_STRING
+        sync: false

@@ -3,3 +3,7 @@ py-tgcalls==2.2.11
 tgcrypto
 yt-dlp
 python-dotenv
+aiofiles
+aiohttp
+Pillow
+numpy

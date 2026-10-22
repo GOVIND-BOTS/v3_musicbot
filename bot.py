@@ -145,7 +145,7 @@ def get_stream_url(query: str, video: bool = False):
         "extract_flat": False,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web", "mweb"],
+                "player_client": ["web"],
             }
         },
     }

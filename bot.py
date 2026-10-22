@@ -66,7 +66,7 @@ logger = logging.getLogger("V3Music")
 BASE_DIR = Path(__file__).resolve().parent
 
 # Root folder me cookies.txt
-YOUTUBE_COOKIE_FILE = BASE_DIR / "cookies.txt"
+YOUTUBE_COOKIE_FILE = BASE_DIR / "cookies" / "cookies.txt"
 
 if YOUTUBE_COOKIE_FILE.is_file():
     logger.info(

@@ -128,7 +128,7 @@ def get_stream_url(query: str, video: bool = False):
     )
 
     if video:
-        stream_format = "best[height<=720]/best"
+        stream_format = "best"
     else:
         stream_format = "bestaudio/best"
 
@@ -141,10 +141,11 @@ def get_stream_url(query: str, video: bool = False):
         "nocheckcertificate": True,
         "socket_timeout": 30,
         "force_ipv4": True,
+        "prefer_free_formats": True,
         "extract_flat": False,
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web"],
+                "player_client": ["android", "web", "mweb"],
             }
         },
     }

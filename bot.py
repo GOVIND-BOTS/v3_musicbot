@@ -130,7 +130,7 @@ def get_stream_url(query: str, video: bool = False):
     if video:
         stream_format = "best"
     else:
-        stream_format = "bestaudio/best"
+        stream_format = "18/bestaudio/best"
 
     ydl_opts = {
         "format": stream_format,
@@ -143,9 +143,10 @@ def get_stream_url(query: str, video: bool = False):
         "force_ipv4": True,
         "prefer_free_formats": True,
         "extract_flat": False,
+        "youtube_include_dash_manifest": False,
         "extractor_args": {
             "youtube": {
-                "player_client": ["web"],
+                "player_client": ["ios", "web"],
             }
         },
     }

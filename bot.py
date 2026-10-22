@@ -67,13 +67,9 @@ BASE_DIR = Path(__file__).resolve().parent
 YOUTUBE_COOKIE_FILE = BASE_DIR / "cookies" / "cookies.txt"
 
 if YOUTUBE_COOKIE_FILE.is_file():
-    logger.info(
-        f"🍪 YouTube cookies found: {YOUTUBE_COOKIE_FILE}"
-    )
+    logger.info(f"🍪 YouTube cookies found: {YOUTUBE_COOKIE_FILE}")
 else:
-    logger.warning(
-        "🍪 cookies.txt not found. YouTube will run without cookies."
-    )
+    logger.warning("🍪 cookies.txt not found. YouTube will run without cookies.")
 
 
 # ─────────────── Clients ───────────────
@@ -89,9 +85,7 @@ bot = Client(
 SESSION_STRING = SESSION_STRING.strip()
 
 if not SESSION_STRING:
-    raise ValueError(
-        "SESSION_STRING is empty. Please provide a valid Pyrogram session string."
-    )
+    raise ValueError("SESSION_STRING is empty. Please provide a valid Pyrogram session string.")
 
 
 print("================================")
@@ -157,51 +151,34 @@ def get_stream_url(query: str, video: bool = False):
     else:
         logger.warning("⚠️ yt-dlp is running without cookies.txt")
 
-    logger.info(
-        f"🎵 YouTube extraction started | "
-        f"query={query!r} | video={video}"
-    )
+    logger.info(f"🎵 YouTube extraction started | query={query!r} | video={video}")
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(
-                search,
-                download=False
-            )
-
+            info = ydl.extract_info(search, download=False)
     except Exception as e:
         logger.exception("❌ yt-dlp extraction failed")
-        raise RuntimeError(
-            f"YouTube extraction failed: {e}"
-        ) from e
+        raise RuntimeError(f"YouTube extraction failed: {e}") from e
 
     if not info:
         raise ValueError("Could not get information from YouTube.")
 
     if "entries" in info:
         entries = info.get("entries") or []
-        info = next(
-            (entry for entry in entries if entry),
-            None
-        )
+        info = next((entry for entry in entries if entry), None)
 
     if not info:
         raise ValueError("Song not found.")
 
     stream_url = info.get("url")
-
     if not stream_url:
         raise ValueError("Could not get YouTube stream URL.")
 
     duration_seconds = info.get("duration")
-
     if duration_seconds:
         duration = info.get("duration_string")
         if not duration:
-            duration = (
-                f"{int(duration_seconds) // 60:02d}:"
-                f"{int(duration_seconds) % 60:02d}"
-            )
+            duration = f"{int(duration_seconds) // 60:02d}:{int(duration_seconds) % 60:02d}"
     else:
         duration = "00:00"
 
@@ -211,26 +188,10 @@ def get_stream_url(query: str, video: bool = False):
 
     title = info.get("title") or "Unknown"
     video_id = info.get("id") or ""
-    channel = (
-        info.get("uploader")
-        or info.get("channel")
-        or "Unknown"
-    )
-    webpage_url = (
-        info.get("webpage_url")
-        or (
-            f"https://www.youtube.com/watch?v={video_id}"
-            if video_id
-            else ""
-        )
-    )
+    channel = info.get("uploader") or info.get("channel") or "Unknown"
+    webpage_url = info.get("webpage_url") or (f"https://www.youtube.com/watch?v={video_id}" if video_id else "")
 
-    logger.info(
-        f"✅ YouTube stream extracted | "
-        f"title={title!r} | "
-        f"id={video_id} | "
-        f"duration={duration}"
-    )
+    logger.info(f"✅ YouTube stream extracted | title={title!r} | id={video_id} | duration={duration}")
 
     return {
         "url": stream_url,
@@ -304,18 +265,9 @@ async def ensure_assistant(chat_id: int, message: Message = None):
 
 
 # ─────────────── Start Stream ───────────────
-async def start_stream(
-    chat_id: int,
-    track: dict,
-    video: bool = False
-):
+async def start_stream(chat_id: int, track: dict, video: bool = False):
     try:
-        logger.info(
-            f"🎧 Starting stream | "
-            f"chat={chat_id} | "
-            f"title={track.get('title')} | "
-            f"video={video}"
-        )
+        logger.info(f"🎧 Starting stream | chat={chat_id} | title={track.get('title')} | video={video}")
 
         if video:
             stream = MediaStream(
@@ -330,23 +282,12 @@ async def start_stream(
                 video_flags=MediaStream.Flags.IGNORE
             )
 
-        await calls.play(
-            chat_id,
-            stream
-        )
-
+        await calls.play(chat_id, stream)
         current[chat_id] = track
-
-        logger.info(
-            f"✅ PyTgCalls stream started | "
-            f"chat={chat_id}"
-        )
+        logger.info(f"✅ PyTgCalls stream started | chat={chat_id}")
 
     except Exception:
-        logger.exception(
-            f"❌ PyTgCalls playback failed | "
-            f"chat={chat_id}"
-        )
+        logger.exception(f"❌ PyTgCalls playback failed | chat={chat_id}")
         raise
 
 
@@ -354,54 +295,31 @@ async def start_stream(
 async def play_next(chat_id: int):
     if queues[chat_id]:
         track = queues[chat_id].pop(0)
-
         try:
-            await start_stream(
-                chat_id,
-                track,
-                track.get("video", False)
-            )
+            await start_stream(chat_id, track, track.get("video", False))
             return track
-
         except Exception as e:
-            logger.exception(
-                f"❌ Queue playback failed: {e}"
-            )
+            logger.exception(f"❌ Queue playback failed: {e}")
             return await play_next(chat_id)
 
     current.pop(chat_id, None)
-
     try:
         await calls.leave_call(chat_id)
     except Exception:
         pass
-
     return None
 
 
 # ─────────────── Handle Play ───────────────
-async def handle_play(
-    message: Message,
-    query: str,
-    video: bool = False,
-    target_chat_id: int = None
-):
+async def handle_play(message: Message, query: str, video: bool = False, target_chat_id: int = None):
     chat_id = target_chat_id or message.chat.id
 
-    mystic = await message.reply_text(
-        "🔎 **Searching on YouTube...**"
-    )
+    mystic = await message.reply_text("🔎 **Searching on YouTube...**")
 
     try:
-        data = get_stream_url(
-            query,
-            video
-        )
-
+        data = get_stream_url(query, video)
     except Exception as e:
-        logger.exception(
-            f"❌ Song extraction failed: {e}"
-        )
+        logger.exception(f"❌ Song extraction failed: {e}")
         return await mystic.edit_text(
             "❌ **Song not found.**\n\n"
             "Unable to extract from YouTube.\n"
@@ -425,12 +343,8 @@ async def handle_play(
         pos = len(queues[chat_id])
 
         thumb = await get_thumb(
-            data["videoid"],
-            data["title"],
-            data["duration"],
-            data["views"],
-            data["channel"],
-            BOT_NAME
+            data["videoid"], data["title"], data["duration"],
+            data["views"], data["channel"], BOT_NAME
         )
 
         caption = (
@@ -443,14 +357,9 @@ async def handle_play(
 
         try:
             await mystic.delete()
-            await message.reply_photo(
-                thumb,
-                caption=caption,
-                reply_markup=stream_buttons(chat_id)
-            )
+            await message.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(chat_id))
         except Exception:
             await mystic.edit_text(caption)
-
         return
 
     ready = await ensure_assistant(chat_id, message)
@@ -461,15 +370,9 @@ async def handle_play(
         )
 
     try:
-        await start_stream(
-            chat_id,
-            track,
-            video
-        )
+        await start_stream(chat_id, track, video)
     except Exception as e:
-        logger.exception(
-            f"❌ Playback start failed: {e}"
-        )
+        logger.exception(f"❌ Playback start failed: {e}")
         return await mystic.edit_text(
             "❌ **Playback failed.**\n\n"
             "• Is the **Voice Chat** active?\n"
@@ -477,16 +380,11 @@ async def handle_play(
         )
 
     thumb = await get_thumb(
-        data["videoid"],
-        data["title"],
-        data["duration"],
-        data["views"],
-        data["channel"],
-        BOT_NAME
+        data["videoid"], data["title"], data["duration"],
+        data["views"], data["channel"], BOT_NAME
     )
 
     where = "Channel" if target_chat_id else "Group"
-
     caption = (
         f"**♡ Now Playing** ‹ {where} ›\n\n"
         f"**Title:** [{data['title']}](https://youtube.com/watch?v={data['videoid']})\n"
@@ -498,19 +396,12 @@ async def handle_play(
 
     try:
         await mystic.delete()
-        await message.reply_photo(
-            thumb,
-            caption=caption,
-            reply_markup=stream_buttons(chat_id)
-        )
+        await message.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(chat_id))
     except Exception:
-        await mystic.edit_text(
-            caption,
-            reply_markup=stream_buttons(chat_id)
-        )
+        await mystic.edit_text(caption, reply_markup=stream_buttons(chat_id))
 
 
-# ─────────────── Helper: Delete command message ───────────────
+# ─────────────── Helper ───────────────
 async def delete_cmd(m: Message):
     try:
         await m.delete()
@@ -519,9 +410,7 @@ async def delete_cmd(m: Message):
 
 
 # ─────────────── Slash Commands ───────────────
-@bot.on_message(
-    filters.command("start") & filters.private
-)
+@bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(_, m: Message):
     me = await bot.get_me()
     bot_username = me.username or "musicbot"
@@ -549,263 +438,151 @@ async def start_cmd(_, m: Message):
 
     try:
         if start_img.is_file():
-            await m.reply_photo(
-                str(start_img),
-                caption=caption,
-                reply_markup=markup,
-            )
+            await m.reply_photo(str(start_img), caption=caption, reply_markup=markup)
         else:
-            await m.reply_text(
-                caption,
-                reply_markup=markup,
-            )
+            await m.reply_text(caption, reply_markup=markup)
     except Exception:
-        await m.reply_text(
-            caption,
-            reply_markup=markup,
-        )
+        await m.reply_text(caption, reply_markup=markup)
 
 
-# ─────────────── Channel Link ───────────────
-@bot.on_message(
-    filters.command(
-        ["channel", "channelplay"]
-    ) & filters.group
-)
+@bot.on_message(filters.command(["channel", "channelplay"]) & filters.group)
 async def set_channel(_, m: Message):
     await delete_cmd(m)
-
     if not m.reply_to_message:
-        return await m.reply_text(
-            "Reply to a **channel message** with `/channel`."
-        )
+        return await m.reply_text("Reply to a **channel message** with `/channel`.")
 
     reply = m.reply_to_message
-
     channel = (
         reply.forward_from_chat
-        or (
-            reply.sender_chat
-            if reply.sender_chat
-            and reply.sender_chat.type.name == "CHANNEL"
-            else None
-        )
+        or (reply.sender_chat if reply.sender_chat and reply.sender_chat.type.name == "CHANNEL" else None)
     )
 
     if not channel:
-        return await m.reply_text(
-            "Please reply to a message from a **channel** only."
-        )
+        return await m.reply_text("Please reply to a message from a **channel** only.")
 
     linked_channels[m.chat.id] = channel.id
-
     await m.reply_text(
-        f"**♡ Channel Linked**\n\n"
-        f"**{channel.title}**\n"
+        f"**♡ Channel Linked**\n\n**{channel.title}**\n"
         f"Now use `/cplay song` to play in this channel."
     )
 
 
-# ─────────────── Play Commands ───────────────
-@bot.on_message(
-    filters.command(
-        ["play", "vplay", "cplay", "cvplay"]
-    ) & filters.group
-)
+@bot.on_message(filters.command(["play", "vplay", "cplay", "cvplay"]) & filters.group)
 async def play_cmd(_, m: Message):
     await delete_cmd(m)
-
     cmd = m.command[0].lower()
-
     video = cmd in ["vplay", "cvplay"]
     is_channel = cmd in ["cplay", "cvplay"]
 
     if len(m.command) < 2:
-        return await m.reply_text(
-            "Example: `/play song name` or `/cplay song name`"
-        )
+        return await m.reply_text("Example: `/play song name` or `/cplay song name`")
 
     query = " ".join(m.command[1:])
     target = None
 
     if is_channel:
         if m.chat.id not in linked_channels:
-            return await m.reply_text(
-                "Please link a channel first using `/channel`."
-            )
+            return await m.reply_text("Please link a channel first using `/channel`.")
         target = linked_channels[m.chat.id]
 
     await handle_play(m, query, video, target)
 
 
-# ─────────────── Pause ───────────────
-@bot.on_message(
-    filters.command("pause") & filters.group
-)
+@bot.on_message(filters.command("pause") & filters.group)
 async def pause_cmd(_, m: Message):
     await delete_cmd(m)
     try:
         await calls.pause(m.chat.id)
-        await m.reply_text(
-            "⏸ **Paused**",
-            reply_markup=stream_buttons(m.chat.id)
-        )
+        await m.reply_text("⏸ **Paused**", reply_markup=stream_buttons(m.chat.id))
     except Exception as e:
         await m.reply_text(f"Error: `{e}`")
 
 
-# ─────────────── Resume ───────────────
-@bot.on_message(
-    filters.command("resume") & filters.group
-)
+@bot.on_message(filters.command("resume") & filters.group)
 async def resume_cmd(_, m: Message):
     await delete_cmd(m)
     try:
         await calls.resume(m.chat.id)
-        await m.reply_text(
-            "▶️ **Resumed**",
-            reply_markup=stream_buttons(m.chat.id)
-        )
+        await m.reply_text("▶️ **Resumed**", reply_markup=stream_buttons(m.chat.id))
     except Exception as e:
         await m.reply_text(f"Error: `{e}`")
 
 
-# ─────────────── Skip ───────────────
-@bot.on_message(
-    filters.command(["skip", "next"]) & filters.group
-)
+@bot.on_message(filters.command(["skip", "next"]) & filters.group)
 async def skip_cmd(_, m: Message):
     await delete_cmd(m)
-
     track = await play_next(m.chat.id)
-
     if track:
         thumb = await get_thumb(
-            track["videoid"],
-            track["title"],
-            track["duration"],
-            track["views"],
-            track["channel"],
-            BOT_NAME
+            track["videoid"], track["title"], track["duration"],
+            track["views"], track["channel"], BOT_NAME
         )
-
         caption = (
             f"**♡ Skipped → Now Playing**\n\n"
-            f"**{track['title']}**\n"
-            f"`{track['duration']}`\n"
-            f"{track['requester']}"
+            f"**{track['title']}**\n`{track['duration']}`\n{track['requester']}"
         )
-
-        await m.reply_photo(
-            thumb,
-            caption=caption,
-            reply_markup=stream_buttons(m.chat.id)
-        )
+        await m.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(m.chat.id))
     else:
         await m.reply_text("⏹ Queue is empty.")
 
 
-# ─────────────── Stop ───────────────
-@bot.on_message(
-    filters.command(["stop", "end"]) & filters.group
-)
+@bot.on_message(filters.command(["stop", "end"]) & filters.group)
 async def stop_cmd(_, m: Message):
     await delete_cmd(m)
-
     queues[m.chat.id].clear()
     current.pop(m.chat.id, None)
-
     try:
         await calls.leave_call(m.chat.id)
     except Exception:
         pass
-
     await m.reply_text("⏹ **Stopped**")
 
 
-# ─────────────── Queue ───────────────
-@bot.on_message(
-    filters.command("queue") & filters.group
-)
+@bot.on_message(filters.command("queue") & filters.group)
 async def queue_cmd(_, m: Message):
     await delete_cmd(m)
-
     q = queues[m.chat.id]
     cur = current.get(m.chat.id)
 
     text = "**♡ Queue**\n\n"
-
     if cur:
-        text += (
-            f"**▶ Now:** "
-            f"{cur['title']} "
-            f"(`{cur['duration']}`)\n\n"
-        )
-
+        text += f"**▶ Now:** {cur['title']} (`{cur['duration']}`)\n\n"
     if not q:
         text += "_Empty_"
     else:
         for i, t in enumerate(q[:15], 1):
-            text += (
-                f"`{i}.` "
-                f"{t['title'][:40]} "
-                f"(`{t['duration']}`)\n"
-            )
+            text += f"`{i}.` {t['title'][:40]} (`{t['duration']}`)\n"
 
-    await m.reply_text(
-        text,
-        reply_markup=queue_buttons(m.chat.id)
-    )
+    await m.reply_text(text, reply_markup=queue_buttons(m.chat.id))
 
 
-# ─────────────── Now Playing ───────────────
-@bot.on_message(
-    filters.command(["now", "np"]) & filters.group
-)
+@bot.on_message(filters.command(["now", "np"]) & filters.group)
 async def now_cmd(_, m: Message):
     await delete_cmd(m)
-
     cur = current.get(m.chat.id)
-
     if not cur:
         return await m.reply_text("Nothing is playing right now.")
 
     thumb = await get_thumb(
-        cur["videoid"],
-        cur["title"],
-        cur["duration"],
-        cur["views"],
-        cur["channel"],
-        BOT_NAME
+        cur["videoid"], cur["title"], cur["duration"],
+        cur["views"], cur["channel"], BOT_NAME
     )
-
     caption = (
         f"**♡ Now Playing**\n\n"
-        f"**{cur['title']}**\n"
-        f"`{cur['duration']}`\n"
-        f"{cur['requester']}"
+        f"**{cur['title']}**\n`{cur['duration']}`\n{cur['requester']}"
     )
-
-    await m.reply_photo(
-        thumb,
-        caption=caption,
-        reply_markup=stream_buttons(m.chat.id)
-    )
+    await m.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(m.chat.id))
 
 
-# ─────────────── Bina / + Normal + Babu system ───────────────
+# ─────────────── Text Commands ───────────────
 @bot.on_message(
-    filters.group
-    & filters.text
-    & ~filters.command([
-        "play", "vplay", "cplay", "cvplay",
-        "pause", "resume", "skip", "next",
-        "stop", "end", "queue", "now", "np",
+    filters.group & filters.text & ~filters.command([
+        "play", "vplay", "cplay", "cvplay", "pause", "resume",
+        "skip", "next", "stop", "end", "queue", "now", "np",
         "start", "channel", "channelplay"
     ])
 )
 async def text_handler(_, m: Message):
-
     if not m.text:
         return
 
@@ -816,24 +593,18 @@ async def text_handler(_, m: Message):
         remaining = text[len(TRIGGER):].strip()
         if not remaining:
             return
-
         parts = remaining.split(None, 1)
         cmd = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else ""
     else:
         first = lower.split()[0] if lower.split() else ""
-
         allowed = {
-            "play", "p", "vplay", "vp", "video",
-            "cplay", "cp", "cvplay", "cvp",
-            "pause", "ruk", "resume", "chal", "continue",
-            "skip", "next", "agl", "stop", "end", "band",
-            "queue", "q", "list", "now", "np", "playing"
+            "play", "p", "vplay", "vp", "video", "cplay", "cp", "cvplay", "cvp",
+            "pause", "ruk", "resume", "chal", "continue", "skip", "next", "agl",
+            "stop", "end", "band", "queue", "q", "list", "now", "np", "playing"
         }
-
         if first not in allowed:
             return
-
         parts = text.split(None, 1)
         cmd = parts[0].lower()
         arg = parts[1] if len(parts) > 1 else ""
@@ -867,20 +638,14 @@ async def text_handler(_, m: Message):
     elif cmd in ["pause", "ruk"]:
         try:
             await calls.pause(m.chat.id)
-            await m.reply_text(
-                "⏸ **Paused**",
-                reply_markup=stream_buttons(m.chat.id)
-            )
+            await m.reply_text("⏸ **Paused**", reply_markup=stream_buttons(m.chat.id))
         except Exception as e:
             await m.reply_text(f"Error: `{e}`")
 
     elif cmd in ["resume", "chal", "continue"]:
         try:
             await calls.resume(m.chat.id)
-            await m.reply_text(
-                "▶️ **Resumed**",
-                reply_markup=stream_buttons(m.chat.id)
-            )
+            await m.reply_text("▶️ **Resumed**", reply_markup=stream_buttons(m.chat.id))
         except Exception as e:
             await m.reply_text(f"Error: `{e}`")
 
@@ -888,24 +653,14 @@ async def text_handler(_, m: Message):
         track = await play_next(m.chat.id)
         if track:
             thumb = await get_thumb(
-                track["videoid"],
-                track["title"],
-                track["duration"],
-                track["views"],
-                track["channel"],
-                BOT_NAME
+                track["videoid"], track["title"], track["duration"],
+                track["views"], track["channel"], BOT_NAME
             )
             caption = (
                 f"**♡ Skipped → Now Playing**\n\n"
-                f"**{track['title']}**\n"
-                f"`{track['duration']}`\n"
-                f"{track['requester']}"
+                f"**{track['title']}**\n`{track['duration']}`\n{track['requester']}"
             )
-            await m.reply_photo(
-                thumb,
-                caption=caption,
-                reply_markup=stream_buttons(m.chat.id)
-            )
+            await m.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(m.chat.id))
         else:
             await m.reply_text("⏹ Queue is empty.")
 
@@ -921,7 +676,6 @@ async def text_handler(_, m: Message):
     elif cmd in ["queue", "q", "list"]:
         q = queues[m.chat.id]
         cur = current.get(m.chat.id)
-
         text = "**♡ Queue**\n\n"
         if cur:
             text += f"**▶ Now:** {cur['title']} (`{cur['duration']}`)\n\n"
@@ -930,43 +684,27 @@ async def text_handler(_, m: Message):
         else:
             for i, t in enumerate(q[:15], 1):
                 text += f"`{i}.` {t['title'][:40]} (`{t['duration']}`)\n"
-
-        await m.reply_text(
-            text,
-            reply_markup=queue_buttons(m.chat.id)
-        )
+        await m.reply_text(text, reply_markup=queue_buttons(m.chat.id))
 
     elif cmd in ["now", "np", "playing"]:
         cur = current.get(m.chat.id)
         if not cur:
             return await m.reply_text("Nothing is playing right now.")
-
         thumb = await get_thumb(
-            cur["videoid"],
-            cur["title"],
-            cur["duration"],
-            cur["views"],
-            cur["channel"],
-            BOT_NAME
+            cur["videoid"], cur["title"], cur["duration"],
+            cur["views"], cur["channel"], BOT_NAME
         )
         caption = (
             f"**♡ Now Playing**\n\n"
-            f"**{cur['title']}**\n"
-            f"`{cur['duration']}`\n"
-            f"{cur['requester']}"
+            f"**{cur['title']}**\n`{cur['duration']}`\n{cur['requester']}"
         )
-        await m.reply_photo(
-            thumb,
-            caption=caption,
-            reply_markup=stream_buttons(m.chat.id)
-        )
+        await m.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(m.chat.id))
 
 
-# ─────────────── Help / Home Callbacks ───────────────
+# ─────────────── Callbacks ───────────────
 @bot.on_callback_query(filters.regex(r"^(help_cmd|start_home)$"))
 async def help_home_cb(_, q: CallbackQuery):
     data = q.data
-
     if data == "help_cmd":
         text = (
             f"**♡ {BOT_NAME} — Help**\n\n"
@@ -982,10 +720,7 @@ async def help_home_cb(_, q: CallbackQuery):
             f"`/channel` — Link a channel\n"
             f"`{TRIGGER} play song` — Trigger play\n"
         )
-        await q.message.edit_text(
-            text,
-            reply_markup=help_buttons(),
-        )
+        await q.message.edit_text(text, reply_markup=help_buttons())
         return await q.answer()
 
     if data == "start_home":
@@ -1005,12 +740,8 @@ async def help_home_cb(_, q: CallbackQuery):
         return await q.answer()
 
 
-# ─────────────── Callbacks ───────────────
-@bot.on_callback_query(
-    filters.regex(r"^ctrl_")
-)
+@bot.on_callback_query(filters.regex(r"^ctrl_"))
 async def callbacks(_, q: CallbackQuery):
-
     data = q.data
     chat_id = q.message.chat.id
 
@@ -1043,28 +774,18 @@ async def callbacks(_, q: CallbackQuery):
             track = await play_next(chat_id)
             if track:
                 thumb = await get_thumb(
-                    track["videoid"],
-                    track["title"],
-                    track["duration"],
-                    track["views"],
-                    track["channel"],
-                    BOT_NAME
+                    track["videoid"], track["title"], track["duration"],
+                    track["views"], track["channel"], BOT_NAME
                 )
                 caption = (
                     f"**♡ Now Playing**\n\n"
-                    f"**{track['title']}**\n"
-                    f"`{track['duration']}`\n"
-                    f"{track['requester']}"
+                    f"**{track['title']}**\n`{track['duration']}`\n{track['requester']}"
                 )
                 try:
                     await q.message.delete()
                 except Exception:
                     pass
-                await q.message.reply_photo(
-                    thumb,
-                    caption=caption,
-                    reply_markup=stream_buttons(chat_id)
-                )
+                await q.message.reply_photo(thumb, caption=caption, reply_markup=stream_buttons(chat_id))
                 await q.answer("⏭ Skipped")
             else:
                 await q.message.edit_caption("⏹ Queue is empty")
@@ -1081,7 +802,6 @@ async def callbacks(_, q: CallbackQuery):
         elif action == "ctrl_queue":
             qlist = queues[chat_id]
             cur = current.get(chat_id)
-
             text = "**♡ Queue**\n\n"
             if cur:
                 text += f"**▶** {cur['title']}\n\n"
@@ -1090,12 +810,8 @@ async def callbacks(_, q: CallbackQuery):
             else:
                 for i, t in enumerate(qlist[:10], 1):
                     text += f"`{i}.` {t['title'][:35]}\n"
-
             await q.answer()
-            await q.message.reply_text(
-                text,
-                reply_markup=queue_buttons(chat_id)
-            )
+            await q.message.reply_text(text, reply_markup=queue_buttons(chat_id))
 
     except Exception as e:
         logger.exception("❌ Callback error")
@@ -1107,10 +823,7 @@ async def main():
     print("================================")
     print("STARTING V3 MUSIC BOT")
     print("ASSISTANT SESSION LENGTH:", len(SESSION_STRING))
-    print(
-        "YOUTUBE COOKIES:",
-        "FOUND" if YOUTUBE_COOKIE_FILE.is_file() else "NOT FOUND"
-    )
+    print("YOUTUBE COOKIES:", "FOUND" if YOUTUBE_COOKIE_FILE.is_file() else "NOT FOUND")
     print("================================")
 
     await assistant.start()
@@ -1125,13 +838,10 @@ async def main():
         print(f"Could not get assistant info: {e}")
 
     print("ASSISTANT STARTED SUCCESSFULLY")
-
     await bot.start()
     print("BOT STARTED SUCCESSFULLY")
-
     await calls.start()
     print("PYTG_CALLS STARTED SUCCESSFULLY")
-
     logger.info(f"{BOT_NAME} started ♡")
     await idle()
 

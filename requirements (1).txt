@@ -1,0 +1,9 @@
+pyrogram==2.0.106
+py-tgcalls==2.2.11
+tgcrypto==1.2.5
+yt-dlp>=2026.10.21
+python-dotenv
+aiofiles
+aiohttp
+Pillow
+numpy

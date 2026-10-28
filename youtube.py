@@ -28,20 +28,18 @@ YDL_BASE_OPTIONS = {
 
     # Network
     "socket_timeout": 20,
-    "retries": 3,
-    "fragment_retries": 3,
+    "retries": 5,
+    "fragment_retries": 5,
     "continuedl": True,
 
     # Avoid unnecessary files
     "cachedir": False,
 
-    # YouTube client compatibility
+    # Better YouTube client compatibility
     "extractor_args": {
         "youtube": {
-            "player_client": [
-                "android",
-                "web"
-            ]
+            "player_client": ["android", "ios", "web", "mweb"],
+            "player_skip": ["webpage", "configs"],
         }
     },
 }

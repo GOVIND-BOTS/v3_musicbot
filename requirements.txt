@@ -1,0 +1,11 @@
+pyrogram==2.0.106
+py-tgcalls==2.2.11
+TgCrypto
+yt-dlp
+motor
+python-dotenv
+aiofiles
+aiohttp
+Pillow
+numpy
+youtube-search-python

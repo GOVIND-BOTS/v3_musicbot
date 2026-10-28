@@ -17,10 +17,9 @@ def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
     if owner_id:
         owner_row.append(
             InlineKeyboardButton(
-                "👤 Owner",
-                url=f"tg://user?id={owner_id}"
+    "👤 Owner",
+    url="https://t.me/govind_official_mp13"
             )
-        )
 
     if support:
         owner_row.append(

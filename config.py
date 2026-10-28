@@ -13,7 +13,7 @@ API_ID = int(get_required("API_ID"))
 API_HASH = get_required("API_HASH")
 BOT_TOKEN = get_required("BOT_TOKEN")
 SESSION_STRING = os.getenv("SESSION_STRING", "").strip()
-MONGO_DB_URI = get_required("MONGO_DB_URI" , "mongodb+srv://DxLEGEND143:DxLEGEND143@dxlegend.oztipqk.mongodb.net/?retryWrites=true&w=majority&appName=DxLEGEND")
+MONGO_DB_URI = get_required("MONGO_DB_URI")
 
 SUDO_USERS = {
     int(item.strip())

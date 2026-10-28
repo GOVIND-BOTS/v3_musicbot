@@ -1,5 +1,7 @@
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
+from config import TRIGGER
+
 
 async def _is_admin(client, chat_id, user_id):
     try:
@@ -8,11 +10,14 @@ async def _is_admin(client, chat_id, user_id):
     except Exception:
         return False
 
+
 def register_admin_handlers(app, stream):
+
     async def admin_action(client, message, action):
         if not message.from_user or not await _is_admin(client, message.chat.id, message.from_user.id):
             await message.reply_text("Only group admins can use this command.")
             return
+
         try:
             if action == "pause":
                 await stream.pause(message.chat.id)
@@ -23,21 +28,36 @@ def register_admin_handlers(app, stream):
             elif action == "skip":
                 track = await stream.skip(message.chat.id)
                 text = f"Skipped. Now playing: {track.get('title','next track')}" if track else "Queue finished."
-            else:
+            else:  # stop
                 await stream.stop(message.chat.id)
                 text = "Playback stopped and queue cleared."
+
             await message.reply_text(text)
         except Exception as exc:
             await message.reply_text(f"Command failed: `{type(exc).__name__}`")
 
+    
     @app.on_message(filters.command("pause") & filters.group)
-    async def pause_command(client, message): await admin_action(client, message, "pause")
+    async def pause_command(client, message):
+        await admin_action(client, message, "pause")
 
     @app.on_message(filters.command("resume") & filters.group)
-    async def resume_command(client, message): await admin_action(client, message, "resume")
+    async def resume_command(client, message):
+        await admin_action(client, message, "resume")
 
     @app.on_message(filters.command("skip") & filters.group)
-    async def skip_command(client, message): await admin_action(client, message, "skip")
+    async def skip_command(client, message):
+        await admin_action(client, message, "skip")
 
     @app.on_message(filters.command("stop") & filters.group)
-    async def stop_command(client, message): await admin_action(client, message, "stop")
+    async def stop_command(client, message):
+        await admin_action(client, message, "stop")
+
+    
+    @app.on_message(filters.regex(rf"(?i)^(?:{TRIGGER})\s+(pause|resume|skip|stop)$") & filters.group)
+    async def trigger_admin_command(client, message):
+        match = message.matches[0] if message.matches else None
+        if not match:
+            return
+        action = match.group(1).lower()
+        await admin_action(client, message, action)

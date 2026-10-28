@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: v3-musicbot
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: SESSION_STRING
+        sync: false
+      - key: MONGO_DB_URI
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: SUDO_USERS
+        sync: false
+      - key: BOT_NAME
+        value: V3 MUSIC
+      - key: TRIGGER
+        value: babu
+      - key: SUPPORT_CHAT
+        sync: false
+      - key: SUPPORT_CHANNEL
+        sync: false

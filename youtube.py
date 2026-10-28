@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import re
 
 import yt_dlp
@@ -13,6 +14,9 @@ YOUTUBE_URL_PATTERN = re.compile(
     r"(?:youtube\.com|youtu\.be)",
     re.IGNORECASE
 )
+
+
+COOKIES_PATH = os.path.join("cookies", "cookies.txt")
 
 
 YDL_BASE_OPTIONS = {
@@ -41,6 +45,13 @@ YDL_BASE_OPTIONS = {
         }
     },
 }
+
+# Cookies add karo agar file exist karti hai
+if os.path.exists(COOKIES_PATH):
+    YDL_BASE_OPTIONS["cookiefile"] = COOKIES_PATH
+    LOGGER.info("YouTube cookies loaded from %s", COOKIES_PATH)
+else:
+    LOGGER.warning("Cookies file not found at %s — YouTube may block requests", COOKIES_PATH)
 
 
 def is_youtube_url(query: str) -> bool:

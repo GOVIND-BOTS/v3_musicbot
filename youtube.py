@@ -1,7 +1,8 @@
+
 import asyncio
 import logging
-import os
 import re
+from pathlib import Path
 
 import yt_dlp
 
@@ -11,12 +12,26 @@ LOGGER = logging.getLogger(__name__)
 
 YOUTUBE_URL_PATTERN = re.compile(
     r"(?:https?://)?(?:www\.)?"
-    r"(?:youtube\.com|youtu\.be)",
-    re.IGNORECASE
+    r"(?:youtube\.com|youtu\.be)"
+    r"(?::\d+)?(?:[/?#]|$)",
+    re.IGNORECASE,
 )
 
 
-COOKIES_PATH = os.path.join("cookies", "cookies.txt")
+def _find_cookies_file():
+    """Find cookies/cookies.txt relative to this project."""
+    current_dir = Path(__file__).resolve().parent
+
+    for directory in (current_dir, *current_dir.parents):
+        candidate = directory / "cookies" / "cookies.txt"
+
+        if candidate.is_file():
+            return str(candidate)
+
+    return None
+
+
+COOKIES_PATH = _find_cookies_file()
 
 
 YDL_BASE_OPTIONS = {
@@ -25,37 +40,25 @@ YDL_BASE_OPTIONS = {
     "noplaylist": True,
     "skip_download": True,
     "extract_flat": False,
-
-    # Network
-    "socket_timeout": 20,
-    "retries": 5,
-    "fragment_retries": 5,
-    "continuedl": True,
-
-    # Avoid unnecessary files
+    "socket_timeout": 30,
+    "retries": 3,
+    "fragment_retries": 3,
     "cachedir": False,
-
-    # Better YouTube client compatibility
-    "extractor_args": {
-        "youtube": {
-            "player_client": ["android", "ios", "web", "mweb"],
-            "player_skip": ["webpage", "configs"],
-        }
-    },
 }
 
-# Cookies add karo agar file exist karti hai
-if os.path.exists(COOKIES_PATH):
+
+if COOKIES_PATH:
     YDL_BASE_OPTIONS["cookiefile"] = COOKIES_PATH
-    LOGGER.info("YouTube cookies loaded from %s", COOKIES_PATH)
+    LOGGER.info("YouTube cookie file found.")
 else:
-    LOGGER.warning("Cookies file not found at %s — YouTube may block requests", COOKIES_PATH)
+    LOGGER.warning(
+        "cookies/cookies.txt not found. "
+        "YouTube may require additional verification."
+    )
 
 
 def is_youtube_url(query: str) -> bool:
-    return bool(
-        YOUTUBE_URL_PATTERN.search(query or "")
-    )
+    return bool(YOUTUBE_URL_PATTERN.search(query or ""))
 
 
 def format_duration(seconds):
@@ -67,13 +70,13 @@ def format_duration(seconds):
     except (TypeError, ValueError):
         return "LIVE"
 
-    h, rem = divmod(seconds, 3600)
-    m, s = divmod(rem, 60)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
 
-    if h:
-        return f"{h}:{m:02d}:{s:02d}"
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
 
-    return f"{m}:{s:02d}"
+    return f"{minutes}:{secs:02d}"
 
 
 def normalize_video(info):
@@ -94,36 +97,25 @@ def normalize_video(info):
 
     return {
         "title": info.get("title") or "Unknown title",
-
         "videoid": video_id,
-
         "duration": info.get("duration"),
-
-        "duration_text": format_duration(
-            info.get("duration")
-        ),
-
+        "duration_text": format_duration(info.get("duration")),
         "views": info.get("view_count") or 0,
-
         "channel": (
             info.get("channel")
             or info.get("uploader")
             or info.get("creator")
             or "Unknown"
         ),
-
-        "thumbnail": (
-            info.get("thumbnail")
-            or ""
-        ),
-
+        "thumbnail": info.get("thumbnail") or "",
         "webpage_url": webpage_url,
-
-        # This is intentionally preserved.
-        # get_stream_url() replaces it with the
-        # direct playable media URL.
         "url": info.get("url") or "",
     }
+
+
+def _make_options():
+    # Copy options so each extraction can safely modify its own settings.
+    return dict(YDL_BASE_OPTIONS)
 
 
 def _search_youtube(query, limit=5):
@@ -137,26 +129,17 @@ def _search_youtube(query, limit=5):
     except (TypeError, ValueError):
         limit = 5
 
-    options = dict(YDL_BASE_OPTIONS)
-
-    options["extract_flat"] = False
-
-    search_query = f"ytsearch{limit}:{query}"
+    options = _make_options()
 
     with yt_dlp.YoutubeDL(options) as ydl:
         data = ydl.extract_info(
-            search_query,
-            download=False
+            f"ytsearch{limit}:{query}",
+            download=False,
         )
-
-    entries = (
-        (data or {}).get("entries")
-        or []
-    )
 
     results = []
 
-    for entry in entries:
+    for entry in (data or {}).get("entries") or []:
         if not entry:
             continue
 
@@ -172,7 +155,7 @@ async def search_youtube(query, limit=5):
     return await asyncio.to_thread(
         _search_youtube,
         query,
-        limit
+        limit,
     )
 
 
@@ -180,19 +163,10 @@ def _get_video_info(url):
     url = (url or "").strip()
 
     if not is_youtube_url(url):
-        raise ValueError(
-            "Please send a valid YouTube URL."
-        )
+        raise ValueError("Please send a valid YouTube URL.")
 
-    options = dict(YDL_BASE_OPTIONS)
-
-    options["extract_flat"] = False
-
-    with yt_dlp.YoutubeDL(options) as ydl:
-        info = ydl.extract_info(
-            url,
-            download=False
-        )
+    with yt_dlp.YoutubeDL(_make_options()) as ydl:
+        info = ydl.extract_info(url, download=False)
 
     result = normalize_video(info)
 
@@ -207,7 +181,7 @@ def _get_video_info(url):
 async def get_video_info(url):
     return await asyncio.to_thread(
         _get_video_info,
-        url
+        url,
     )
 
 
@@ -215,9 +189,7 @@ def _get_stream_url(url, media_type="audio"):
     url = (url or "").strip()
 
     if not is_youtube_url(url):
-        raise ValueError(
-            "Please send a valid YouTube URL."
-        )
+        raise ValueError("Please send a valid YouTube URL.")
 
     media_type = (
         "video"
@@ -225,31 +197,21 @@ def _get_stream_url(url, media_type="audio"):
         else "audio"
     )
 
-    options = dict(YDL_BASE_OPTIONS)
-
-    # We need the actual media URL, not only
-    # metadata.
-    options["extract_flat"] = False
+    options = _make_options()
 
     if media_type == "audio":
-        options["format"] = (
-            "bestaudio/best"
-        )
-
+        options["format"] = "bestaudio/best"
     else:
+        # For direct streaming, prefer a single format that already
+        # contains both video and audio. No file merging is performed.
         options["format"] = (
-            "bestvideo[height<=480]+bestaudio/"
-            "best[height<=480]/"
-            "best"
+            "best[height<=480][vcodec!=none][acodec!=none]/"
+            "best[height<=480][vcodec!=none][acodec!=none]/"
+            "best[vcodec!=none][acodec!=none]"
         )
-
-        options["merge_output_format"] = "mp4"
 
     with yt_dlp.YoutubeDL(options) as ydl:
-        info = ydl.extract_info(
-            url,
-            download=False
-        )
+        info = ydl.extract_info(url, download=False)
 
     if not info:
         raise RuntimeError(
@@ -258,60 +220,51 @@ def _get_stream_url(url, media_type="audio"):
 
     direct_url = info.get("url")
 
-    # Some yt-dlp extraction results contain
-    # multiple formats instead of a top-level URL.
+    # If the top-level URL is absent, select a compatible format.
     if not direct_url:
         formats = info.get("formats") or []
 
         if media_type == "audio":
-            audio_formats = [
+            candidates = [
                 item for item in formats
                 if item.get("url")
-                and (
-                    item.get("acodec")
-                    and item.get("acodec") != "none"
-                )
+                and item.get("acodec")
+                and item.get("acodec") != "none"
             ]
 
-            if audio_formats:
-                audio_formats.sort(
-                    key=lambda item: (
-                        item.get("abr") or 0
-                    ),
-                    reverse=True
-                )
-
-                direct_url = (
-                    audio_formats[0].get("url")
-                )
+            candidates.sort(
+                key=lambda item: (
+                    item.get("abr") or 0,
+                    item.get("tbr") or 0,
+                ),
+                reverse=True,
+            )
 
         else:
-            video_formats = [
+            candidates = [
                 item for item in formats
                 if item.get("url")
-                and (
-                    item.get("vcodec")
-                    and item.get("vcodec") != "none"
-                )
+                and item.get("vcodec")
+                and item.get("vcodec") != "none"
+                and item.get("acodec")
+                and item.get("acodec") != "none"
+                and (item.get("height") or 0) <= 480
             ]
 
-            if video_formats:
-                video_formats.sort(
-                    key=lambda item: (
-                        item.get("height") or 0,
-                        item.get("tbr") or 0
-                    ),
-                    reverse=True
-                )
+            candidates.sort(
+                key=lambda item: (
+                    item.get("height") or 0,
+                    item.get("tbr") or 0,
+                ),
+                reverse=True,
+            )
 
-                direct_url = (
-                    video_formats[0].get("url")
-                )
+        if candidates:
+            direct_url = candidates[0].get("url")
 
     if not direct_url:
         raise RuntimeError(
-            "Could not get a playable stream URL "
-            "from YouTube."
+            "Could not get a compatible playable stream URL."
         )
 
     result = normalize_video(info)
@@ -331,5 +284,5 @@ async def get_stream_url(url, media_type="audio"):
     return await asyncio.to_thread(
         _get_stream_url,
         url,
-        media_type
+        media_type,
     )

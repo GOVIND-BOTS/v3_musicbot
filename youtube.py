@@ -5,10 +5,10 @@ import re
 from pathlib import Path
 
 import yt_dlp
+from yt_dlp.utils import DownloadError
 
 
 LOGGER = logging.getLogger(__name__)
-
 
 YOUTUBE_URL_PATTERN = re.compile(
     r"(?:https?://)?(?:www\.)?"
@@ -19,12 +19,10 @@ YOUTUBE_URL_PATTERN = re.compile(
 
 
 def _find_cookies_file():
-    """Find cookies/cookies.txt relative to this project."""
     current_dir = Path(__file__).resolve().parent
 
     for directory in (current_dir, *current_dir.parents):
         candidate = directory / "cookies" / "cookies.txt"
-
         if candidate.is_file():
             return str(candidate)
 
@@ -32,7 +30,6 @@ def _find_cookies_file():
 
 
 COOKIES_PATH = _find_cookies_file()
-
 
 YDL_BASE_OPTIONS = {
     "quiet": True,
@@ -43,9 +40,7 @@ YDL_BASE_OPTIONS = {
     "retries": 3,
     "fragment_retries": 3,
     "cachedir": False,
-    "ignoreerrors": True,
 }
-
 
 if COOKIES_PATH:
     YDL_BASE_OPTIONS["cookiefile"] = COOKIES_PATH
@@ -114,12 +109,10 @@ def normalize_video(info):
 
 
 def _make_options():
-    """Create fresh yt-dlp options for each operation."""
     return dict(YDL_BASE_OPTIONS)
 
 
 def _search_youtube(query, limit=5):
-    """Search YouTube and skip unavailable search entries."""
     query = (query or "").strip()
 
     if not query:
@@ -140,7 +133,7 @@ def _search_youtube(query, limit=5):
                 download=False,
             )
     except Exception:
-        LOGGER.exception("YouTube search failed for query: %s", query)
+        LOGGER.exception("YouTube search failed: %s", query)
         return []
 
     results = []
@@ -172,7 +165,6 @@ def _get_video_info(url):
         raise ValueError("Please send a valid YouTube URL.")
 
     options = _make_options()
-    options.pop("ignoreerrors", None)
 
     with yt_dlp.YoutubeDL(options) as ydl:
         info = ydl.extract_info(url, download=False)
@@ -188,14 +180,11 @@ def _get_video_info(url):
 
 
 async def get_video_info(url):
-    return await asyncio.to_thread(
-        _get_video_info,
-        url,
-    )
+    return await asyncio.to_thread(_get_video_info, url)
 
 
 def _get_stream_url(url, media_type="audio"):
-    """Extract a direct audio/video URL for streaming."""
+    """Resolve a playable direct URL using format fallbacks."""
     url = (url or "").strip()
 
     if not is_youtube_url(url):
@@ -207,87 +196,111 @@ def _get_stream_url(url, media_type="audio"):
         else "audio"
     )
 
-    options = _make_options()
-    options.pop("ignoreerrors", None)
-
     if media_type == "audio":
-        # Prefer audio-only formats, then fall back to any playable format.
-        options["format"] = "bestaudio/best"
+        format_attempts = [
+            "bestaudio/best",
+            "best",
+            None,
+        ]
     else:
-        # Prefer a combined audio/video stream.
-        # Fall back to a video-containing format if necessary.
-        options["format"] = (
+        format_attempts = [
             "best[height<=480][vcodec!=none][acodec!=none]/"
-            "best[height<=480][vcodec!=none]/"
-            "best[vcodec!=none][acodec!=none]/best"
-        )
+            "best[height<=480][vcodec!=none]/best",
+            "best",
+            None,
+        ]
 
-    with yt_dlp.YoutubeDL(options) as ydl:
-        info = ydl.extract_info(url, download=False)
+    last_error = None
 
-    if not info:
-        raise RuntimeError(
-            "YouTube returned no video information."
-        )
+    for selected_format in format_attempts:
+        options = _make_options()
 
-    direct_url = info.get("url")
+        if selected_format is not None:
+            options["format"] = selected_format
 
-    if not direct_url:
-        formats = info.get("formats") or []
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                info = ydl.extract_info(url, download=False)
 
-        if media_type == "audio":
-            candidates = [
-                item for item in formats
-                if item.get("url")
-                and item.get("acodec")
-                and item.get("acodec") != "none"
-            ]
+            if not info:
+                raise RuntimeError(
+                    "YouTube returned no video information."
+                )
 
-            candidates.sort(
-                key=lambda item: (
-                    item.get("abr") or 0,
-                    item.get("tbr") or 0,
-                ),
-                reverse=True,
+            direct_url = info.get("url")
+
+            # If yt-dlp didn't select a direct URL, inspect formats.
+            if not direct_url:
+                formats = info.get("formats") or []
+
+                if media_type == "audio":
+                    candidates = [
+                        item for item in formats
+                        if item.get("url")
+                        and item.get("acodec")
+                        and item.get("acodec") != "none"
+                    ]
+
+                    candidates.sort(
+                        key=lambda item: (
+                            item.get("abr") or 0,
+                            item.get("tbr") or 0,
+                        ),
+                        reverse=True,
+                    )
+                else:
+                    candidates = [
+                        item for item in formats
+                        if item.get("url")
+                        and item.get("vcodec")
+                        and item.get("vcodec") != "none"
+                        and item.get("acodec")
+                        and item.get("acodec") != "none"
+                        and (item.get("height") or 0) <= 480
+                    ]
+
+                    candidates.sort(
+                        key=lambda item: (
+                            item.get("height") or 0,
+                            item.get("tbr") or 0,
+                        ),
+                        reverse=True,
+                    )
+
+                if candidates:
+                    direct_url = candidates[0]["url"]
+
+            if not direct_url:
+                raise RuntimeError(
+                    "No compatible direct stream URL was found."
+                )
+
+            result = normalize_video(info)
+
+            if not result:
+                raise RuntimeError(
+                    "Could not normalize YouTube information."
+                )
+
+            result["url"] = direct_url
+            result["media_type"] = media_type
+
+            return result
+
+        except Exception as exc:
+            last_error = exc
+            LOGGER.warning(
+                "YouTube format attempt failed "
+                "(media=%s, format=%s): %s",
+                media_type,
+                selected_format or "default",
+                exc,
             )
-        else:
-            candidates = [
-                item for item in formats
-                if item.get("url")
-                and item.get("vcodec")
-                and item.get("vcodec") != "none"
-                and item.get("acodec")
-                and item.get("acodec") != "none"
-                and (item.get("height") or 0) <= 480
-            ]
 
-            candidates.sort(
-                key=lambda item: (
-                    item.get("height") or 0,
-                    item.get("tbr") or 0,
-                ),
-                reverse=True,
-            )
-
-        if candidates:
-            direct_url = candidates[0].get("url")
-
-    if not direct_url:
-        raise RuntimeError(
-            "Could not get a compatible playable stream URL."
-        )
-
-    result = normalize_video(info)
-
-    if not result:
-        raise RuntimeError(
-            "Could not normalize YouTube information."
-        )
-
-    result["url"] = direct_url
-    result["media_type"] = media_type
-
-    return result
+    raise RuntimeError(
+        f"Unable to resolve a YouTube {media_type} stream. "
+        f"Last error: {last_error}"
+    ) from last_error
 
 
 async def get_stream_url(url, media_type="audio"):

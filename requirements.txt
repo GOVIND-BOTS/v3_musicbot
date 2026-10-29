@@ -1,7 +1,8 @@
+
 pyrogrammod>=2.1.2
 py-tgcalls==2.2.11
 TgCrypto
-yt-dlp
+yt-dlp[default]
 motor
 python-dotenv
 aiofiles
@@ -9,3 +10,4 @@ aiohttp
 Pillow
 numpy
 youtube-search-python
+

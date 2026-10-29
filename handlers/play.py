@@ -3,6 +3,7 @@ import logging
 import time
 
 from pyrogram import filters
+from pyrogram.errors import FloodWait
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from buttons import stream_buttons
@@ -21,13 +22,26 @@ PENDING_TRACKS = {}
 PENDING_TTL = 900
 
 
-def _clean_pending():
+async def safe_edit(message, text, **kwargs):
+    try:
+        await message.edit_text(text, **kwargs)
+        return True
+    except FloodWait as exc:
+        LOGGER.warning(
+            "Telegram FloodWait during status edit: %s seconds",
+            getattr(exc, "value", "unknown"),
+        )
+    except Exception:
+        LOGGER.debug("Status edit failed.", exc_info=True)
+
+    return False
+
+
+def clean_pending():
     now = time.time()
 
     for key, value in list(PENDING_TRACKS.items()):
-        created_at = value.get("time", 0)
-
-        if now - created_at > PENDING_TTL:
+        if now - value.get("time", 0) > PENDING_TTL:
             PENDING_TRACKS.pop(key, None)
 
 
@@ -64,20 +78,21 @@ def register_play_handlers(app, stream):
             ]
 
             if not results:
-                await status.edit_text(
-                    "No results found. Try another title."
+                await safe_edit(
+                    status,
+                    "No results found. Try another title.",
                 )
                 return
 
-            _clean_pending()
+            clean_pending()
 
-            # One result: start playback directly.
             if len(results) == 1:
                 track = results[0]
                 media_type = "video" if force_video else "audio"
 
-                await status.edit_text(
-                    f"⏳ Preparing {media_type} stream..."
+                await safe_edit(
+                    status,
+                    f"⏳ Preparing {media_type} stream...",
                 )
 
                 playable = await get_stream_url(
@@ -92,8 +107,9 @@ def register_play_handlers(app, stream):
                 )
 
                 if result == "queued":
-                    await status.edit_text(
-                        f"➕ Added to queue: **{playable['title']}**"
+                    await safe_edit(
+                        status,
+                        f"➕ Added to queue: **{playable['title']}**",
                     )
                     return
 
@@ -106,7 +122,10 @@ def register_play_handlers(app, stream):
                     BOT_NAME,
                 )
 
-                await status.delete()
+                try:
+                    await status.delete()
+                except Exception:
+                    pass
 
                 await client.send_photo(
                     message.chat.id,
@@ -121,13 +140,7 @@ def register_play_handlers(app, stream):
                 )
                 return
 
-            # Multiple results: store a temporary selection.
-            user_id = (
-                message.from_user.id
-                if message.from_user
-                else 0
-            )
-
+            user_id = message.from_user.id if message.from_user else 0
             key = (
                 f"{message.chat.id}:"
                 f"{user_id}:"
@@ -146,7 +159,6 @@ def register_play_handlers(app, stream):
 
             for index, item in enumerate(results):
                 title = (item.get("title") or "Unknown title")[:45]
-
                 rows.append([
                     InlineKeyboardButton(
                         f"{index + 1}. {title}",
@@ -157,27 +169,24 @@ def register_play_handlers(app, stream):
             rows.append([
                 InlineKeyboardButton(
                     "✖ Close",
-                    callback_data=f"ctrl_close",
+                    callback_data="ctrl_close",
                 )
             ])
 
-            await status.edit_text(
+            await safe_edit(
+                status,
                 "**Choose a track:**",
                 reply_markup=InlineKeyboardMarkup(rows),
             )
 
         except Exception as exc:
             LOGGER.exception("YouTube search/play failed")
+            await safe_edit(
+                status,
+                "Could not search/play this track: "
+                f"`{type(exc).__name__}`",
+            )
 
-            try:
-                await status.edit_text(
-                    "Could not search/play this track: "
-                    f"`{type(exc).__name__}`"
-                )
-            except Exception:
-                LOGGER.exception("Could not edit status message")
-
-    # Normal slash commands.
     @app.on_message(filters.command("play") & filters.group)
     async def play_command(client, message):
         await handle_play(client, message, False)
@@ -186,7 +195,6 @@ def register_play_handlers(app, stream):
     async def vplay_command(client, message):
         await handle_play(client, message, True)
 
-    # Trigger commands, e.g. "babu play song name".
     @app.on_message(
         filters.regex(
             rf"(?i)^(?:{TRIGGER})\s+(play|vplay)\s+(.+)"
@@ -209,7 +217,6 @@ def register_play_handlers(app, stream):
             query_text=query_text,
         )
 
-    # Track selection callback.
     @app.on_callback_query(filters.regex(r"^select_track\|"))
     async def select_track(client, query):
         try:
@@ -223,32 +230,17 @@ def register_play_handlers(app, stream):
                 return
 
             _, key, index_text = parts
-
-            _clean_pending()
+            clean_pending()
             pending = PENDING_TRACKS.get(key)
 
             if not pending:
                 await query.answer(
-                    "This selection has expired. Please search again.",
+                    "This selection has expired. Search again.",
                     show_alert=True,
                 )
-
-                try:
-                    await query.message.edit_text(
-                        "⌛ This song selection expired. "
-                        "Please use /play again."
-                    )
-                except Exception:
-                    pass
-
                 return
 
-            # Only the user who created the selection can use it.
-            clicker_id = (
-                query.from_user.id
-                if query.from_user
-                else 0
-            )
+            clicker_id = query.from_user.id if query.from_user else 0
 
             if clicker_id != pending.get("user_id"):
                 await query.answer(
@@ -260,32 +252,25 @@ def register_play_handlers(app, stream):
             try:
                 index = int(index_text)
             except (TypeError, ValueError):
-                await query.answer(
-                    "Invalid track number.",
-                    show_alert=True,
-                )
+                await query.answer("Invalid track number.", show_alert=True)
                 return
 
             items = pending.get("items") or []
 
             if index < 0 or index >= len(items):
-                await query.answer(
-                    "Track not found. Please search again.",
-                    show_alert=True,
-                )
+                await query.answer("Track not found.", show_alert=True)
                 return
 
             await query.answer("Preparing stream...")
 
             track = items[index]
             media_type = (
-                "video"
-                if pending.get("force_video")
-                else "audio"
+                "video" if pending.get("force_video") else "audio"
             )
 
-            await query.message.edit_text(
-                f"⏳ Preparing {media_type} stream..."
+            await safe_edit(
+                query.message,
+                f"⏳ Preparing {media_type} stream...",
             )
 
             playable = await get_stream_url(
@@ -299,12 +284,12 @@ def register_play_handlers(app, stream):
                 media_type,
             )
 
-            # Remove only after successful queue/play operation.
             PENDING_TRACKS.pop(key, None)
 
             if result == "queued":
-                await query.message.edit_text(
-                    f"➕ Added to queue: **{playable['title']}**"
+                await safe_edit(
+                    query.message,
+                    f"➕ Added to queue: **{playable['title']}**",
                 )
                 return
 
@@ -317,7 +302,10 @@ def register_play_handlers(app, stream):
                 BOT_NAME,
             )
 
-            await query.message.delete()
+            try:
+                await query.message.delete()
+            except Exception:
+                pass
 
             await client.send_photo(
                 pending["chat_id"],
@@ -342,10 +330,8 @@ def register_play_handlers(app, stream):
             except Exception:
                 pass
 
-            try:
-                await query.message.edit_text(
-                    "Unable to start playback: "
-                    f"`{type(exc).__name__}`"
-                )
-            except Exception:
-                pass
+            await safe_edit(
+                query.message,
+                "Unable to start playback: "
+                f"`{type(exc).__name__}`",
+            )

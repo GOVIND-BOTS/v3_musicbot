@@ -63,8 +63,8 @@ class MusicStream:
                                     "Failed to leave call: %s",
                                     chat_id,
                                 )
-
-                            await music_queue.set_current(chat_id, None)
+                            finally:
+                                await music_queue.set_current(chat_id, None)
 
                 except Exception:
                     LOGGER.exception(
@@ -75,7 +75,6 @@ class MusicStream:
             self._handler_registered = True
 
     def make_media(self, track):
-        # Prefer the resolved direct stream URL.
         url = track.get("url") or track.get("webpage_url")
 
         if not url:
@@ -142,12 +141,10 @@ class MusicStream:
             try:
                 await self.calls.leave_call(chat_id)
             except Exception:
-                LOGGER.exception(
-                    "Failed to leave call: %s",
-                    chat_id,
-                )
+                LOGGER.exception("Failed to leave call: %s", chat_id)
+            finally:
+                await music_queue.set_current(chat_id, None)
 
-            await music_queue.set_current(chat_id, None)
             return "empty"
 
     async def stop(self, chat_id):
@@ -159,8 +156,9 @@ class MusicStream:
                     "Failed to stop stream in chat %s",
                     chat_id,
                 )
+            finally:
+                await music_queue.set_current(chat_id, None)
 
-            await music_queue.set_current(chat_id, None)
             return "stopped"
 
     async def replay(self, chat_id):
@@ -184,18 +182,22 @@ class MusicStream:
         LOGGER.info("Shutting down music stream...")
 
         try:
-            # PyTgCalls v3 does not expose calls.stop().
-            # Leave chats tracked by this stream instance.
             for chat_id in list(self.locks.keys()):
                 try:
                     await self.calls.leave_call(chat_id)
-                    await music_queue.set_current(chat_id, None)
                 except Exception:
                     LOGGER.exception(
                         "Failed to clean up chat %s",
                         chat_id,
                     )
-
+                finally:
+                    try:
+                        await music_queue.set_current(chat_id, None)
+                    except Exception:
+                        LOGGER.exception(
+                            "Failed to clear queue for chat %s",
+                            chat_id,
+                        )
         finally:
             self.started = False
             LOGGER.info("Music stream shutdown completed.")

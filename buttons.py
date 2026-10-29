@@ -10,41 +10,32 @@ def start_buttons(
 ):
     rows = []
 
-    # Add bot to a group
     if bot_username:
         rows.append([
             InlineKeyboardButton(
-                text="➕ Add Me to Group",
+                "➕ Add Me to Group",
                 url=f"https://t.me/{bot_username}?startgroup=true",
             )
         ])
 
-    # Support and channel buttons
     extra = []
 
     if support and support.startswith("http"):
         extra.append(
-            InlineKeyboardButton(
-                text="💬 Support",
-                url=support,
-            )
+            InlineKeyboardButton("💬 Support", url=support)
         )
 
     if channel and channel.startswith("http"):
         extra.append(
-            InlineKeyboardButton(
-                text="📢 Channel",
-                url=channel,
-            )
+            InlineKeyboardButton("📢 Channel", url=channel)
         )
 
     if extra:
         rows.append(extra)
 
-    # Help menu
     rows.append([
         InlineKeyboardButton(
-            text="🆘 Help",
+            "🆘 Help",
             callback_data="help_cmd",
         )
     ])
@@ -56,11 +47,11 @@ def help_buttons():
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                text="🏠 Home",
+                "🏠 Home",
                 callback_data="start_home",
             ),
             InlineKeyboardButton(
-                text="✖ Close",
+                "✖ Close",
                 callback_data="ctrl_close",
             ),
         ]
@@ -70,36 +61,15 @@ def help_buttons():
 def stream_buttons(chat_id: int):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(
-                text="▷",
-                callback_data=f"ctrl_resume|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="Ⅱ",
-                callback_data=f"ctrl_pause|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="↻",
-                callback_data=f"ctrl_replay|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="‣‣I",
-                callback_data=f"ctrl_skip|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="■",
-                callback_data=f"ctrl_stop|{chat_id}",
-            ),
+            InlineKeyboardButton("▷", callback_data=f"ctrl_resume|{chat_id}"),
+            InlineKeyboardButton("Ⅱ", callback_data=f"ctrl_pause|{chat_id}"),
+            InlineKeyboardButton("↻", callback_data=f"ctrl_replay|{chat_id}"),
+            InlineKeyboardButton("‣‣I", callback_data=f"ctrl_skip|{chat_id}"),
+            InlineKeyboardButton("■", callback_data=f"ctrl_stop|{chat_id}"),
         ],
         [
-            InlineKeyboardButton(
-                text="♡ Queue",
-                callback_data=f"ctrl_queue|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="✖ Close",
-                callback_data="ctrl_close",
-            ),
+            InlineKeyboardButton("♡ Queue", callback_data=f"ctrl_queue|{chat_id}"),
+            InlineKeyboardButton("✖ Close", callback_data="ctrl_close"),
         ],
     ])
 
@@ -107,30 +77,14 @@ def stream_buttons(chat_id: int):
 def queue_buttons(chat_id: int):
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(
-                text="▷ Resume",
-                callback_data=f"ctrl_resume|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="Ⅱ Pause",
-                callback_data=f"ctrl_pause|{chat_id}",
-            ),
+            InlineKeyboardButton("▷ Resume", callback_data=f"ctrl_resume|{chat_id}"),
+            InlineKeyboardButton("Ⅱ Pause", callback_data=f"ctrl_pause|{chat_id}"),
         ],
         [
-            InlineKeyboardButton(
-                text="‣‣I Skip",
-                callback_data=f"ctrl_skip|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                text="■ Stop",
-                callback_data=f"ctrl_stop|{chat_id}",
-            ),
+            InlineKeyboardButton("‣‣I Skip", callback_data=f"ctrl_skip|{chat_id}"),
+            InlineKeyboardButton("■ Stop", callback_data=f"ctrl_stop|{chat_id}"),
         ],
         [
-            InlineKeyboardButton(
-                text="✖ Close",
-                callback_data="ctrl_close",
-            )
+            InlineKeyboardButton("✖ Close", callback_data="ctrl_close")
         ],
     ])
-

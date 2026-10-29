@@ -38,6 +38,7 @@ class MusicStream:
         self.started = True
 
         if not self._handler_registered:
+
             @self.calls.on_update(fl.stream_end())
             async def on_stream_end(_, update: StreamEnded):
                 chat_id = update.chat_id
@@ -59,20 +60,23 @@ class MusicStream:
                                 await self.calls.leave_call(chat_id)
                             except Exception:
                                 LOGGER.exception(
-                                    "Failed to leave call: %s", chat_id
+                                    "Failed to leave call: %s",
+                                    chat_id,
                                 )
 
                             await music_queue.set_current(chat_id, None)
 
                 except Exception:
                     LOGGER.exception(
-                        "Stream end handler failed for %s", chat_id
+                        "Stream end handler failed for %s",
+                        chat_id,
                     )
 
             self._handler_registered = True
 
     def make_media(self, track):
-        url = track.get("webpage_url") or track.get("url")
+        # Prefer the resolved direct stream URL.
+        url = track.get("url") or track.get("webpage_url")
 
         if not url:
             raise ValueError("Track has no playable URL.")
@@ -107,7 +111,10 @@ class MusicStream:
                 await music_queue.add(chat_id, item)
                 return "queued"
 
-            await self.calls.play(chat_id, self.make_media(item))
+            await self.calls.play(
+                chat_id,
+                self.make_media(item),
+            )
             await music_queue.set_current(chat_id, item)
 
         return "playing"
@@ -135,7 +142,10 @@ class MusicStream:
             try:
                 await self.calls.leave_call(chat_id)
             except Exception:
-                LOGGER.exception("Failed to leave call: %s", chat_id)
+                LOGGER.exception(
+                    "Failed to leave call: %s",
+                    chat_id,
+                )
 
             await music_queue.set_current(chat_id, None)
             return "empty"
@@ -145,7 +155,10 @@ class MusicStream:
             try:
                 await self.calls.leave_call(chat_id)
             except Exception:
-                LOGGER.exception("Failed to stop stream: %s", chat_id)
+                LOGGER.exception(
+                    "Failed to stop stream in chat %s",
+                    chat_id,
+                )
 
             await music_queue.set_current(chat_id, None)
             return "stopped"
@@ -168,12 +181,24 @@ class MusicStream:
         if not self.started:
             return
 
+        LOGGER.info("Shutting down music stream...")
+
         try:
-            await self.calls.stop()
-        except Exception:
-            LOGGER.exception("Music stream shutdown failed")
+            # PyTgCalls v3 does not expose calls.stop().
+            # Leave chats tracked by this stream instance.
+            for chat_id in list(self.locks.keys()):
+                try:
+                    await self.calls.leave_call(chat_id)
+                    await music_queue.set_current(chat_id, None)
+                except Exception:
+                    LOGGER.exception(
+                        "Failed to clean up chat %s",
+                        chat_id,
+                    )
+
         finally:
             self.started = False
+            LOGGER.info("Music stream shutdown completed.")
 
 
 def setup_stream(assistant: Client) -> MusicStream:

@@ -5,8 +5,6 @@ import re
 from pathlib import Path
 
 import yt_dlp
-from yt_dlp.utils import DownloadError
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -48,11 +46,13 @@ if COOKIES_PATH:
 else:
     LOGGER.warning(
         "cookies/cookies.txt not found. "
-        "YouTube may require additional verification."
+        "YouTube verification may be required."
     )
 
+LOGGER.info("Loaded yt-dlp version: %s", yt_dlp.version.__version__)
 
-def is_youtube_url(query: str) -> bool:
+
+def is_youtube_url(query):
     return bool(YOUTUBE_URL_PATTERN.search(query or ""))
 
 
@@ -164,9 +164,7 @@ def _get_video_info(url):
     if not is_youtube_url(url):
         raise ValueError("Please send a valid YouTube URL.")
 
-    options = _make_options()
-
-    with yt_dlp.YoutubeDL(options) as ydl:
+    with yt_dlp.YoutubeDL(_make_options()) as ydl:
         info = ydl.extract_info(url, download=False)
 
     result = normalize_video(info)
@@ -184,7 +182,6 @@ async def get_video_info(url):
 
 
 def _get_stream_url(url, media_type="audio"):
-    """Resolve a playable direct URL using format fallbacks."""
     url = (url or "").strip()
 
     if not is_youtube_url(url):
@@ -228,11 +225,9 @@ def _get_stream_url(url, media_type="audio"):
                 )
 
             direct_url = info.get("url")
+            formats = info.get("formats") or []
 
-            # If yt-dlp didn't select a direct URL, inspect formats.
             if not direct_url:
-                formats = info.get("formats") or []
-
                 if media_type == "audio":
                     candidates = [
                         item for item in formats

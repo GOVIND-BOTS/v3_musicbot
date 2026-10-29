@@ -1,4 +1,4 @@
-```python
+
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
@@ -133,4 +133,4 @@ def queue_buttons(chat_id: int):
             )
         ],
     ])
-```
+

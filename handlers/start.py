@@ -1,3 +1,6 @@
+
+import logging
+
 from pyrogram import filters
 from pyrogram.types import CallbackQuery
 from pyrogram.errors import MessageNotModified
@@ -11,6 +14,9 @@ from config import (
 )
 from buttons import start_buttons, help_buttons
 from database.mongodb import add_user
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 START_TEXT = (
@@ -40,40 +46,55 @@ def register_start_handlers(app):
             try:
                 await add_user(message.from_user.id)
             except Exception:
-                pass
+                LOGGER.exception("Failed to save user")
 
-        me = await client.get_me()
+        try:
+            me = await client.get_me()
 
-        markup = start_buttons(
-            OWNER_ID,
-            SUPPORT_CHAT,
-            SUPPORT_CHANNEL,
-            me.username or ""
-        )
+            markup = start_buttons(
+                OWNER_ID,
+                SUPPORT_CHAT,
+                SUPPORT_CHANNEL,
+                me.username or "",
+            )
 
-        if START_IMAGE:
-            try:
-                await message.reply_photo(
-                    START_IMAGE,
-                    caption=START_TEXT,
-                    reply_markup=markup
-                )
-                return
-            except Exception:
-                pass
+            if START_IMAGE:
+                try:
+                    await message.reply_photo(
+                        photo=START_IMAGE,
+                        caption=START_TEXT,
+                        reply_markup=markup,
+                    )
+                    return
+                except Exception:
+                    LOGGER.warning(
+                        "Start image failed; falling back to text",
+                        exc_info=True,
+                    )
 
-        await message.reply_text(
-            START_TEXT,
-            reply_markup=markup,
-            disable_web_page_preview=True
-        )
+            await message.reply_text(
+                START_TEXT,
+                reply_markup=markup,
+                disable_web_page_preview=True,
+            )
+
+        except Exception:
+            LOGGER.exception("Start command failed")
+            await message.reply_text(
+                "Sorry, the start menu could not be loaded. "
+                "Please try again later."
+            )
 
     @app.on_message(filters.command("help"))
     async def help_command(client, message):
-        await message.reply_text(
-            HELP_TEXT,
-            reply_markup=help_buttons()
-        )
+        try:
+            await message.reply_text(
+                HELP_TEXT,
+                reply_markup=help_buttons(),
+            )
+        except Exception:
+            LOGGER.exception("Help command failed")
+            await message.reply_text(HELP_TEXT)
 
     @app.on_callback_query(filters.regex("^help_cmd$"))
     async def help_callback(client, query: CallbackQuery):
@@ -82,33 +103,38 @@ def register_start_handlers(app):
         try:
             await query.message.edit_text(
                 HELP_TEXT,
-                reply_markup=help_buttons()
+                reply_markup=help_buttons(),
             )
         except MessageNotModified:
             pass
+        except Exception:
+            LOGGER.exception("Help menu callback failed")
 
     @app.on_callback_query(filters.regex("^start_home$"))
     async def home_callback(client, query: CallbackQuery):
         await query.answer()
 
-        me = await client.get_me()
-
-        markup = start_buttons(
-            OWNER_ID,
-            SUPPORT_CHAT,
-            SUPPORT_CHANNEL,
-            me.username or ""
-        )
-
         try:
+            me = await client.get_me()
+
+            markup = start_buttons(
+                OWNER_ID,
+                SUPPORT_CHAT,
+                SUPPORT_CHANNEL,
+                me.username or "",
+            )
+
             await query.message.edit_text(
                 START_TEXT,
-                reply_markup=markup
+                reply_markup=markup,
+                disable_web_page_preview=True,
             )
+
         except MessageNotModified:
             pass
         except Exception:
-            await query.message.reply_text(
-                START_TEXT,
-                reply_markup=markup
-            )
+            LOGGER.exception("Home menu callback failed")
+            try:
+                await query.message.reply_text(START_TEXT)
+            except Exception:
+                LOGGER.exception("Home menu fallback failed")

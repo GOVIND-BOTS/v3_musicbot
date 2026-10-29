@@ -17,7 +17,7 @@ shayari_list = [
     "🌺 *Meri har saans teri mohabbat ki gawah hai,* \nAgar kabhi bhool jao toh dil se padh lena…"
 ]
 
-@bot.on_message(filters.command("shayari") & filters.group)
+@app.on_message(filters.command("shayari") & filters.group)
 async def send_shayari(client, message):
     user = message.from_user
     shayari = random.choice(shayari_list)

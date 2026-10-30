@@ -54,9 +54,11 @@ YDL_BASE_OPTIONS = {
     "noplaylist": True,
     "skip_download": True,
     "socket_timeout": 30,
-    "retries": 2,
-    "fragment_retries": 2,
+    "retries": 3,
+    "fragment_retries": 3,
     "cachedir": False,
+    "nocheckcertificate": True,
+    "geo_bypass": True,
 }
 
 if COOKIES_PATH:
@@ -154,7 +156,6 @@ def _make_options(selected_format=None):
     if selected_format:
         options["format"] = selected_format
     else:
-        # Audio ke liye soft default
         options["format"] = "bestaudio/best"
 
     options["extractor_args"] = {
@@ -164,14 +165,10 @@ def _make_options(selected_format=None):
         }
     }
 
-    # Extra reliability
-    options["nocheckcertificate"] = True
-    options["geo_bypass"] = True
+    # PO Token / EJS support
     options["remote_components"] = ["ejs:github"]
 
     return options
-
-    
 
 
 def _search_youtube(query, limit=5):
@@ -268,9 +265,9 @@ def _get_stream_url(url, media_type="audio"):
     )
 
     if media_type == "audio":
-        # Soft format attempts (ba/b add kiya)
         format_attempts = (
-            "bestaudio/best",
+            "bestaudio[ext=m4a]/bestaudio/best",
+            "bestaudio",
             "ba/b",
             "best",
             None,
@@ -314,6 +311,7 @@ def _get_stream_url(url, media_type="audio"):
 
                     candidates.sort(
                         key=lambda item: (
+                            1 if item.get("ext") == "m4a" else 0,
                             item.get("abr") or 0,
                             item.get("tbr") or 0,
                         ),
@@ -342,6 +340,13 @@ def _get_stream_url(url, media_type="audio"):
 
                 if candidates:
                     direct_url = candidates[0]["url"]
+
+            if not direct_url:
+                # Last fallback - koi bhi available url
+                for f in formats:
+                    if f.get("url"):
+                        direct_url = f["url"]
+                        break
 
             if not direct_url:
                 raise RuntimeError(

@@ -149,22 +149,24 @@ def normalize_video(info):
 
 
 def _make_options(selected_format=None):
-    """
-    Better YouTube client selection for cookies + more reliable formats.
-    """
     options = dict(YDL_BASE_OPTIONS)
 
     if selected_format:
         options["format"] = selected_format
 
-    
     options["extractor_args"] = {
         "youtube": {
-            "player_client": ["android", "web", "ios"],
+            "player_client": ["android", "ios", "web", "tv"],
+            "player_skip": ["webpage"],
         }
     }
 
+    # PO Token support ke liye
+    options["remote_components"] = ["ejs:github"]
+
     return options
+
+    
 
 
 def _search_youtube(query, limit=5):

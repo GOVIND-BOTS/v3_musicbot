@@ -10,3 +10,5 @@ aiohttp
 Pillow
 numpy
 yt-dlp[default] @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
+yt-dlp[default]
+yt-dlp-getpot-wpc

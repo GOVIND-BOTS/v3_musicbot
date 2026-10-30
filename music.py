@@ -5,6 +5,7 @@ from copy import deepcopy
 
 
 class MusicQueue:
+
     def __init__(self):
         self._queues = defaultdict(deque)
         self._current = {}
@@ -22,8 +23,14 @@ class MusicQueue:
             raise ValueError("Track must contain a URL.")
 
         item = dict(track)
+
         item.setdefault("title", "Unknown Title")
         item.setdefault("media_type", "audio")
+        item.setdefault("requested_by_id", 0)
+        item.setdefault("requested_by_name", "Group member")
+        item.setdefault("requested_by_username", "")
+        item.setdefault("duration_text", "Unknown")
+
         return item
 
     async def add(self, chat_id, track):
@@ -34,7 +41,10 @@ class MusicQueue:
             return len(self._queues[chat_id])
 
     async def add_many(self, chat_id, tracks):
-        items = [self._prepare_track(track) for track in tracks]
+        items = [
+            self._prepare_track(track)
+            for track in tracks
+        ]
 
         async with self._lock(chat_id):
             self._queues[chat_id].extend(items)
@@ -42,7 +52,7 @@ class MusicQueue:
 
     async def set_current(self, chat_id, track):
         async with self._lock(chat_id):
-            # None means there is no current track.
+
             if track is None:
                 self._current.pop(chat_id, None)
                 self._paused.discard(chat_id)
@@ -55,18 +65,22 @@ class MusicQueue:
     async def get_current(self, chat_id):
         async with self._lock(chat_id):
             value = self._current.get(chat_id)
-            return deepcopy(value) if value else None
+
+            return deepcopy(value) if value is not None else None
 
     async def get_next(self, chat_id):
         async with self._lock(chat_id):
+
             if not self._queues[chat_id]:
                 self._current.pop(chat_id, None)
                 self._paused.discard(chat_id)
                 return None
 
             item = self._queues[chat_id].popleft()
+
             self._current[chat_id] = item
             self._paused.discard(chat_id)
+
             return deepcopy(item)
 
     async def get_queue(self, chat_id):

@@ -2,9 +2,10 @@
 import logging
 
 from pyrogram import filters
+from pyrogram.enums import ParseMode
 
 from buttons import stream_buttons
-from config import BOT_NAME, TRIGGER
+from player_ui import add_requester, now_playing_caption
 from thumbnails import get_thumb
 from youtube import (
     is_youtube_url,
@@ -28,8 +29,11 @@ def register_play_handlers(app, stream):
             if len(message.command) < 2:
                 await message.reply_text(
                     "Usage:\n"
-                    "`/play song name`\n"
-                    "`/vplay song name`"
+                    "/play song name\n"
+                    "/vplay song name\n\n"
+                    "Or:\n"
+                    "adisha play song name\n"
+                    "baby play song name"
                 )
                 return
 
@@ -40,7 +44,7 @@ def register_play_handlers(app, stream):
         )
 
         try:
-            # Direct YouTube URL or first search result.
+            # YouTube URL or first search result.
             if is_youtube_url(query_text):
                 track = await get_video_info(query_text)
             else:
@@ -61,8 +65,13 @@ def register_play_handlers(app, stream):
                     )
                     return
 
-                # Automatically use the first result.
                 track = results[0]
+
+            if not track or not track.get("webpage_url"):
+                await status.edit_text(
+                    "❌ Unable to find a playable song."
+                )
+                return
 
             media_type = "video" if force_video else "audio"
 
@@ -70,13 +79,36 @@ def register_play_handlers(app, stream):
                 f"⏳ Starting {media_type} playback..."
             )
 
-            # Resolve the actual stream URL.
             playable = await get_stream_url(
                 track["webpage_url"],
                 media_type,
             )
 
-            # Play in VC or add to the existing queue.
+            if not playable:
+                await status.edit_text(
+                    "❌ Could not resolve the audio stream."
+                )
+                return
+
+            # Save requester details with the track.
+            if message.from_user:
+                playable = add_requester(
+                    playable,
+                    message.from_user,
+                )
+            else:
+                playable = dict(playable)
+                playable.setdefault("requested_by_id", 0)
+                playable.setdefault(
+                    "requested_by_name",
+                    "Group member",
+                )
+                playable.setdefault(
+                    "requested_by_username",
+                    "",
+                )
+
+            # Start playback or add to queue.
             result = await stream.play(
                 message.chat.id,
                 playable,
@@ -85,35 +117,51 @@ def register_play_handlers(app, stream):
 
             if result == "queued":
                 await status.edit_text(
-                    f"➕ Added to queue:\n"
-                    f"**{playable['title']}**"
+                    "➕ **Added to Queue**\n\n"
+                    f"🎵 **{playable.get('title', 'Unknown')}**\n"
+                    f"👤 Requested by: "
+                    f"{playable.get('requested_by_name', 'Group member')}"
                 )
                 return
 
+            # Generate player thumbnail.
             thumb = await get_thumb(
                 playable.get("videoid"),
                 playable.get("title"),
-                playable.get("duration_text"),
-                playable.get("views"),
-                playable.get("channel"),
-                BOT_NAME,
+                playable.get("duration_text")
+                or playable.get("duration"),
+                playable.get("views", 0),
+                playable.get("channel", "YouTube"),
+                "GOVIND MUSIC",
+                playable.get(
+                    "requested_by_name",
+                    "Group member",
+                ),
             )
+
+            caption = now_playing_caption(playable)
 
             await status.delete()
 
-            await client.send_photo(
-                message.chat.id,
-                thumb,
-                caption=(
-                    "🎶 **Now Playing**\n"
-                    f"**{playable['title']}**\n"
-                    f"Duration: "
-                    f"{playable.get('duration_text', '?')}"
-                ),
-                reply_markup=stream_buttons(
-                    message.chat.id
-                ),
-            )
+            if thumb:
+                await client.send_photo(
+                    chat_id=message.chat.id,
+                    photo=thumb,
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=stream_buttons(
+                        message.chat.id
+                    ),
+                )
+            else:
+                await client.send_message(
+                    chat_id=message.chat.id,
+                    text=caption,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=stream_buttons(
+                        message.chat.id
+                    ),
+                )
 
         except Exception as exc:
             LOGGER.exception("Unable to start playback")
@@ -121,7 +169,7 @@ def register_play_handlers(app, stream):
             error_message = (
                 "❌ Unable to play this song.\n\n"
                 f"Error: `{type(exc).__name__}`\n\n"
-                "Check YouTube cookies and the stream logs."
+                "Check YouTube cookies and stream logs."
             )
 
             try:
@@ -131,6 +179,7 @@ def register_play_handlers(app, stream):
                     "Could not update playback status message."
                 )
 
+    # Normal /play command.
     @app.on_message(
         filters.command("play") & filters.group
     )
@@ -141,6 +190,7 @@ def register_play_handlers(app, stream):
             force_video=False,
         )
 
+    # Normal /vplay command.
     @app.on_message(
         filters.command("vplay") & filters.group
     )
@@ -151,13 +201,15 @@ def register_play_handlers(app, stream):
             force_video=True,
         )
 
+    # adisha play / adisha vplay
+    # baby play / baby vplay
     @app.on_message(
         filters.regex(
-            rf"(?i)^(?:{TRIGGER})\s+(play|vplay)\s+(.+)"
+            r"(?i)^(?:adisha|baby)\s+(play|vplay)\s+(.+)$"
         )
         & filters.group
     )
-    async def trigger_play_command(client, message):
+    async def custom_play_command(client, message):
         match = (
             message.matches[0]
             if message.matches

@@ -53,14 +53,11 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
     try:
         chat = await bot.get_chat(chat_id)
 
-        # Try joining a public group directly.
+        # Public group joining
         if chat.username:
             try:
                 await assistant.join_chat(chat.username)
-                LOGGER.info(
-                    "Assistant joined public group %s",
-                    chat_id,
-                )
+                LOGGER.info("Assistant joined public group %s", chat_id)
                 return True
             except Exception:
                 LOGGER.warning(
@@ -68,19 +65,17 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
                     exc_info=True,
                 )
 
-        # For private groups, create a temporary invite link.
+        # Private group joining
         invite = await bot.create_chat_invite_link(
             chat_id,
             member_limit=1,
         )
+
         invite_link = invite.invite_link
 
         await assistant.join_chat(invite_link)
 
-        LOGGER.info(
-            "Assistant joined group %s",
-            chat_id,
-        )
+        LOGGER.info("Assistant joined group %s", chat_id)
         return True
 
     except Exception as exc:
@@ -88,6 +83,7 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
             "Assistant could not join group %s",
             chat_id,
         )
+
         raise RuntimeError(
             "Assistant could not join this group. "
             "Give the bot permission to invite users, "
@@ -111,8 +107,9 @@ def register_play_handlers(app, stream, assistant=None):
         force_video=False,
         query_text=None,
     ):
+
         if not query_text:
-            if len(message.command) < 2:
+            if not message.command or len(message.command) < 2:
                 await message.reply_text(
                     "Usage:\n\n"
                     "play song name - Audio\n"
@@ -141,9 +138,10 @@ def register_play_handlers(app, stream, assistant=None):
         )
 
         try:
-            # Resolve YouTube URL or first search result.
+            # Resolve YouTube URL or search result
             if is_youtube_url(query_text):
                 track = await get_video_info(query_text)
+
             else:
                 results = await search_youtube(
                     query_text,
@@ -170,8 +168,8 @@ def register_play_handlers(app, stream, assistant=None):
                 )
                 return
 
-            # PLAY = AUDIO ONLY
-            # VPLAY = VIDEO ONLY
+            # PLAY = AUDIO
+            # VPLAY = VIDEO
             media_type = (
                 "video" if force_video else "audio"
             )
@@ -191,7 +189,7 @@ def register_play_handlers(app, stream, assistant=None):
                 )
                 return
 
-            # Ensure assistant is in the group.
+            # Ensure assistant is in group
             await status.edit_text(
                 "👤 Checking Assistant membership..."
             )
@@ -202,14 +200,16 @@ def register_play_handlers(app, stream, assistant=None):
                 message.chat.id,
             )
 
-            # Save requester details.
+            # Save requester details
             if message.from_user:
                 playable = add_requester(
                     playable,
                     message.from_user,
                 )
+
             else:
                 playable = dict(playable)
+
                 playable.setdefault("requested_by_id", 0)
                 playable.setdefault(
                     "requested_by_name",
@@ -220,7 +220,7 @@ def register_play_handlers(app, stream, assistant=None):
                     "",
                 )
 
-            # Start playback or add to queue.
+            # Start playback or add to queue
             result = await stream.play(
                 message.chat.id,
                 playable,
@@ -237,7 +237,7 @@ def register_play_handlers(app, stream, assistant=None):
                 )
                 return
 
-            # Generate thumbnail.
+            # Generate thumbnail
             thumb = await get_thumb(
                 playable.get("videoid"),
                 playable.get("title"),
@@ -266,6 +266,7 @@ def register_play_handlers(app, stream, assistant=None):
                         message.chat.id
                     ),
                 )
+
             else:
                 await client.send_message(
                     chat_id=message.chat.id,
@@ -277,9 +278,7 @@ def register_play_handlers(app, stream, assistant=None):
                 )
 
         except Exception as exc:
-            LOGGER.exception(
-                "Unable to start playback"
-            )
+            LOGGER.exception("Unable to start playback")
 
             error_message = (
                 "❌ Unable to play this song.\n\n"
@@ -290,8 +289,9 @@ def register_play_handlers(app, stream, assistant=None):
             with suppress(Exception):
                 await status.edit_text(error_message)
 
-    # Manual Assistant join command.
+    # Manual Assistant join command
     async def handle_joinuserbot(client, message):
+
         status = await message.reply_text(
             "👤 Checking Assistant membership..."
         )
@@ -309,9 +309,7 @@ def register_play_handlers(app, stream, assistant=None):
             )
 
         except Exception as exc:
-            LOGGER.exception(
-                "Manual Assistant join failed"
-            )
+            LOGGER.exception("Manual Assistant join failed")
 
             await status.edit_text(
                 "❌ Assistant could not join this group.\n\n"
@@ -340,13 +338,16 @@ def register_play_handlers(app, stream, assistant=None):
             message,
             force_video=True,
         )
-(
+
+    # /joinuserbot
+    @app.on_message(
         filters.command("joinuserbot") & filters.group
     )
     async def joinuserbot_command(client, message):
         await handle_joinuserbot(client, message)
 
-
+    # Normal text commands
+    # adisha play, babu play, baby play, play
     @app.on_message(
         filters.regex(
             r"(?i)^(?:(?:adisha|babu|baby)\s+)?"
@@ -356,6 +357,7 @@ def register_play_handlers(app, stream, assistant=None):
         & filters.text
     )
     async def plain_play_command(client, message):
+
         match = (
             message.matches[0]
             if message.matches

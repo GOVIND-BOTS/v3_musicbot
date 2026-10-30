@@ -13,4 +13,4 @@ def register_handlers(app, stream, assistant):
     register_queue_handlers(app, stream)
     register_admin_handlers(app, stream)
     register_welcome_handlers(app)
-    1register_chatbot_handlers(app)
+    register_chatbot_handlers(app)

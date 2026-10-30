@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Deno install
 RUN curl -fsSL https://deno.land/install.sh | sh
 ENV PATH="/root/.deno/bin:$PATH"
+RUN deno --version
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

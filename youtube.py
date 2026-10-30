@@ -153,15 +153,20 @@ def _make_options(selected_format=None):
 
     if selected_format:
         options["format"] = selected_format
+    else:
+        # Audio ke liye soft default
+        options["format"] = "bestaudio/best"
 
     options["extractor_args"] = {
         "youtube": {
-            "player_client": ["android", "ios", "web", "tv"],
-            "player_skip": ["webpage"],
+            "player_client": ["android", "ios", "web", "tv", "mweb"],
+            "player_skip": ["webpage", "configs"],
         }
     }
 
-    # PO Token support ke liye
+    # Extra reliability
+    options["nocheckcertificate"] = True
+    options["geo_bypass"] = True
     options["remote_components"] = ["ejs:github"]
 
     return options

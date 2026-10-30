@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import os
@@ -151,15 +150,19 @@ def normalize_video(info):
 
 def _make_options(selected_format=None):
     """
-    Keep yt-dlp's automatic YouTube client selection.
-    When cookies are configured, yt-dlp can select
-    the appropriate clients for authenticated requests.
+    Better YouTube client selection for cookies + more reliable formats.
     """
-
     options = dict(YDL_BASE_OPTIONS)
 
     if selected_format:
         options["format"] = selected_format
+
+    
+    options["extractor_args"] = {
+        "youtube": {
+            "player_client": ["android", "web", "ios"],
+        }
+    }
 
     return options
 
@@ -258,8 +261,10 @@ def _get_stream_url(url, media_type="audio"):
     )
 
     if media_type == "audio":
+        # Soft format attempts (ba/b add kiya)
         format_attempts = (
             "bestaudio/best",
+            "ba/b",
             "best",
             None,
         )

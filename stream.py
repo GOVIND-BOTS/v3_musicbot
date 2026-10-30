@@ -44,7 +44,10 @@ class MusicStream:
         if not url:
             raise ValueError("Track has no playable stream URL.")
 
-        if track.get("media_type", "audio") == "video":
+        # Default is ALWAYS audio.
+        media_type = str(track.get("media_type", "audio")).lower()
+
+        if media_type == "video":
             return MediaStream(
                 url,
                 audio_parameters=AudioQuality.HIGH,
@@ -63,8 +66,12 @@ class MusicStream:
             raise TypeError("Track must be a dictionary.")
 
         item = dict(track)
+
+        # Only explicitly requested video can play as video.
         item["media_type"] = (
-            "video" if str(media_type).lower() == "video" else "audio"
+            "video"
+            if str(media_type).lower() == "video"
+            else "audio"
         )
 
         if not item.get("url"):
@@ -75,14 +82,22 @@ class MusicStream:
 
             if current:
                 await music_queue.add(chat_id, item)
-                LOGGER.info("Track queued in chat %s", chat_id)
+                LOGGER.info(
+                    "Track queued in chat %s as %s",
+                    chat_id,
+                    item["media_type"],
+                )
                 return "queued"
 
             try:
-                await self.calls.play(chat_id, self.make_media(item))
+                await self.calls.play(
+                    chat_id,
+                    self.make_media(item),
+                )
             except Exception:
                 LOGGER.exception(
-                    "Failed to start playback in chat %s", chat_id
+                    "Failed to start playback in chat %s",
+                    chat_id,
                 )
                 await music_queue.set_current(chat_id, None)
                 raise
@@ -90,10 +105,12 @@ class MusicStream:
             await music_queue.set_current(chat_id, item)
 
         LOGGER.info(
-            "Playback started in chat %s: %s",
+            "%s playback started in chat %s: %s",
+            item["media_type"].upper(),
             chat_id,
             item.get("title", "Unknown title"),
         )
+
         return "playing"
 
     async def pause(self, chat_id):
@@ -101,6 +118,7 @@ class MusicStream:
 
         async with self.lock_for(chat_id):
             current = await music_queue.get_current(chat_id)
+
             if not current:
                 return False
 
@@ -115,6 +133,7 @@ class MusicStream:
 
         async with self.lock_for(chat_id):
             current = await music_queue.get_current(chat_id)
+
             if not current:
                 return False
 
@@ -135,11 +154,16 @@ class MusicStream:
                     await self.calls.leave_call(chat_id)
                 except Exception:
                     LOGGER.info(
-                        "No active call to leave in chat %s", chat_id
+                        "No active call to leave in chat %s",
+                        chat_id,
                     )
 
                 await music_queue.clear(chat_id)
-                LOGGER.info("Queue empty; stopped chat %s", chat_id)
+
+                LOGGER.info(
+                    "Queue empty; stopped chat %s",
+                    chat_id,
+                )
                 return None
 
             try:
@@ -149,7 +173,8 @@ class MusicStream:
                 )
             except Exception:
                 LOGGER.exception(
-                    "Failed to play next track in chat %s", chat_id
+                    "Failed to play next track in chat %s",
+                    chat_id,
                 )
                 await music_queue.set_current(chat_id, None)
                 raise
@@ -161,6 +186,7 @@ class MusicStream:
                 chat_id,
                 track.get("title", "Unknown title"),
             )
+
             return track
 
     async def stop(self, chat_id):
@@ -170,14 +196,17 @@ class MusicStream:
             try:
                 await self.calls.leave_call(chat_id)
             except Exception:
-                # The call may already have ended or never started.
                 LOGGER.info(
-                    "No active call to leave in chat %s", chat_id
+                    "No active call to leave in chat %s",
+                    chat_id,
                 )
 
             await music_queue.clear(chat_id)
 
-        LOGGER.info("Playback stopped and queue cleared in chat %s", chat_id)
+        LOGGER.info(
+            "Playback stopped and queue cleared in chat %s",
+            chat_id,
+        )
         return True
 
     async def replay(self, chat_id):
@@ -185,6 +214,7 @@ class MusicStream:
 
         async with self.lock_for(chat_id):
             track = await music_queue.get_current(chat_id)
+
             if not track:
                 return None
 
@@ -194,7 +224,10 @@ class MusicStream:
                     self.make_media(track),
                 )
             except Exception:
-                LOGGER.exception("Replay failed in chat %s", chat_id)
+                LOGGER.exception(
+                    "Replay failed in chat %s",
+                    chat_id,
+                )
                 raise
 
             return track
@@ -205,10 +238,12 @@ class MusicStream:
                 return
 
             LOGGER.info("Shutting down music stream...")
-            # Do not call PyTgCalls.stop(); it is not available in every
-            # supported PyTgCalls version.
+
             self.started = False
-            LOGGER.info("Music stream shutdown handler completed.")
+
+            LOGGER.info(
+                "Music stream shutdown handler completed."
+            )
 
 
 def setup_stream(assistant: Client):

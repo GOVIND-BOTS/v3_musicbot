@@ -13,7 +13,6 @@ from pyrogram.enums import ParseMode
 
 LOGGER = logging.getLogger(__name__)
 
-# Background image location
 BASE_DIR = Path(__file__).resolve().parent.parent
 WELCOME_IMAGE = BASE_DIR / "assets" / "welcome.png"
 
@@ -31,11 +30,10 @@ def create_welcome_image(user_photo, user_name):
     background = Image.open(WELCOME_IMAGE).convert("RGBA")
 
     # Circular profile photo
-    if user_photo:
+    if user_photo and os.path.isfile(user_photo):
         avatar = Image.open(user_photo).convert("RGB")
 
         diameter = 510
-
         width, height = avatar.size
         crop_size = min(width, height)
 
@@ -62,7 +60,6 @@ def create_welcome_image(user_photo, user_name):
             fill=255,
         )
 
-        
         x = 489 - diameter // 2
         y = 465 - diameter // 2
 
@@ -72,21 +69,25 @@ def create_welcome_image(user_photo, user_name):
             mask,
         )
 
-    
-    draw = ImageDraw.Draw(background)
-
-    name = user_name.strip() or "New Member"
-    name = name[:24]
+    # Name settings
+    name = (user_name or "New Member").strip()[:24]
 
     font = get_font(48)
 
-    
+    draw = ImageDraw.Draw(background)
+
     while draw.textbbox((0, 0), name, font=font)[2] > 680:
-        font = get_font(max(20, font.size - 3))
+        new_size = max(20, font.size - 3)
+        if new_size == font.size:
+            break
+        font = get_font(new_size)
 
     name_x = 905
     name_y = 395
 
+    # FIX: Create glow layer and drawing object
+    glow = Image.new("RGBA", background.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
 
     glow_draw.text(
         (name_x, name_y),
@@ -96,9 +97,7 @@ def create_welcome_image(user_photo, user_name):
         stroke_width=2,
     )
 
-    glow = glow.filter(
-        ImageFilter.GaussianBlur(12)
-    )
+    glow = glow.filter(ImageFilter.GaussianBlur(12))
 
     background = Image.alpha_composite(
         background,
@@ -107,7 +106,6 @@ def create_welcome_image(user_photo, user_name):
 
     draw = ImageDraw.Draw(background)
 
-    # Colorful name
     draw.text(
         (name_x, name_y),
         name,
@@ -128,7 +126,6 @@ def create_welcome_image(user_photo, user_name):
         stroke_fill=(120, 0, 255, 255),
     )
 
-    
     temp = tempfile.NamedTemporaryFile(
         suffix=".png",
         delete=False,
@@ -139,7 +136,7 @@ def create_welcome_image(user_photo, user_name):
 
     background.convert("RGB").save(
         output_path,
-        quality=95,
+        format="PNG",
     )
 
     return output_path
@@ -167,15 +164,23 @@ def register_welcome_handlers(app):
             output_path = None
 
             try:
-                # Get user's profile photo
-                photos = await client.get_profile_photos(
-                    user.id,
-                    limit=1,
-                )
+                # Get profile photo safely
+                try:
+                    photos = await client.get_profile_photos(
+                        user.id,
+                        limit=1,
+                    )
 
-                if photos:
-                    photo_path = await client.download_media(
-                        photos[0].file_id
+                    if photos:
+                        photo_path = await client.download_media(
+                            photos[0].big_file_id
+                        )
+
+                except Exception:
+                    LOGGER.warning(
+                        "Could not download profile photo for %s",
+                        user.id,
+                        exc_info=True,
                     )
 
                 # Generate welcome image
@@ -189,11 +194,14 @@ def register_welcome_handlers(app):
                     f'{html.escape(user_name)}</a>'
                 )
 
+                group_name = html.escape(
+                    message.chat.title or "Our Group"
+                )
+
                 caption = (
                     "✨ <b>WELCOME TO THE GROUP!</b> ✨\n\n"
                     f"👑 Hello {mention}!\n"
-                    f"💖 Welcome to "
-                    f"<b>{html.escape(message.chat.title or 'Our Group')}</b>\n\n"
+                    f"💖 Welcome to <b>{group_name}</b>\n\n"
                     "🌸 We are happy to have you here!\n"
                     "🤝 Enjoy your time with us.\n\n"
                     "💫 <b>GOVIND OP</b>"
@@ -224,3 +232,6 @@ def register_welcome_handlers(app):
                             os.remove(path)
                         except OSError:
                             pass
+
+
+    LOGGER.info("Welcome handlers registered successfully.")

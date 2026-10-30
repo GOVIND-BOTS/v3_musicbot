@@ -59,32 +59,74 @@ def help_buttons():
 
 
 def stream_buttons(chat_id: int):
+    """GOVIND MUSIC main player controls."""
+
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("▷", callback_data=f"ctrl_resume|{chat_id}"),
-            InlineKeyboardButton("Ⅱ", callback_data=f"ctrl_pause|{chat_id}"),
-            InlineKeyboardButton("↻", callback_data=f"ctrl_replay|{chat_id}"),
-            InlineKeyboardButton("‣‣I", callback_data=f"ctrl_skip|{chat_id}"),
-            InlineKeyboardButton("■", callback_data=f"ctrl_stop|{chat_id}"),
+            InlineKeyboardButton(
+                "▷",
+                callback_data=f"ctrl_resume|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "Ⅱ",
+                callback_data=f"ctrl_pause|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "↻",
+                callback_data=f"ctrl_replay|{chat_id}",
+            ),
         ],
         [
-            InlineKeyboardButton("♡ Queue", callback_data=f"ctrl_queue|{chat_id}"),
-            InlineKeyboardButton("✖ Close", callback_data="ctrl_close"),
+            InlineKeyboardButton(
+                "‣‣I  SKIP",
+                callback_data=f"ctrl_skip|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "■  STOP",
+                callback_data=f"ctrl_stop|{chat_id}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "♡  QUEUE",
+                callback_data=f"ctrl_queue|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "✖  CLOSE",
+                callback_data="ctrl_close",
+            ),
         ],
     ])
 
 
 def queue_buttons(chat_id: int):
+    """Queue message controls."""
+
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("▷ Resume", callback_data=f"ctrl_resume|{chat_id}"),
-            InlineKeyboardButton("Ⅱ Pause", callback_data=f"ctrl_pause|{chat_id}"),
+            InlineKeyboardButton(
+                "▷ Resume",
+                callback_data=f"ctrl_resume|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "Ⅱ Pause",
+                callback_data=f"ctrl_pause|{chat_id}",
+            ),
         ],
         [
-            InlineKeyboardButton("‣‣I Skip", callback_data=f"ctrl_skip|{chat_id}"),
-            InlineKeyboardButton("■ Stop", callback_data=f"ctrl_stop|{chat_id}"),
+            InlineKeyboardButton(
+                "‣‣I Skip",
+                callback_data=f"ctrl_skip|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                "■ Stop",
+                callback_data=f"ctrl_stop|{chat_id}",
+            ),
         ],
         [
-            InlineKeyboardButton("✖ Close", callback_data="ctrl_close")
+            InlineKeyboardButton(
+                "✖ Close",
+                callback_data="ctrl_close",
+            )
         ],
     ])

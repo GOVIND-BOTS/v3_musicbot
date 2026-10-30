@@ -6,10 +6,14 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg git build-essential curl \
+    ffmpeg \
+    git \
+    build-essential \
+    curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Deno install (YouTube cookies ke liye zaroori)
+# Deno install
 RUN curl -fsSL https://deno.land/install.sh | sh
 ENV PATH="/root/.deno/bin:$PATH"
 

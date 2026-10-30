@@ -78,7 +78,7 @@ async def main():
         music_stream = setup_stream(assistant)
         await music_stream.start()
 
-        register_handlers(bot, music_stream)
+        register_handlers(bot, music_stream, assistant)
 
         LOGGER.info("%s is ready.", BOT_NAME)
 

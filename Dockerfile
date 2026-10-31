@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -fsSL https://deno.land/install.sh | sh
 ENV PATH="/root/.deno/bin:$PATH"
 RUN deno --version
+RUN apt-get update && apt-get install -y fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

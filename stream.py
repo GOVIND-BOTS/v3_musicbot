@@ -4,6 +4,7 @@ import logging
 from pyrogram import Client
 from pytgcalls import PyTgCalls
 from pytgcalls.types import MediaStream, AudioQuality, VideoQuality
+from pytgcalls.types.stream import StreamAudioEnded, StreamVideoEnded
 
 from music import music_queue
 
@@ -20,6 +21,9 @@ class MusicStream:
         self.started = False
         self._start_lock = asyncio.Lock()
         self._shutdown_lock = asyncio.Lock()
+
+        # Stream end handler register karo
+        self.calls.on_stream_end()(self._on_stream_end)
 
     def lock_for(self, chat_id):
         if chat_id not in self.locks:
@@ -43,7 +47,6 @@ class MusicStream:
         if not url:
             raise ValueError("Track has no playable stream URL.")
 
-        # Default is ALWAYS audio.
         media_type = str(track.get("media_type", "audio")).lower()
 
         if media_type == "video":
@@ -53,12 +56,58 @@ class MusicStream:
                 video_parameters=VideoQuality.SD_480p,
             )
 
-        # AUDIO ONLY - video ko force ignore karo
+        # AUDIO ONLY
         return MediaStream(
             url,
             audio_parameters=AudioQuality.HIGH,
             video_flags=MediaStream.Flags.IGNORE,
         )
+
+    async def _on_stream_end(self, client, update):
+        
+        chat_id = update.chat_id
+
+        LOGGER.info("Stream ended in chat %s", chat_id)
+
+        async with self.lock_for(chat_id):
+            # Next track nikaalo
+            next_track = await music_queue.get_next(chat_id)
+
+            if next_track:
+                try:
+                    await self.calls.play(
+                        chat_id,
+                        self.make_media(next_track),
+                    )
+                    await music_queue.set_current(chat_id, next_track)
+
+                    LOGGER.info(
+                        "Auto-playing next track in %s: %s",
+                        chat_id,
+                        next_track.get("title", "Unknown"),
+                    )
+                except Exception:
+                    LOGGER.exception(
+                        "Failed to auto-play next track in %s",
+                        chat_id,
+                    )
+                    await music_queue.set_current(chat_id, None)
+                    try:
+                        await self.calls.leave_call(chat_id)
+                    except Exception:
+                        pass
+            else:
+                # Queue empty → leave voice chat
+                LOGGER.info(
+                    "Queue empty in %s, leaving voice chat",
+                    chat_id,
+                )
+                try:
+                    await self.calls.leave_call(chat_id)
+                except Exception:
+                    LOGGER.info("Already left or no active call in %s", chat_id)
+
+                await music_queue.clear(chat_id)
 
     async def play(self, chat_id, track, media_type="audio"):
         await self.start()
@@ -68,7 +117,6 @@ class MusicStream:
 
         item = dict(track)
 
-        # Only explicitly requested video can play as video.
         item["media_type"] = (
             "video"
             if str(media_type).lower() == "video"
@@ -82,6 +130,7 @@ class MusicStream:
             current = await music_queue.get_current(chat_id)
 
             if current:
+                # Already playing → add to queue
                 await music_queue.add(chat_id, item)
                 LOGGER.info(
                     "Track queued in chat %s as %s",
@@ -90,6 +139,7 @@ class MusicStream:
                 )
                 return "queued"
 
+            # First song → play now
             try:
                 await self.calls.play(
                     chat_id,
@@ -239,12 +289,8 @@ class MusicStream:
                 return
 
             LOGGER.info("Shutting down music stream...")
-
             self.started = False
-
-            LOGGER.info(
-                "Music stream shutdown handler completed."
-            )
+            LOGGER.info("Music stream shutdown handler completed.")
 
 
 def setup_stream(assistant: Client):

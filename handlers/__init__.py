@@ -19,7 +19,6 @@ def register_handlers(app, stream, assistant):
     register_welcome_handlers(app)
     register_chatbot_handlers(app)
     register_adisa_handlers(app)
-    register_adisa_handlers(app)
     register_tagall_handlers(app)
     register_translate_handlers(app)
     register_whisper_handlers(app)

@@ -8,6 +8,7 @@ from .chatbot import register_chatbot_handlers
 from .adisa import register_adisa_handlers
 from .tagall import register_tagall_handlers
 from .translate import register_translate_handlers
+from .whisper import register_whisper_handlers
 
 def register_handlers(app, stream, assistant):
     register_start_handlers(app)
@@ -21,3 +22,4 @@ def register_handlers(app, stream, assistant):
     register_adisa_handlers(app)
     register_tagall_handlers(app)
     register_translate_handlers(app)
+    register_whisper_handlers(app)

@@ -6,7 +6,7 @@ from .admin import register_admin_handlers
 from .welcome import register_welcome_handlers
 from .chatbot import register_chatbot_handlers
 from .adisa import register_adisa_handlers
-from .adisa import register_adisa_handlers
+from .tagall import register_tagall_handlers
 
 def register_handlers(app, stream, assistant):
     register_start_handlers(app)
@@ -18,3 +18,4 @@ def register_handlers(app, stream, assistant):
     register_chatbot_handlers(app)
     register_adisa_handlers(app)
     register_adisa_handlers(app)
+    register_tagall_handlers(app)

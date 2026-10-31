@@ -52,11 +52,10 @@ def register_adisa_handlers(app, sudoers=None):
     """
     if sudoers is None:
         sudoers = set()
-
-    @app.on_message(
-        filters.command(["disa", "disha", "adisa"], prefixes=["a", "A", "/"])
-        & filters.group
-    )
+@app.on_message(
+    filters.command(["adisa", "disa", "disha"], prefixes=["", "/", "!"])
+    & filters.group
+)
     async def adisa_handler(client, message):
         # Admin check
         if not await is_admin(client, message.chat.id, message.from_user.id):

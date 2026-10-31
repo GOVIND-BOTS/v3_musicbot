@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 
@@ -54,9 +53,11 @@ class MusicStream:
                 video_parameters=VideoQuality.SD_480p,
             )
 
+        # AUDIO ONLY - video ko force ignore karo
         return MediaStream(
             url,
             audio_parameters=AudioQuality.HIGH,
+            video_flags=MediaStream.Flags.IGNORE,
         )
 
     async def play(self, chat_id, track, media_type="audio"):

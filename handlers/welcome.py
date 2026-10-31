@@ -1,25 +1,9 @@
 
-import logging
-import os
-import tempfile
-from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-from PIL import Image, ImageDraw, ImageFont
-from pyrogram import filters
-from pyrogram.enums import ParseMode
-
-LOGGER = logging.getLogger(__name__)
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-WELCOME_IMAGE = BASE_DIR / "assets" / "welcome.png"
-
-
 def get_font(size):
     paths = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     ]
 
     for path in paths:
@@ -29,8 +13,8 @@ def get_font(size):
     return ImageFont.load_default()
 
 
-def fit_font(draw, text, max_width, size=29):
-    while size > 14:
+def fit_font(draw, text, max_width, size=27):
+    while size >= 13:
         font = get_font(size)
         bbox = draw.textbbox((0, 0), text, font=font)
 
@@ -39,122 +23,120 @@ def fit_font(draw, text, max_width, size=29):
 
         size -= 1
 
-    return get_font(14)
+    return get_font(13)
 
 
 def create_welcome_image(user_photo, user, chat):
     image = Image.open(WELCOME_IMAGE).convert("RGBA")
+
+    # Scale all coordinates according to original template.
+    base_w, base_h = 1536, 1024
+    sx = image.width / base_w
+    sy = image.height / base_h
+
+    def pos(x, y):
+        return (int(x * sx), int(y * sy))
+
+    def rect(coords):
+        return tuple(
+            int(value * (sx if i % 2 == 0 else sy))
+            for i, value in enumerate(coords)
+        )
+
     draw = ImageDraw.Draw(image)
 
-    # -----------------------------
-    # MEMBER PROFILE PHOTO
-    # -----------------------------
+    # --------------------------------
+    # MEMBER PROFILE PHOTO - FULL CIRCLE
+    # --------------------------------
     if user_photo and os.path.isfile(user_photo):
         avatar = Image.open(user_photo).convert("RGB")
 
-        width, height = avatar.size
-        crop = min(width, height)
+        w, h = avatar.size
+        crop = min(w, h)
 
-        left = (width - crop) // 2
-        top = (height - crop) // 2
+        left = (w - crop) // 2
+        top = (h - crop) // 2
 
         avatar = avatar.crop((
-            left,
-            top,
-            left + crop,
-            top + crop,
+            left, top, left + crop, top + crop
         ))
 
-        diameter = 380
-
+        diameter = int(460 * sx)
         avatar = avatar.resize(
             (diameter, diameter),
             Image.Resampling.LANCZOS,
         )
 
         mask = Image.new("L", (diameter, diameter), 0)
-        mask_draw = ImageDraw.Draw(mask)
-
-        mask_draw.ellipse(
+        ImageDraw.Draw(mask).ellipse(
             (0, 0, diameter - 1, diameter - 1),
             fill=255,
         )
 
-        x = 440 - diameter // 2
-        y = 445 - diameter // 2
+        # Center of the neon circular frame.
+        center_x, center_y = pos(440, 445)
+
+        x = center_x - diameter // 2
+        y = center_y - diameter // 2
 
         image.paste(avatar, (x, y), mask)
 
-    # -----------------------------
-    # MEMBER INFORMATION
-    # -----------------------------
+    # --------------------------------
+    # MEMBER DETAILS
+    # --------------------------------
     name = " ".join(
-        part for part in [
-            user.first_name,
-            user.last_name,
-        ] if part
-    ).strip() or "Unknown"
+        p for p in (user.first_name, user.last_name) if p
+    ) or "Unknown"
 
     user_id = str(user.id)
-
-    username = (
-        f"@{user.username}"
-        if user.username
-        else "Not set"
-    )
-
+    username = f"@{user.username}" if user.username else "Not set"
     group_name = chat.title or "Unknown Group"
 
-    try:
-        joined_date = datetime.now(
-            ZoneInfo("Asia/Kolkata")
-        ).strftime("%d %b %Y")
-    except Exception:
-        joined_date = datetime.now().strftime("%d %b %Y")
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
 
-    # Cover old fixed values from the template.
-    rows = [
-        (1080, 285, 1470, 350),
-        (1080, 350, 1470, 415),
-        (1080, 415, 1470, 480),
-        (1080, 480, 1470, 545),
-        (1080, 545, 1470, 605),
+    joined = datetime.now(
+        ZoneInfo("Asia/Kolkata")
+    ).strftime("%d %b %Y")
+
+    values = [
+        (name, 299, (0, 210, 255, 255)),
+        (user_id, 364, (255, 45, 230, 255)),
+        (username, 429, (0, 255, 210, 255)),
+        (group_name, 494, (255, 190, 30, 255)),
+        (joined, 559, (255, 65, 220, 255)),
     ]
 
-    for x1, y1, x2, y2 in rows:
+    # Cover ONLY the value column, not the labels.
+    for _, y, _ in values:
+        x1, y1 = pos(1080, y - 5)
+        x2, y2 = pos(1460, y + 48)
+
         draw.rounded_rectangle(
             (x1, y1, x2, y2),
-            radius=8,
-            fill=(5, 3, 24, 235),
+            radius=int(5 * sx),
+            fill=(5, 3, 24, 255),
         )
 
-    # Text positions and neon colors.
-    fields = [
-        (name, 1093, 299, (0, 210, 255, 255)),
-        (user_id, 1093, 364, (255, 45, 230, 255)),
-        (username, 1093, 429, (0, 255, 210, 255)),
-        (group_name, 1093, 494, (255, 190, 30, 255)),
-        (joined_date, 1093, 559, (255, 65, 220, 255)),
-    ]
-
+    # Draw dynamic values in their own column.
     draw = ImageDraw.Draw(image)
 
-    for text, x, y, color in fields:
+    for text, y, color in values:
+        x, y_pos = pos(1095, y)
+
         font = fit_font(
             draw,
             text,
-            max_width=350,
-            size=29,
+            max_width=int(345 * sx),
+            size=int(27 * sx),
         )
 
-        # Small dark outline for readability.
         draw.text(
-            (x, y),
+            (x, y_pos),
             text,
             font=font,
             fill=color,
-            stroke_width=1,
-            stroke_fill=(10, 0, 25, 255),
+            stroke_width=0,
         )
 
     output = tempfile.NamedTemporaryFile(
@@ -165,97 +147,6 @@ def create_welcome_image(user_photo, user, chat):
     output_path = output.name
     output.close()
 
-    image.convert("RGB").save(
-        output_path,
-        format="PNG",
-    )
+    image.convert("RGB").save(output_path, "PNG")
 
     return output_path
-
-
-def register_welcome_handlers(app):
-
-    @app.on_message(
-        filters.group & filters.new_chat_members
-    )
-    async def welcome_new_members(client, message):
-
-        if not WELCOME_IMAGE.exists():
-            LOGGER.error(
-                "Welcome image not found: %s",
-                WELCOME_IMAGE,
-            )
-            return
-
-        for user in message.new_chat_members:
-
-            photo_path = None
-            output_path = None
-
-            try:
-                # Download joining member's actual DP.
-                if user.photo:
-                    photo_path = await client.download_media(
-                        user.photo.big_file_id
-                    )
-
-                # Generate personalized welcome image.
-                output_path = create_welcome_image(
-                    photo_path,
-                    user,
-                    message.chat,
-                )
-
-                name = " ".join(
-                    part for part in [
-                        user.first_name,
-                        user.last_name,
-                    ] if part
-                ).strip() or "Member"
-
-                mention = (
-                    f'<a href="tg://user?id={user.id}">'
-                    f'{html_escape(name)}</a>'
-                )
-
-                caption = (
-                    "✨ <b>WELCOME TO THE GROUP!</b> ✨\n\n"
-                    f"👑 Hello {mention}!\n"
-                    f"💖 Welcome to "
-                    f"<b>{html_escape(message.chat.title or 'Our Group')}</b>\n\n"
-                    "🌸 We are happy to have you here!\n"
-                    "🤝 Enjoy your time with us.\n\n"
-                    "💫 <b>GOVIND OP</b>"
-                )
-
-                await message.reply_photo(
-                    photo=output_path,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                )
-
-                LOGGER.info(
-                    "Welcome sent to user %s",
-                    user.id,
-                )
-
-            except Exception:
-                LOGGER.exception(
-                    "Welcome error for user %s",
-                    user.id,
-                )
-
-            finally:
-                for path in (photo_path, output_path):
-                    if path and os.path.isfile(path):
-                        try:
-                            os.remove(path)
-                        except OSError:
-                            pass
-
-    LOGGER.info("Welcome handlers registered.")
-
-
-def html_escape(text):
-    import html
-    return html.escape(str(text))

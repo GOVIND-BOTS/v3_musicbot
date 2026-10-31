@@ -15,11 +15,17 @@ from player_ui import now_playing_caption
 LOGGER = logging.getLogger(__name__)
 
 
-async def update_player_message(message, track, chat_id):
-    """Update the existing player message with the new track."""
+async def update_player_message(
+    client,
+    message,
+    track,
+    chat_id,
+    stream,
+):
+    """Update the existing player card with a new track."""
 
     if not isinstance(track, dict):
-        return
+        return None
 
     title = track.get("title") or "Unknown Track"
 
@@ -35,25 +41,63 @@ async def update_player_message(message, track, chat_id):
         )
 
         caption = now_playing_caption(track)
+        keyboard = stream_buttons(chat_id)
 
         if thumb:
-            await message.edit_media(
+            updated = await message.edit_media(
                 InputMediaPhoto(
                     media=thumb,
                     caption=caption,
                     parse_mode=ParseMode.HTML,
                 ),
-                reply_markup=stream_buttons(chat_id),
+                reply_markup=keyboard,
             )
         else:
-            await message.edit_caption(
+            updated = await message.edit_caption(
                 caption=caption,
                 parse_mode=ParseMode.HTML,
-                reply_markup=stream_buttons(chat_id),
+                reply_markup=keyboard,
             )
 
+        if updated:
+            stream.player_messages[chat_id] = updated
+
+        return updated
+
     except Exception:
-        LOGGER.exception("Failed to update player message")
+        LOGGER.warning(
+            "Could not edit existing player card in %s. "
+            "Sending a replacement.",
+            chat_id,
+            exc_info=True,
+        )
+
+    try:
+        if thumb:
+            sent = await client.send_photo(
+                chat_id=chat_id,
+                photo=thumb,
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+        else:
+            sent = await client.send_message(
+                chat_id=chat_id,
+                text=caption,
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+
+        stream.player_messages[chat_id] = sent
+        return sent
+
+    except Exception:
+        LOGGER.exception(
+            "Could not send replacement player card in %s",
+            chat_id,
+        )
+        return None
 
 
 def register_callback_handlers(app, stream):
@@ -63,18 +107,14 @@ def register_callback_handlers(app, stream):
 
         data = query.data or ""
 
-        if data == "ctrl_close":
-            await query.answer()
-
-            try:
-                await query.message.delete()
-            except Exception:
-                pass
-
+        if not query.message:
+            await query.answer(
+                "Message not available.",
+                show_alert=True,
+            )
             return
 
         parts = data.split("|")
-
         action = parts[0]
 
         try:
@@ -83,11 +123,37 @@ def register_callback_handlers(app, stream):
                 if len(parts) > 1
                 else query.message.chat.id
             )
+
         except (TypeError, ValueError):
             await query.answer(
-                "Invalid chat ID",
+                "Invalid chat ID.",
                 show_alert=True,
             )
+            return
+
+        # CLOSE
+        if action == "ctrl_close":
+            await query.answer()
+
+            try:
+                stored = stream.player_messages.get(chat_id)
+
+                if (
+                    stored
+                    and stored.id == query.message.id
+                ):
+                    stream.player_messages.pop(
+                        chat_id,
+                        None,
+                    )
+
+                await query.message.delete()
+
+            except Exception:
+                LOGGER.exception(
+                    "Could not close player message."
+                )
+
             return
 
         try:
@@ -95,8 +161,13 @@ def register_callback_handlers(app, stream):
             # QUEUE
             if action == "ctrl_queue":
 
-                items = await music_queue.get_queue(chat_id)
-                current = await music_queue.get_current(chat_id)
+                items = await music_queue.get_queue(
+                    chat_id
+                )
+
+                current = await music_queue.get_current(
+                    chat_id
+                )
 
                 text = "🎶 <b>GOVIND MUSIC QUEUE</b>\n"
 
@@ -110,16 +181,25 @@ def register_callback_handlers(app, stream):
 
                 if not items:
                     text += "\n📭 Queue is empty."
+
                 else:
                     text += "\n<b>Up Next:</b>\n"
 
-                    for index, track in enumerate(items, 1):
+                    for index, track in enumerate(
+                        items,
+                        1,
+                    ):
                         title = escape(
                             str(track.get("title", "Unknown"))
                         )
 
                         requester = escape(
-                            str(track.get("requested_by_name", "Group member"))
+                            str(
+                                track.get(
+                                    "requested_by_name",
+                                    "Group member",
+                                )
+                            )
                         )
 
                         text += (
@@ -140,26 +220,42 @@ def register_callback_handlers(app, stream):
             # PAUSE
             if action == "ctrl_pause":
 
-                await stream.pause(chat_id)
-                answer = "⏸ Music paused."
+                success = await stream.pause(chat_id)
+
+                if success:
+                    answer = "⏸ Music paused."
+                else:
+                    answer = "No music is currently playing."
 
             # RESUME
             elif action == "ctrl_resume":
 
-                await stream.resume(chat_id)
-                answer = "▶️ Music resumed."
+                success = await stream.resume(chat_id)
+
+                if success:
+                    answer = "▶️ Music resumed."
+                else:
+                    answer = "No paused music found."
 
             # SKIP
             elif action == "ctrl_skip":
 
                 track = await stream.skip(chat_id)
 
-                if track and isinstance(track, dict):
+                if isinstance(track, dict):
+
+                    # Prefer the actual player card.
+                    player_message = (
+                        stream.player_messages.get(chat_id)
+                        or query.message
+                    )
 
                     await update_player_message(
-                        query.message,
+                        client,
+                        player_message,
                         track,
                         chat_id,
+                        stream,
                     )
 
                     answer = (
@@ -174,6 +270,12 @@ def register_callback_handlers(app, stream):
             elif action == "ctrl_stop":
 
                 await stream.stop(chat_id)
+
+                stream.player_messages.pop(
+                    chat_id,
+                    None,
+                )
+
                 answer = "⏹ Music stopped."
 
             # REPLAY
@@ -182,25 +284,24 @@ def register_callback_handlers(app, stream):
                 track = await stream.replay(chat_id)
 
                 if isinstance(track, dict):
+
+                    player_message = (
+                        stream.player_messages.get(chat_id)
+                        or query.message
+                    )
+
                     await update_player_message(
-                        query.message,
+                        client,
+                        player_message,
                         track,
                         chat_id,
+                        stream,
                     )
 
                     answer = "↻ Replaying current track."
 
                 else:
-                    current = await music_queue.get_current(chat_id)
-
-                    if isinstance(current, dict):
-                        await update_player_message(
-                            query.message,
-                            current,
-                            chat_id,
-                        )
-
-                    answer = "↻ Replay requested."
+                    answer = "No track is currently playing."
 
             else:
                 answer = "Unknown control."
@@ -219,5 +320,6 @@ def register_callback_handlers(app, stream):
                     f"Action failed: {type(exc).__name__}",
                     show_alert=True,
                 )
+
             except Exception:
                 pass

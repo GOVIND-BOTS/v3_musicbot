@@ -1,9 +1,26 @@
+import os
+import tempfile
+import logging
+
+from pyrogram import filters
+from pyrogram.types import ChatMemberUpdated
+from pyrogram.enums import ChatMemberStatus
+from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+LOGGER = logging.getLogger(__name__)
+
+# Welcome template image path
+WELCOME_IMAGE = "assets/welcome.png"
+
 
 def get_font(size):
     paths = [
         "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
     ]
 
     for path in paths:
@@ -27,6 +44,9 @@ def fit_font(draw, text, max_width, size=27):
 
 
 def create_welcome_image(user_photo, user, chat):
+    if not os.path.exists(WELCOME_IMAGE):
+        raise FileNotFoundError(f"Welcome template not found: {WELCOME_IMAGE}")
+
     image = Image.open(WELCOME_IMAGE).convert("RGBA")
 
     # Scale all coordinates according to original template.
@@ -37,49 +57,46 @@ def create_welcome_image(user_photo, user, chat):
     def pos(x, y):
         return (int(x * sx), int(y * sy))
 
-    def rect(coords):
-        return tuple(
-            int(value * (sx if i % 2 == 0 else sy))
-            for i, value in enumerate(coords)
-        )
-
     draw = ImageDraw.Draw(image)
 
     # --------------------------------
     # MEMBER PROFILE PHOTO - FULL CIRCLE
     # --------------------------------
     if user_photo and os.path.isfile(user_photo):
-        avatar = Image.open(user_photo).convert("RGB")
+        try:
+            avatar = Image.open(user_photo).convert("RGB")
 
-        w, h = avatar.size
-        crop = min(w, h)
+            w, h = avatar.size
+            crop = min(w, h)
 
-        left = (w - crop) // 2
-        top = (h - crop) // 2
+            left = (w - crop) // 2
+            top = (h - crop) // 2
 
-        avatar = avatar.crop((
-            left, top, left + crop, top + crop
-        ))
+            avatar = avatar.crop((
+                left, top, left + crop, top + crop
+            ))
 
-        diameter = int(460 * sx)
-        avatar = avatar.resize(
-            (diameter, diameter),
-            Image.Resampling.LANCZOS,
-        )
+            diameter = int(460 * sx)
+            avatar = avatar.resize(
+                (diameter, diameter),
+                Image.Resampling.LANCZOS,
+            )
 
-        mask = Image.new("L", (diameter, diameter), 0)
-        ImageDraw.Draw(mask).ellipse(
-            (0, 0, diameter - 1, diameter - 1),
-            fill=255,
-        )
+            mask = Image.new("L", (diameter, diameter), 0)
+            ImageDraw.Draw(mask).ellipse(
+                (0, 0, diameter - 1, diameter - 1),
+                fill=255,
+            )
 
-        # Center of the neon circular frame.
-        center_x, center_y = pos(440, 445)
+            # Center of the neon circular frame.
+            center_x, center_y = pos(440, 445)
 
-        x = center_x - diameter // 2
-        y = center_y - diameter // 2
+            x = center_x - diameter // 2
+            y = center_y - diameter // 2
 
-        image.paste(avatar, (x, y), mask)
+            image.paste(avatar, (x, y), mask)
+        except Exception as e:
+            LOGGER.warning(f"Failed to process user photo: {e}")
 
     # --------------------------------
     # MEMBER DETAILS
@@ -91,9 +108,6 @@ def create_welcome_image(user_photo, user, chat):
     user_id = str(user.id)
     username = f"@{user.username}" if user.username else "Not set"
     group_name = chat.title or "Unknown Group"
-
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
 
     joined = datetime.now(
         ZoneInfo("Asia/Kolkata")
@@ -150,3 +164,86 @@ def create_welcome_image(user_photo, user, chat):
     image.convert("RGB").save(output_path, "PNG")
 
     return output_path
+
+
+def register_welcome_handlers(app):
+    @app.on_chat_member_updated(filters.group)
+    async def welcome_new_member(client, member: ChatMemberUpdated):
+        try:
+            # Only when a new user joins
+            if not member.new_chat_member:
+                return
+
+            new_status = member.new_chat_member.status
+            old_status = member.old_chat_member.status if member.old_chat_member else None
+
+            # Check if user actually joined
+            if new_status not in (
+                ChatMemberStatus.MEMBER,
+                ChatMemberStatus.RESTRICTED,
+            ):
+                return
+
+            if old_status in (
+                ChatMemberStatus.MEMBER,
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.OWNER,
+                ChatMemberStatus.RESTRICTED,
+            ):
+                return
+
+            user = member.new_chat_member.user
+            chat = member.chat
+
+            # Ignore bots
+            if user.is_bot:
+                return
+
+            user_photo = None
+            welcome_path = None
+
+            try:
+                # Download user profile photo
+                if user.photo:
+                    user_photo = await client.download_media(
+                        user.photo.big_file_id,
+                        file_name=f"temp_{user.id}.jpg",
+                    )
+
+                # Create welcome image
+                welcome_path = create_welcome_image(user_photo, user, chat)
+
+                # Send welcome photo
+                await client.send_photo(
+                    chat.id,
+                    photo=welcome_path,
+                    caption=f"**✨ Welcome** {user.mention} **to** **{chat.title}**!",
+                )
+
+            except Exception as e:
+                LOGGER.exception(f"Welcome message failed in {chat.id}")
+                # Fallback text welcome
+                try:
+                    await client.send_message(
+                        chat.id,
+                        f"**✨ Welcome** {user.mention} **to** **{chat.title}**!",
+                    )
+                except Exception:
+                    pass
+
+            finally:
+                # Cleanup temp files
+                if user_photo and os.path.exists(user_photo):
+                    try:
+                        os.remove(user_photo)
+                    except Exception:
+                        pass
+
+                if welcome_path and os.path.exists(welcome_path):
+                    try:
+                        os.remove(welcome_path)
+                    except Exception:
+                        pass
+
+        except Exception:
+            LOGGER.exception("Error in welcome handler")

@@ -22,7 +22,6 @@ class MusicStream:
         self._start_lock = asyncio.Lock()
         self._shutdown_lock = asyncio.Lock()
 
-        # Stream end handler register
         self._register_handlers()
 
     def _register_handlers(self):
@@ -63,7 +62,6 @@ class MusicStream:
                 video_parameters=VideoQuality.SD_480p,
             )
 
-        # AUDIO ONLY
         return MediaStream(
             url,
             audio_parameters=AudioQuality.HIGH,
@@ -71,14 +69,10 @@ class MusicStream:
         )
 
     async def play_next(self, chat_id: int):
-        """Song khatam hone par next song play karega.
-        Agar queue empty ho to VC se leave kar dega.
-        """
         async with self.lock_for(chat_id):
             next_track = await music_queue.get_next(chat_id)
 
             if not next_track:
-                # Queue empty → leave
                 LOGGER.info("Queue empty in %s → leaving VC", chat_id)
                 try:
                     await self.calls.leave_call(chat_id)
@@ -123,7 +117,6 @@ class MusicStream:
             current = await music_queue.get_current(chat_id)
 
             if current:
-                # Already playing → add to queue (playlist)
                 position = await music_queue.add(chat_id, item)
                 LOGGER.info(
                     "Track queued in %s at position %s",
@@ -132,7 +125,6 @@ class MusicStream:
                 )
                 return "queued"
 
-            # First song → play now
             try:
                 await self.calls.play(
                     chat_id,
@@ -173,7 +165,6 @@ class MusicStream:
 
     async def skip(self, chat_id):
         await self.start()
-        # Manual skip = same as play_next
         await self.play_next(chat_id)
         return await music_queue.get_current(chat_id)
 

@@ -13,3 +13,5 @@ yt-dlp[default] @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 yt-dlp[default]
 yt-dlp-getpot-wpc
 google-genai
+gpytranslate
+tgcrypto

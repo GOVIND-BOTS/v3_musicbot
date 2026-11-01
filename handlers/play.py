@@ -10,7 +10,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from buttons import stream_buttons
 from config import OWNER_ID, SUDO_USERS
-from Mongodb import get_chat_settings
+from database.mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
 from youtube import (
     is_youtube_url,

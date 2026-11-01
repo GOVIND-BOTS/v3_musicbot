@@ -4,348 +4,449 @@ from html import escape
 
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
-from pyrogram.types import InputMediaPhoto
 
 from music import music_queue
-from buttons import queue_buttons, stream_buttons
-from thumbnails import get_thumb
-from player_ui import now_playing_caption
+from buttons import queue_buttons
+from Mongodb import get_chat_settings
+from player_ui import format_duration, stylize
 
 
 LOGGER = logging.getLogger(__name__)
 
 
+# ----------------------------------
+# ADMIN CHECK
+# ----------------------------------
+
 async def is_admin(client, chat_id, user_id):
-    """Check whether the user is a group administrator."""
+
     try:
-        member = await client.get_chat_member(chat_id, user_id)
+        member = await client.get_chat_member(
+            chat_id,
+            user_id,
+        )
+
         return member.status in (
             ChatMemberStatus.OWNER,
             ChatMemberStatus.ADMINISTRATOR,
         )
+
     except Exception:
         return False
 
 
-async def update_player_message(
-    client,
-    message,
-    track,
-    chat_id,
-    stream,
-):
-    """Update the existing player card for the next track."""
+# ----------------------------------
+# AUTHORIZED USER CHECK
+# ----------------------------------
 
-    if not isinstance(track, dict):
-        return None
+async def is_authorized(client, chat_id, user_id):
 
-    title = track.get("title") or "Unknown Track"
-    thumb = None
+    if await is_admin(client, chat_id, user_id):
+        return True
 
     try:
-        thumb = await get_thumb(
-            track.get("videoid"),
-            title,
-            track.get("duration_text") or track.get("duration"),
-            track.get("views", 0),
-            track.get("channel", "YouTube"),
-            "GOVIND MUSIC",
-            track.get("requested_by_name", "Group member"),
+        settings = await get_chat_settings(
+            chat_id
         )
 
-        caption = now_playing_caption(track)
-        keyboard = stream_buttons(chat_id)
-
-        if thumb:
-            updated = await message.edit_media(
-                InputMediaPhoto(
-                    media=thumb,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                ),
-                reply_markup=keyboard,
-            )
-        else:
-            updated = await message.edit_caption(
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-                reply_markup=keyboard,
-            )
-
-        if updated:
-            stream.player_messages[chat_id] = updated
-
-        return updated
-
-    except Exception:
-        LOGGER.warning(
-            "Could not edit player card in chat %s",
-            chat_id,
-            exc_info=True,
+        authorized_users = settings.get(
+            "authorized_users",
+            [],
         )
 
-    try:
-        if thumb:
-            sent = await client.send_photo(
-                chat_id,
-                photo=thumb,
-                caption=caption,
-                parse_mode=ParseMode.HTML,
-                reply_markup=keyboard,
-            )
-        else:
-            sent = await client.send_message(
-                chat_id,
-                caption,
-                parse_mode=ParseMode.HTML,
-                reply_markup=keyboard,
-            )
-
-        stream.player_messages[chat_id] = sent
-        return sent
+        return int(user_id) in {
+            int(uid) for uid in authorized_users
+        }
 
     except Exception:
+
         LOGGER.exception(
-            "Could not send replacement player card in %s",
+            "Authorization check failed in %s",
             chat_id,
         )
-        return None
 
+        return False
+
+
+# ----------------------------------
+# QUEUE TEXT
+# ----------------------------------
+
+async def build_queue_text(chat_id):
+
+    current = await music_queue.get_current(
+        chat_id
+    )
+
+    tracks = await music_queue.get_queue(
+        chat_id
+    )
+
+    loop_mode = await music_queue.get_loop(
+        chat_id
+    )
+
+    shuffle_enabled = await music_queue.is_shuffle(
+        chat_id
+    )
+
+    lines = [
+        f"<b>🎶 {stylize('Adisha Music Queue')}</b>",
+        "",
+    ]
+
+    if current:
+
+        title = escape(
+            str(current.get("title", "Unknown"))
+        )
+
+        duration = current.get(
+            "duration_text"
+        ) or format_duration(
+            current.get("duration", 0)
+        )
+
+        lines.extend([
+            f"▶️ <b>{stylize('Now Playing')}</b>",
+            f"• {title} — {escape(str(duration))}",
+            "",
+        ])
+
+    else:
+
+        lines.extend([
+            f"<i>{stylize('Nothing is playing right now.')}</i>",
+            "",
+        ])
+
+    lines.append(
+        f"<b>{stylize('Upcoming Tracks')}</b>"
+    )
+
+    if tracks:
+
+        for index, track in enumerate(
+            tracks[:15],
+            start=1,
+        ):
+
+            title = escape(
+                str(track.get("title", "Unknown"))
+            )
+
+            duration = track.get(
+                "duration_text"
+            ) or format_duration(
+                track.get("duration", 0)
+            )
+
+            lines.append(
+                f"{index}. {title} — {escape(str(duration))}"
+            )
+
+        if len(tracks) > 15:
+
+            lines.append(
+                f"\n{stylize('And')} {len(tracks) - 15} "
+                f"{stylize('more tracks...')}"
+            )
+
+    else:
+
+        lines.append(
+            f"<i>{stylize('No upcoming tracks.')}</i>"
+        )
+
+    lines.extend([
+        "",
+        f"<b>{stylize('Loop')}:</b> {escape(str(loop_mode).upper())}",
+        f"<b>{stylize('Shuffle')}:</b> "
+        f"{stylize('ON' if shuffle_enabled else 'OFF')}",
+    ])
+
+    return "\n".join(lines)
+
+
+# ----------------------------------
+# CALLBACK REGISTRATION
+# ----------------------------------
 
 def register_callback_handlers(app, stream):
 
-    @app.on_callback_query(filters.regex(r"^ctrl_"))
-    async def player_controls(client, query):
+    @app.on_callback_query(
+        filters.regex(r"^ctrl_")
+    )
+    async def player_callbacks(client, query):
 
         data = query.data or ""
-        parts = data.split("|")
-        action = parts[0]
+        message = query.message
+        user = query.from_user
 
-        if not query.message:
+        if not message or not user:
             await query.answer(
-                "Message not available.",
+                stylize("Invalid player message."),
                 show_alert=True,
             )
             return
 
-        try:
-            chat_id = (
-                int(parts[1])
-                if len(parts) > 1
-                else query.message.chat.id
-            )
-        except (TypeError, ValueError):
-            await query.answer(
-                "Invalid chat ID.",
-                show_alert=True,
-            )
-            return
-
-        # Prevent a callback from controlling another chat.
-        if chat_id != query.message.chat.id:
-            await query.answer(
-                "Invalid player message.",
-                show_alert=True,
-            )
-            return
-
-        # CLOSE does not control playback.
-        if action == "ctrl_close":
-            await query.answer()
-
-            try:
-                stored = stream.player_messages.get(chat_id)
-
-                if stored and stored.id == query.message.id:
-                    stream.player_messages.pop(chat_id, None)
-
-                await query.message.delete()
-
-            except Exception:
-                LOGGER.exception("Could not close player message.")
-
-            return
-
-        # All playback controls require group admin permission.
-        if not await is_admin(
-            client,
-            chat_id,
-            query.from_user.id,
-        ):
-            await query.answer(
-                "Only group admins can control the music.",
-                show_alert=True,
-            )
-            return
+        chat_id = message.chat.id
 
         try:
 
-            # SHOW QUEUE
-            if action == "ctrl_queue":
-                current = await music_queue.get_current(chat_id)
-                items = await music_queue.get_queue(chat_id)
+            parts = data.split("|")
+            action = parts[0]
 
-                text = "🎶 <b>GOVIND MUSIC QUEUE</b>\n"
+            # ----------------------------------
+            # CLOSE
+            # ----------------------------------
 
-                if current:
-                    text += (
-                        "\n▶️ <b>Now Playing:</b>\n"
-                        f"🎵 {escape(str(current.get('title', 'Unknown')))}\n"
-                        "👤 "
-                        f"{escape(str(current.get('requested_by_name', 'Group member')))}\n"
+            if action == "ctrl_close":
+
+                if not await is_authorized(
+                    client,
+                    chat_id,
+                    user.id,
+                ):
+
+                    await query.answer(
+                        stylize("You are not allowed to close this player."),
+                        show_alert=True,
                     )
+                    return
 
-                if items:
-                    text += "\n<b>Up Next:</b>\n"
+                await query.answer(
+                    stylize("Player closed.")
+                )
 
-                    for index, track in enumerate(items, 1):
-                        title = escape(
-                            str(track.get("title", "Unknown"))
-                        )
-                        requester = escape(
-                            str(
-                                track.get(
-                                    "requested_by_name",
-                                    "Group member",
-                                )
-                            )
-                        )
+                try:
+                    await message.delete()
+                except Exception:
+                    pass
 
-                        text += (
-                            f"\n{index}. 🎵 {title}\n"
-                            f"   👤 {requester}\n"
-                        )
-                elif not current:
-                    text += "\n📭 Queue is empty."
-                else:
-                    text += "\n📭 No upcoming songs."
+                return
 
-                await query.answer("Queue opened.")
+            # ----------------------------------
+            # CHAT VALIDATION
+            # ----------------------------------
 
-                await query.message.reply_text(
-                    text,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=queue_buttons(chat_id),
+            if len(parts) < 2:
+
+                await query.answer(
+                    stylize("Invalid player command."),
+                    show_alert=True,
                 )
                 return
 
+            try:
+                target_chat = int(parts[1])
+            except (ValueError, TypeError):
+
+                await query.answer(
+                    stylize("Invalid chat ID."),
+                    show_alert=True,
+                )
+                return
+
+            if target_chat != chat_id:
+
+                await query.answer(
+                    stylize("This player belongs to another chat."),
+                    show_alert=True,
+                )
+                return
+
+            # ----------------------------------
+            # PERMISSION
+            # ----------------------------------
+
+            if not await is_authorized(
+                client,
+                chat_id,
+                user.id,
+            ):
+
+                await query.answer(
+                    stylize(
+                        "Only admins and authorized users can control music."
+                    ),
+                    show_alert=True,
+                )
+                return
+
+            # ----------------------------------
+            # QUEUE
+            # ----------------------------------
+
+            if action == "ctrl_queue":
+
+                queue_text = await build_queue_text(
+                    chat_id
+                )
+
+                await query.answer()
+
+                await message.reply_text(
+                    queue_text,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=queue_buttons(chat_id),
+                )
+
+                return
+
+            # ----------------------------------
             # PAUSE
-            elif action == "ctrl_pause":
-                success = await stream.pause(chat_id)
-                answer = (
-                    "⏸ Music paused."
-                    if success
-                    else "No music is currently playing."
+            # ----------------------------------
+
+            if action == "ctrl_pause":
+
+                result = await stream.pause(
+                    chat_id
                 )
 
+                await query.answer(
+                    stylize(
+                        "Playback paused."
+                        if result
+                        else "Nothing is playing."
+                    ),
+                    show_alert=not result,
+                )
+
+                return
+
+            # ----------------------------------
             # RESUME
-            elif action == "ctrl_resume":
-                success = await stream.resume(chat_id)
-                answer = (
-                    "▶️ Music resumed."
-                    if success
-                    else "No paused music found."
+            # ----------------------------------
+
+            if action == "ctrl_resume":
+
+                result = await stream.resume(
+                    chat_id
                 )
 
+                await query.answer(
+                    stylize(
+                        "Playback resumed."
+                        if result
+                        else "Nothing is playing."
+                    ),
+                    show_alert=not result,
+                )
+
+                return
+
+            # ----------------------------------
             # SKIP
-            elif action == "ctrl_skip":
-                track = await stream.skip(chat_id)
+            # ----------------------------------
 
-                if track:
-                    player_message = (
-                        stream.player_messages.get(chat_id)
-                        or query.message
-                    )
+            if action == "ctrl_skip":
 
-                    await update_player_message(
-                        client,
-                        player_message,
-                        track,
-                        chat_id,
-                        stream,
-                    )
+                track = await stream.skip(
+                    chat_id
+                )
 
-                    answer = (
-                        "⏭ Skipped to: "
-                        f"{track.get('title', 'Next track')}"
-                    )
-                else:
-                    answer = "Queue finished. No next song."
+                await query.answer(
+                    stylize(
+                        "Skipped to next track."
+                        if track
+                        else "Queue is empty."
+                    ),
+                    show_alert=not bool(track),
+                )
 
+                return
+
+            # ----------------------------------
             # STOP
-            elif action == "ctrl_stop":
-                await stream.stop(chat_id)
+            # ----------------------------------
 
-                stream.player_messages.pop(chat_id, None)
+            if action == "ctrl_stop":
+
+                await stream.stop(
+                    chat_id
+                )
+
+                await query.answer(
+                    stylize("Playback stopped.")
+                )
 
                 try:
-                    await query.message.edit_reply_markup(
+                    await message.edit_reply_markup(
                         reply_markup=None
                     )
                 except Exception:
                     pass
 
-                answer = "⏹ Music stopped and queue cleared."
+                return
 
+            # ----------------------------------
             # REPLAY
-            elif action == "ctrl_replay":
-                track = await stream.replay(chat_id)
+            # ----------------------------------
 
-                if track:
-                    player_message = (
-                        stream.player_messages.get(chat_id)
-                        or query.message
-                    )
+            if action == "ctrl_replay":
 
-                    await update_player_message(
-                        client,
-                        player_message,
-                        track,
-                        chat_id,
-                        stream,
-                    )
-
-                    answer = "↻ Replaying current track."
-                else:
-                    answer = "No track is currently playing."
-
-            # LOOP: OFF → TRACK → QUEUE
-            elif action == "ctrl_loop":
-                mode = await music_queue.cycle_loop(chat_id)
-
-                labels = {
-                    "off": "Loop disabled",
-                    "track": "Loop current track",
-                    "queue": "Loop entire queue",
-                }
-
-                answer = f"🔁 {labels[mode]}."
-
-            # SHUFFLE
-            elif action == "ctrl_shuffle":
-                enabled = await music_queue.shuffle(chat_id)
-
-                answer = (
-                    "🔀 Shuffle enabled."
-                    if enabled
-                    else "➡️ Shuffle disabled."
+                track = await stream.replay(
+                    chat_id
                 )
 
-            else:
-                answer = "Unknown control."
+                await query.answer(
+                    stylize(
+                        "Track restarted."
+                        if track
+                        else "Nothing is playing."
+                    ),
+                    show_alert=not bool(track),
+                )
 
-            await query.answer(answer)
+                return
 
-        except Exception as exc:
-            LOGGER.exception(
-                "Player callback failed: %s",
-                action,
+            # ----------------------------------
+            # LOOP
+            # ----------------------------------
+
+            if action == "ctrl_loop":
+
+                mode = await music_queue.cycle_loop(
+                    chat_id
+                )
+
+                await query.answer(
+                    f"{stylize('Loop')}: {str(mode).upper()}"
+                )
+
+                return
+
+            # ----------------------------------
+            # SHUFFLE
+            # ----------------------------------
+
+            if action == "ctrl_shuffle":
+
+                enabled = await music_queue.shuffle(
+                    chat_id
+                )
+
+                await query.answer(
+                    f"{stylize('Shuffle')}: "
+                    f"{stylize('ON' if enabled else 'OFF')}"
+                )
+
+                return
+
+            await query.answer(
+                stylize("Unknown player command."),
+                show_alert=True,
             )
 
-            try:
-                await query.answer(
-                    f"Action failed: {type(exc).__name__}",
-                    show_alert=True,
-                )
-            except Exception:
-                pass
+        except Exception:
+
+            LOGGER.exception(
+                "Player callback failed in chat %s",
+                chat_id,
+            )
+
+            await query.answer(
+                stylize("Something went wrong. Please try again."),
+                show_alert=True,
+            )

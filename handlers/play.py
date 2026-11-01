@@ -3,7 +3,7 @@ import logging
 from contextlib import suppress
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.enums import ParseMode
 
 from buttons import stream_buttons
 from player_ui import add_requester, now_playing_caption
@@ -11,7 +11,6 @@ from thumbnails import get_thumb
 from youtube import (
     is_youtube_url,
     search_youtube,
-    get_video_info,
     get_stream_url,
 )
 
@@ -19,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 async def ensure_assistant_joined(bot, assistant, chat_id):
-    """Ensure assistant account is a member of the target group."""
+    """Ensure the Assistant account is present in the group."""
 
     if assistant is None:
         raise RuntimeError("Assistant client is not available.")
@@ -28,23 +27,17 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
 
     try:
         member = await assistant.get_chat_member(chat_id, me.id)
+        status = str(member.status).lower().split(".")[-1]
 
-        if member.status in (
-            ChatMemberStatus.OWNER,
-            ChatMemberStatus.ADMINISTRATOR,
-            ChatMemberStatus.MEMBER,
-        ):
+        if status in ("owner", "administrator", "member"):
             return True
 
-        if (
-            member.status == ChatMemberStatus.RESTRICTED
-            and getattr(member, "is_member", False)
-        ):
+        if status == "restricted" and getattr(member, "is_member", False):
             return True
 
     except Exception:
         LOGGER.info(
-            "Assistant is not a member of group %s",
+            "Assistant is not currently in group %s.",
             chat_id,
         )
 
@@ -53,41 +46,34 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
     try:
         chat = await bot.get_chat(chat_id)
 
-        # Public group joining
         if chat.username:
             try:
                 await assistant.join_chat(chat.username)
-                LOGGER.info("Assistant joined public group %s", chat_id)
                 return True
             except Exception:
                 LOGGER.warning(
-                    "Direct public group join failed.",
+                    "Public group join failed.",
                     exc_info=True,
                 )
 
-        # Private group joining
         invite = await bot.create_chat_invite_link(
             chat_id,
             member_limit=1,
         )
-
         invite_link = invite.invite_link
 
         await assistant.join_chat(invite_link)
-
-        LOGGER.info("Assistant joined group %s", chat_id)
         return True
 
     except Exception as exc:
         LOGGER.exception(
-            "Assistant could not join group %s",
+            "Assistant could not join group %s.",
             chat_id,
         )
 
         raise RuntimeError(
             "Assistant could not join this group. "
-            "Give the bot permission to invite users, "
-            "and check the Assistant account restrictions."
+            "Check the Assistant account and bot permissions."
         ) from exc
 
     finally:
@@ -99,6 +85,42 @@ async def ensure_assistant_joined(bot, assistant, chat_id):
                 )
 
 
+async def send_player_card(client, chat_id, track, stream):
+    """Send the Now Playing card and save its message."""
+
+    thumb = await get_thumb(
+        track.get("videoid"),
+        track.get("title"),
+        track.get("duration_text") or track.get("duration"),
+        track.get("views", 0),
+        track.get("channel", "YouTube"),
+        "GOVIND MUSIC",
+        track.get("requested_by_name", "Group member"),
+    )
+
+    caption = now_playing_caption(track)
+    keyboard = stream_buttons(chat_id)
+
+    if thumb:
+        sent = await client.send_photo(
+            chat_id=chat_id,
+            photo=thumb,
+            caption=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+    else:
+        sent = await client.send_message(
+            chat_id=chat_id,
+            text=caption,
+            parse_mode=ParseMode.HTML,
+            reply_markup=keyboard,
+        )
+
+    stream.player_messages[chat_id] = sent
+    return sent
+
+
 def register_play_handlers(app, stream, assistant=None):
 
     async def handle_play(
@@ -107,41 +129,52 @@ def register_play_handlers(app, stream, assistant=None):
         force_video=False,
         query_text=None,
     ):
-
+        # Read query before deleting the command message.
         if not query_text:
             if not message.command or len(message.command) < 2:
-                await message.reply_text(
-                    "Usage:\n\n"
-                    "play song name - Audio\n"
-                    "vplay song name - Video\n\n"
-                    "/play song name\n"
-                    "/vplay song name\n\n"
-                    "adisha play song name\n"
-                    "adisha vplay song name\n"
-                    "babu play song name\n"
-                    "baby play song name"
+                with suppress(Exception):
+                    await message.delete()
+                await client.send_message(
+                    message.chat.id,
+                    "🎵 <b>GOVIND MUSIC</b>\n\n"
+                    "Usage:\n"
+                    "<code>/play song name</code> - Audio\n"
+                    "<code>/vplay song name</code> - Video\n"
+                    "<code>play babu song name</code>\n"
+                    "<code>play baby song name</code>\n"
+                    "<code>adisha play song name</code>",
+                    parse_mode=ParseMode.HTML,
                 )
                 return
 
-            query_text = " ".join(
-                message.command[1:]
-            ).strip()
+            query_text = " ".join(message.command[1:]).strip()
+
+        query_text = (query_text or "").strip()
 
         if not query_text:
-            await message.reply_text(
-                "❌ Please enter a song name."
+            with suppress(Exception):
+                await message.delete()
+
+            await client.send_message(
+                message.chat.id,
+                "❌ Please enter a song name.",
             )
             return
 
-        status = await message.reply_text(
-            "🔎 Searching and preparing your song..."
+        # Delete the user's command message first.
+        with suppress(Exception):
+            await message.delete()
+
+        # Send the bot response after attempting deletion.
+        status = await client.send_message(
+            message.chat.id,
+            "🔎 Searching for your song...",
         )
 
         try:
-            # Resolve YouTube URL or search result
+            # Resolve YouTube URL or search for a song.
             if is_youtube_url(query_text):
-                track = await get_video_info(query_text)
-
+                video_url = query_text
             else:
                 results = await search_youtube(
                     query_text,
@@ -149,8 +182,7 @@ def register_play_handlers(app, stream, assistant=None):
                 )
 
                 results = [
-                    item
-                    for item in results
+                    item for item in results
                     if item and item.get("webpage_url")
                 ]
 
@@ -160,36 +192,25 @@ def register_play_handlers(app, stream, assistant=None):
                     )
                     return
 
-                track = results[0]
+                video_url = results[0]["webpage_url"]
 
-            if not track or not track.get("webpage_url"):
-                await status.edit_text(
-                    "❌ Unable to find a playable song."
-                )
-                return
-
-            # PLAY = AUDIO
-            # VPLAY = VIDEO
-            media_type = (
-                "video" if force_video else "audio"
-            )
+            media_type = "video" if force_video else "audio"
 
             await status.edit_text(
                 f"⏳ Preparing {media_type} stream..."
             )
 
             playable = await get_stream_url(
-                track["webpage_url"],
+                video_url,
                 media_type,
             )
 
-            if not playable:
+            if not playable or not playable.get("url"):
                 await status.edit_text(
-                    f"❌ Could not resolve the {media_type} stream."
+                    "❌ Could not resolve a playable stream."
                 )
                 return
 
-            # Ensure assistant is in group
             await status.edit_text(
                 "👤 Checking Assistant membership..."
             )
@@ -200,27 +221,11 @@ def register_play_handlers(app, stream, assistant=None):
                 message.chat.id,
             )
 
-            # Save requester details
-            if message.from_user:
-                playable = add_requester(
-                    playable,
-                    message.from_user,
-                )
+            playable = add_requester(
+                playable,
+                message.from_user,
+            )
 
-            else:
-                playable = dict(playable)
-
-                playable.setdefault("requested_by_id", 0)
-                playable.setdefault(
-                    "requested_by_name",
-                    "Group member",
-                )
-                playable.setdefault(
-                    "requested_by_username",
-                    "",
-                )
-
-            # Start playback or add to queue
             result = await stream.play(
                 message.chat.id,
                 playable,
@@ -229,71 +234,55 @@ def register_play_handlers(app, stream, assistant=None):
 
             if result == "queued":
                 await status.edit_text(
-                    "➕ **Added to Queue**\n\n"
-                    f"🎵 **{playable.get('title', 'Unknown')}**\n"
+                    "➕ <b>Added to Queue</b>\n\n"
+                    f"🎵 <b>{playable.get('title', 'Unknown')}</b>\n"
                     f"🎧 Type: {media_type.title()}\n"
-                    f"👤 Requested by: "
-                    f"{playable.get('requested_by_name', 'Group member')}"
+                    "👤 Requested by: "
+                    f"{playable.get('requested_by_name', 'Group member')}",
+                    parse_mode=ParseMode.HTML,
                 )
                 return
 
-            # Generate thumbnail
-            thumb = await get_thumb(
-                playable.get("videoid"),
-                playable.get("title"),
-                playable.get("duration_text")
-                or playable.get("duration"),
-                playable.get("views", 0),
-                playable.get("channel", "YouTube"),
-                "GOVIND MUSIC",
-                playable.get(
-                    "requested_by_name",
-                    "Group member",
-                ),
+            # First track started successfully.
+            with suppress(Exception):
+                await status.delete()
+
+            await send_player_card(
+                client,
+                message.chat.id,
+                playable,
+                stream,
             )
 
-            caption = now_playing_caption(playable)
-
-            await status.delete()
-
-            if thumb:
-                await client.send_photo(
-                    chat_id=message.chat.id,
-                    photo=thumb,
-                    caption=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=stream_buttons(
-                        message.chat.id
-                    ),
-                )
-
-            else:
-                await client.send_message(
-                    chat_id=message.chat.id,
-                    text=caption,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=stream_buttons(
-                        message.chat.id
-                    ),
-                )
+            LOGGER.info(
+                "%s playback started in %s: %s",
+                media_type.upper(),
+                message.chat.id,
+                playable.get("title", "Unknown"),
+            )
 
         except Exception as exc:
-            LOGGER.exception("Unable to start playback")
+            LOGGER.exception("Unable to start playback.")
 
             error_message = (
-                "❌ Unable to play this song.\n\n"
-                f"Error: `{type(exc).__name__}`\n\n"
-                f"{str(exc)[:500]}"
+                "❌ <b>Unable to play this song.</b>\n\n"
+                f"Error: <code>{type(exc).__name__}</code>\n"
+                f"<code>{str(exc)[:500]}</code>"
             )
 
             with suppress(Exception):
-                await status.edit_text(error_message)
+                await status.edit_text(
+                    error_message,
+                    parse_mode=ParseMode.HTML,
+                )
 
-    # Manual Assistant join command
     async def handle_joinuserbot(client, message):
+        with suppress(Exception):
+            await message.delete()
 
-        status = await message.reply_text(
-            "👤 Checking Assistant membership..."
+        status = await client.send_message(
+            message.chat.id,
+            "👤 Checking Assistant membership...",
         )
 
         try:
@@ -304,20 +293,20 @@ def register_play_handlers(app, stream, assistant=None):
             )
 
             await status.edit_text(
-                "✅ Assistant successfully joined "
-                "or is already in this group!"
+                "✅ Assistant is already in the group or joined successfully."
             )
 
         except Exception as exc:
-            LOGGER.exception("Manual Assistant join failed")
+            LOGGER.exception("Manual Assistant join failed.")
 
             await status.edit_text(
-                "❌ Assistant could not join this group.\n\n"
-                f"Error: `{type(exc).__name__}`\n"
-                f"{str(exc)[:400]}"
+                "❌ Assistant could not join the group.\n\n"
+                f"Error: <code>{type(exc).__name__}</code>\n"
+                f"<code>{str(exc)[:400]}</code>",
+                parse_mode=ParseMode.HTML,
             )
 
-    # /play = AUDIO ONLY
+    # /play = AUDIO
     @app.on_message(
         filters.command("play") & filters.group
     )
@@ -328,7 +317,7 @@ def register_play_handlers(app, stream, assistant=None):
             force_video=False,
         )
 
-    # /vplay = VIDEO ONLY
+    # /vplay = VIDEO
     @app.on_message(
         filters.command("vplay") & filters.group
     )
@@ -346,8 +335,8 @@ def register_play_handlers(app, stream, assistant=None):
     async def joinuserbot_command(client, message):
         await handle_joinuserbot(client, message)
 
-    # Normal text commands
-    # adisha play, babu play, baby play, play
+    # Plain text aliases:
+    # play babu, play baby, adisha play, babu play, baby play.
     @app.on_message(
         filters.regex(
             r"(?i)^(?:(?:adisha|babu|baby)\s+)?"
@@ -357,16 +346,10 @@ def register_play_handlers(app, stream, assistant=None):
         & filters.text
     )
     async def plain_play_command(client, message):
-
-        match = (
-            message.matches[0]
-            if message.matches
-            else None
-        )
-
-        if not match:
+        if not message.matches:
             return
 
+        match = message.matches[0]
         command = match.group(1).lower()
         query = match.group(2).strip()
 

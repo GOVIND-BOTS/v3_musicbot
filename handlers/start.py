@@ -1,3 +1,4 @@
+
 import html
 import logging
 from urllib.parse import urlparse
@@ -5,7 +6,11 @@ from urllib.parse import urlparse
 from pyrogram import filters
 from pyrogram.enums import ParseMode
 from pyrogram.errors import MessageNotModified
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from pyrogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    CallbackQuery,
+)
 
 from config import (
     START_IMAGE,
@@ -13,8 +18,8 @@ from config import (
     SUPPORT_CHANNEL,
     OWNER_ID,
     BOT_NAME,
-    LOGGER_ID,
 )
+
 from database.mongodb import add_user, add_chat
 from youtube import get_video_info
 
@@ -202,9 +207,9 @@ def get_start_keyboard(bot_username):
             callback_data="help_cmd",
         ),
         InlineKeyboardButton(
-    "👑 OWNER",
-    url=f"tg://user?id={OWNER_ID}",
-        )
+            "👑 OWNER",
+            url=f"tg://user?id={OWNER_ID}",
+        ),
     ])
 
     return InlineKeyboardMarkup(rows)
@@ -291,6 +296,9 @@ async def _edit_menu(query, text, keyboard):
         except MessageNotModified:
             return
 
+        except Exception:
+            LOGGER.exception("Menu edit failed.")
+
 
 async def send_start(client, message):
     me = await client.get_me()
@@ -372,8 +380,8 @@ async def send_video_info(client, message, video_id):
             f"⏳ <b>Duration:</b> {duration}\n"
             f"👀 <b>Views:</b> {views_text}\n"
             f"🎤 <b>Channel:</b> {channel}\n\n"
-            f'🔗 <a href="{html.escape(url, quote=True)}">'
-            "Watch on YouTube</a>\n\n"
+            f'<a href="{html.escape(url, quote=True)}">'
+            "🔗 Watch on YouTube</a>\n\n"
             f"💖 <b>{html.escape(BOT_NAME)}</b>"
         )
 
@@ -422,7 +430,7 @@ async def send_video_info(client, message, video_id):
             )
 
         except Exception:
-            pass
+            LOGGER.exception("Could not update video info status.")
 
 
 def register_start_handlers(app):
@@ -455,29 +463,14 @@ def register_start_handlers(app):
 
             await send_start(client, message)
 
-            if LOGGER_ID and message.from_user:
-                try:
-                    await client.send_message(
-                        LOGGER_ID,
-                        (
-                            "👤 <b>New Start Command</b>\n\n"
-                            f"User: {message.from_user.mention}\n"
-                            f"ID: <code>{message.from_user.id}</code>"
-                        ),
-                        parse_mode=ParseMode.HTML,
-                    )
-
-                except Exception:
-                    LOGGER.exception("Start logging failed.")
-
         except Exception as exc:
-    LOGGER.exception("Start handler failed.")
+            LOGGER.exception("Start handler failed.")
 
-    await message.reply_text(
-        f"❌ Start Error: {type(exc).__name__}\n"
-        f"<code>{str(exc)[:300]}</code>",
-        parse_mode=ParseMode.HTML,
-    )
+            await message.reply_text(
+                f"❌ Start Error: {type(exc).__name__}\n"
+                f"<code>{html.escape(str(exc)[:300])}</code>",
+                parse_mode=ParseMode.HTML,
+            )
 
     @app.on_message(filters.command("start") & filters.group)
     async def group_start(client, message):
@@ -489,7 +482,8 @@ def register_start_handlers(app):
             caption = (
                 f"👑 <b>{html.escape(BOT_NAME)}</b>\n"
                 "━━━━━━━━━━━━━━━━━━\n\n"
-                f"Welcome to <b>{html.escape(message.chat.title or 'your group')}</b>!\n\n"
+                f"Welcome to "
+                f"<b>{html.escape(message.chat.title or 'your group')}</b>!\n\n"
                 "🎵 Ready to play music in your voice chat.\n"
                 "▶️ Send <code>/play song name</code> for audio.\n"
                 "🎬 Send <code>/vplay song name</code> for video.\n"
@@ -530,7 +524,11 @@ def register_start_handlers(app):
 
     @app.on_message(filters.command("help"))
     async def help_command(client, message):
-        await send_help(message)
+        try:
+            await send_help(message)
+
+        except Exception:
+            LOGGER.exception("Help command failed.")
 
     @app.on_callback_query(filters.regex(r"^help_cmd$"))
     async def help_callback(client, query: CallbackQuery):

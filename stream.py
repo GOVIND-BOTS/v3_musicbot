@@ -18,8 +18,9 @@ from pytgcalls.types.stream import StreamEnded
 
 from music import music_queue
 from buttons import stream_buttons
-from player_ui import now_playing_caption
+from player_ui import now_playing_caption, stylize
 from thumbnails import get_thumb
+from Mongodb import get_chat_settings
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,7 +34,6 @@ class MusicStream:
 
         self.locks = {}
         self.started = False
-
         self.player_messages = {}
 
         self._start_lock = asyncio.Lock()
@@ -46,6 +46,7 @@ class MusicStream:
     # ----------------------------------
 
     def lock_for(self, chat_id):
+
         if chat_id not in self.locks:
             self.locks[chat_id] = asyncio.Lock()
 
@@ -61,6 +62,7 @@ class MusicStream:
         async def on_update(_, update: Update):
 
             if isinstance(update, StreamEnded):
+
                 chat_id = update.chat_id
 
                 LOGGER.info(
@@ -100,15 +102,86 @@ class MusicStream:
             )
 
     # ----------------------------------
+    # SETTINGS
+    # ----------------------------------
+
+    async def get_media_settings(self, chat_id):
+
+        try:
+
+            settings = await get_chat_settings(
+                chat_id
+            )
+
+            return settings if isinstance(settings, dict) else {}
+
+        except Exception:
+
+            LOGGER.exception(
+                "Failed to load media settings for %s",
+                chat_id,
+            )
+
+            return {}
+
+    def get_audio_quality(self, quality):
+
+        quality = str(
+            quality or "HIGH"
+        ).upper()
+
+        quality_map = {
+            "LOW": "LOW",
+            "MEDIUM": "MEDIUM",
+            "HIGH": "HIGH",
+        }
+
+        enum_name = quality_map.get(
+            quality,
+            "HIGH",
+        )
+
+        return getattr(
+            AudioQuality,
+            enum_name,
+            AudioQuality.HIGH,
+        )
+
+    def get_video_quality(self, quality):
+
+        quality = str(
+            quality or "480p"
+        ).lower()
+
+        quality_map = {
+            "360p": "SD_360p",
+            "480p": "SD_480p",
+            "720p": "HD_720p",
+        }
+
+        enum_name = quality_map.get(
+            quality,
+            "SD_480p",
+        )
+
+        return getattr(
+            VideoQuality,
+            enum_name,
+            VideoQuality.SD_480p,
+        )
+
+    # ----------------------------------
     # MEDIA
     # ----------------------------------
 
-    def make_media(self, track):
+    def make_media(self, track, settings=None):
 
         if not isinstance(track, dict):
             raise TypeError(
                 "Track must be a dictionary."
             )
+
+        settings = settings or {}
 
         url = track.get("url")
 
@@ -121,32 +194,54 @@ class MusicStream:
             track.get("media_type", "audio")
         ).lower()
 
+        audio_quality = self.get_audio_quality(
+            settings.get("audio_quality", "HIGH")
+        )
+
         if media_type == "video":
+
+            video_quality = self.get_video_quality(
+                settings.get("video_quality", "480p")
+            )
 
             return MediaStream(
                 url,
-                audio_parameters=AudioQuality.HIGH,
-                video_parameters=VideoQuality.SD_480p,
+                audio_parameters=audio_quality,
+                video_parameters=video_quality,
             )
 
         return MediaStream(
             url,
-            audio_parameters=AudioQuality.HIGH,
+            audio_parameters=audio_quality,
             video_flags=MediaStream.Flags.IGNORE,
         )
 
+    async def make_chat_media(self, chat_id, track):
+
+        settings = await self.get_media_settings(
+            chat_id
+        )
+
+        return self.make_media(
+            track,
+            settings,
+        )
+
     # ----------------------------------
-    # PLAYER CARD UPDATE
+    # PLAYER CARD
     # ----------------------------------
 
     async def update_player_card(self, chat_id, track):
 
-        message = self.player_messages.get(chat_id)
+        message = self.player_messages.get(
+            chat_id
+        )
 
         if not message or not track:
             return
 
         try:
+
             thumb = await get_thumb(
                 track.get("videoid"),
                 track.get("title"),
@@ -154,18 +249,23 @@ class MusicStream:
                 or track.get("duration"),
                 track.get("views", 0),
                 track.get("channel", "YouTube"),
-                "GOVIND MUSIC",
+                stylize("Adisha Music"),
                 track.get(
                     "requested_by_name",
                     "Group member",
                 ),
             )
 
-            caption = now_playing_caption(track)
+            caption = now_playing_caption(
+                track
+            )
 
-            keyboard = stream_buttons(chat_id)
+            keyboard = stream_buttons(
+                chat_id
+            )
 
             try:
+
                 await message.edit_media(
                     InputMediaPhoto(
                         media=thumb,
@@ -176,7 +276,7 @@ class MusicStream:
                 )
 
             except Exception:
-                # Fallback for a text-based player message.
+
                 await message.edit_text(
                     caption,
                     parse_mode=ParseMode.HTML,
@@ -184,6 +284,7 @@ class MusicStream:
                 )
 
         except Exception:
+
             LOGGER.exception(
                 "Player card update failed in %s",
                 chat_id,
@@ -214,19 +315,31 @@ class MusicStream:
                 )
 
                 with suppress(Exception):
-                    await self.calls.leave_call(chat_id)
+                    await self.calls.leave_call(
+                        chat_id
+                    )
 
-                await music_queue.clear(chat_id)
+                await music_queue.clear(
+                    chat_id
+                )
 
-                self.player_messages.pop(chat_id, None)
+                self.player_messages.pop(
+                    chat_id,
+                    None,
+                )
 
                 return None
 
             try:
 
+                media = await self.make_chat_media(
+                    chat_id,
+                    next_track,
+                )
+
                 await self.calls.play(
                     chat_id,
-                    self.make_media(next_track),
+                    media,
                 )
 
                 LOGGER.info(
@@ -248,11 +361,12 @@ class MusicStream:
                 )
 
                 with suppress(Exception):
-                    await self.calls.leave_call(chat_id)
+                    await self.calls.leave_call(
+                        chat_id
+                    )
 
                 return None
 
-        # Update player card outside the stream lock.
         await self.update_player_card(
             chat_id,
             next_track,
@@ -314,9 +428,14 @@ class MusicStream:
 
             try:
 
+                media = await self.make_chat_media(
+                    chat_id,
+                    item,
+                )
+
                 await self.calls.play(
                     chat_id,
-                    self.make_media(item),
+                    media,
                 )
 
                 await music_queue.set_current(
@@ -357,10 +476,14 @@ class MusicStream:
 
         async with self.lock_for(chat_id):
 
-            if not await music_queue.get_current(chat_id):
+            if not await music_queue.get_current(
+                chat_id
+            ):
                 return False
 
-            await self.calls.pause(chat_id)
+            await self.calls.pause(
+                chat_id
+            )
 
             await music_queue.set_paused(
                 chat_id,
@@ -379,10 +502,14 @@ class MusicStream:
 
         async with self.lock_for(chat_id):
 
-            if not await music_queue.get_current(chat_id):
+            if not await music_queue.get_current(
+                chat_id
+            ):
                 return False
 
-            await self.calls.resume(chat_id)
+            await self.calls.resume(
+                chat_id
+            )
 
             await music_queue.set_paused(
                 chat_id,
@@ -399,8 +526,6 @@ class MusicStream:
 
         await self.start()
 
-        # skip_current=True prevents immediate
-        # repetition when Loop Track is enabled.
         return await self.play_next(
             chat_id,
             skip_current=True,
@@ -417,9 +542,13 @@ class MusicStream:
         async with self.lock_for(chat_id):
 
             with suppress(Exception):
-                await self.calls.leave_call(chat_id)
+                await self.calls.leave_call(
+                    chat_id
+                )
 
-            await music_queue.clear(chat_id)
+            await music_queue.clear(
+                chat_id
+            )
 
             self.player_messages.pop(
                 chat_id,
@@ -450,9 +579,14 @@ class MusicStream:
             if not track:
                 return None
 
+            media = await self.make_chat_media(
+                chat_id,
+                track,
+            )
+
             await self.calls.play(
                 chat_id,
-                self.make_media(track),
+                media,
             )
 
             await music_queue.set_paused(

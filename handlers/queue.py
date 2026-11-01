@@ -1,3 +1,4 @@
+
 import html
 import logging
 
@@ -5,11 +6,13 @@ from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
 
 from music import music_queue
+from player_ui import format_duration, stylize
+
 
 LOGGER = logging.getLogger(__name__)
 
 
-async def _is_admin(client, chat_id, user_id):
+async def is_admin(client, chat_id, user_id):
     try:
         member = await client.get_chat_member(chat_id, user_id)
         return member.status in (
@@ -17,23 +20,22 @@ async def _is_admin(client, chat_id, user_id):
             ChatMemberStatus.ADMINISTRATOR,
         )
     except Exception:
-        LOGGER.exception("Queue permission check failed.")
         return False
 
 
-async def _require_admin(client, message):
-    if not message.from_user or not await _is_admin(
-        client, message.chat.id, message.from_user.id
-    ):
-        await message.reply_text(
-            "❌ Only group admins can use this command."
-        )
-        return False
-    return True
+def track_title(track):
+    return html.escape(
+        str(track.get("title") or "Unknown Track")
+    )
 
 
-def _track_title(track):
-    return html.escape(str(track.get("title") or "Unknown"))
+def track_duration(track):
+    duration = track.get("duration", 0)
+
+    try:
+        return format_duration(int(duration))
+    except (TypeError, ValueError):
+        return "Unknown"
 
 
 def register_queue_handlers(app, stream):
@@ -41,161 +43,222 @@ def register_queue_handlers(app, stream):
     @app.on_message(filters.command("queue") & filters.group)
     async def queue_command(client, message):
         chat_id = message.chat.id
-        current = await music_queue.get_current(chat_id)
-        items = await music_queue.get_queue(chat_id)
-        loop_mode = await music_queue.get_loop(chat_id)
-        shuffled = await music_queue.is_shuffle(chat_id)
 
-        lines = ["🎶 <b>Music Queue</b>", "━━━━━━━━━━━━━━━━━━"]
+        current = await music_queue.get_current(chat_id)
+        tracks = await music_queue.get_queue(chat_id)
+
+        if not current and not tracks:
+            return await message.reply_text(
+                stylize("The queue is currently empty.")
+            )
+
+        lines = [f"🎶 {stylize('Adisha Music Queue')}"]
 
         if current:
-            lines.append(f"▶️ <b>Now playing:</b> {_track_title(current)}")
-        else:
-            lines.append("⏹ <i>Nothing is playing right now.</i>")
+            lines.append(
+                f"\n▶️ {stylize('Now Playing')}\n"
+                f"• {track_title(current)} "
+                f"<code>[{track_duration(current)}]</code>"
+            )
 
-        if items:
-            lines.append("\n<b>Up next:</b>")
-            for index, item in enumerate(items[:20], 1):
-                duration = html.escape(str(item.get("duration_text") or ""))
-                suffix = f" <code>[{duration}]</code>" if duration else ""
-                lines.append(f"{index}. {_track_title(item)}{suffix}")
-            if len(items) > 20:
-                lines.append(f"\n…and {len(items) - 20} more song(s).")
-        elif not current:
-            lines.append("\nQueue is empty.")
-        else:
-            lines.append("\n<i>No upcoming songs.</i>")
+        if tracks:
+            lines.append(f"\n📋 {stylize('Up Next')}")
+
+            for index, track in enumerate(tracks[:20], start=1):
+                lines.append(
+                    f"\n<code>{index}.</code> "
+                    f"{track_title(track)} "
+                    f"<code>[{track_duration(track)}]</code>"
+                )
+
+            if len(tracks) > 20:
+                lines.append(
+                    f"\n{stylize('And')} "
+                    f"{len(tracks) - 20} "
+                    f"{stylize('more tracks...')}"
+                )
 
         lines.append(
-            f"\n🔁 <b>Loop:</b> {html.escape(loop_mode)}"
-            f"\n🔀 <b>Shuffle:</b> {'On' if shuffled else 'Off'}"
+            f"\n\n{stylize('Total Tracks:')} "
+            f"<code>{len(tracks) + (1 if current else 0)}</code>"
+        )
+
+        lines.append(
+            f"{stylize('Loop:')} "
+            f"<code>{html.escape(str(await music_queue.get_loop(chat_id)))}</code>"
+        )
+
+        lines.append(
+            f"{stylize('Shuffle:')} "
+            f"<code>{'ON' if await music_queue.is_shuffle(chat_id) else 'OFF'}</code>"
         )
 
         await message.reply_text(
-            "\n".join(lines),
+            "".join(lines),
             parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
         )
 
     @app.on_message(filters.command("now") & filters.group)
     async def now_command(client, message):
         current = await music_queue.get_current(message.chat.id)
-        if not current:
-            await message.reply_text("⏹ Nothing is playing right now.")
-            return
 
-        title = _track_title(current)
-        duration = html.escape(str(current.get("duration_text") or "Unknown"))
-        media_type = html.escape(str(current.get("media_type") or "audio").upper())
+        if not current:
+            return await message.reply_text(
+                stylize("Nothing is playing right now.")
+            )
+
+        title = track_title(current)
+        duration = track_duration(current)
 
         await message.reply_text(
-            "🎶 <b>Now Playing</b>\n"
-            f"📌 {title}\n"
-            f"⏱ Duration: {duration}\n"
-            f"🎧 Type: {media_type}",
+            f"🎧 {stylize('Now Playing')}\n\n"
+            f"🎵 {title}\n"
+            f"⏱ <code>{duration}</code>\n"
+            f"🎼 {stylize('Adisha Music')}",
             parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
         )
 
     @app.on_message(filters.command("loop") & filters.group)
     async def loop_command(client, message):
-        if not await _require_admin(client, message):
-            return
+        if not message.from_user or not await is_admin(
+            client,
+            message.chat.id,
+            message.from_user.id,
+        ):
+            return await message.reply_text(
+                stylize("Only admins can change loop settings.")
+            )
 
-        args = (message.text or "").split(maxsplit=1)
-        requested = args[1].strip().lower() if len(args) > 1 else "cycle"
-        aliases = {
-            "0": "off", "disable": "off", "none": "off",
-            "1": "track", "song": "track", "current": "track",
-            "2": "queue", "all": "queue",
-        }
-        requested = aliases.get(requested, requested)
+        args = message.text.split(maxsplit=1)
+        mode = args[1].lower().strip() if len(args) > 1 else None
 
-        try:
-            if requested in ("cycle", "next"):
-                mode = await music_queue.cycle_loop(message.chat.id)
-            else:
-                mode = await music_queue.set_loop(message.chat.id, requested)
-        except ValueError:
-            await message.reply_text(
-                "Usage: <code>/loop off</code>, "
-                "<code>/loop track</code> or <code>/loop queue</code>.",
+        if mode not in (None, "off", "track", "queue"):
+            return await message.reply_text(
+                f"{stylize('Usage:')} "
+                f"<code>/loop off</code>, "
+                f"<code>/loop track</code>, "
+                f"<code>/loop queue</code>",
                 parse_mode=ParseMode.HTML,
             )
-            return
 
-        descriptions = {
-            "off": "Loop disabled.",
-            "track": "Current song will repeat.",
-            "queue": "The queue will repeat continuously.",
-        }
+        if mode is None:
+            mode = await music_queue.cycle_loop(message.chat.id)
+        else:
+            await music_queue.set_loop(message.chat.id, mode)
+
         await message.reply_text(
-            f"🔁 {descriptions[mode]}",
+            f"🔁 {stylize('Loop mode:')} "
+            f"<code>{html.escape(str(mode))}</code>",
             parse_mode=ParseMode.HTML,
         )
 
     @app.on_message(filters.command("shuffle") & filters.group)
     async def shuffle_command(client, message):
-        if not await _require_admin(client, message):
-            return
+        if not message.from_user or not await is_admin(
+            client,
+            message.chat.id,
+            message.from_user.id,
+        ):
+            return await message.reply_text(
+                stylize("Only admins can change shuffle settings.")
+            )
 
-        args = (message.text or "").split(maxsplit=1)
-        requested = args[1].strip().lower() if len(args) > 1 else "toggle"
+        args = message.text.split(maxsplit=1)
+        value = args[1].lower().strip() if len(args) > 1 else None
 
-        if requested in ("on", "yes", "true", "enable", "enabled"):
-            enabled = True
-        elif requested in ("off", "no", "false", "disable", "disabled"):
-            enabled = False
-        elif requested in ("toggle", ""):
-            enabled = None
-        else:
-            await message.reply_text(
-                "Usage: <code>/shuffle</code>, "
-                "<code>/shuffle on</code> or <code>/shuffle off</code>.",
+        if value not in (None, "on", "off"):
+            return await message.reply_text(
+                f"{stylize('Usage:')} "
+                f"<code>/shuffle</code>, "
+                f"<code>/shuffle on</code>, "
+                f"<code>/shuffle off</code>",
                 parse_mode=ParseMode.HTML,
             )
-            return
 
-        state = await music_queue.shuffle(message.chat.id, enabled)
+        current = await music_queue.is_shuffle(message.chat.id)
+
+        if value == "on":
+            enabled = True
+        elif value == "off":
+            enabled = False
+        else:
+            enabled = not current
+
+        if enabled != current:
+            await music_queue.shuffle(message.chat.id)
+
         await message.reply_text(
-            "🔀 Shuffle enabled." if state else "🔀 Shuffle disabled."
+            f"🔀 {stylize('Shuffle:')} "
+            f"<code>{'ON' if enabled else 'OFF'}</code>",
+            parse_mode=ParseMode.HTML,
         )
 
     @app.on_message(filters.command("remove") & filters.group)
     async def remove_command(client, message):
-        if not await _require_admin(client, message):
-            return
+        if not message.from_user or not await is_admin(
+            client,
+            message.chat.id,
+            message.from_user.id,
+        ):
+            return await message.reply_text(
+                stylize("Only admins can remove tracks.")
+            )
 
-        args = (message.text or "").split(maxsplit=1)
-        if len(args) < 2 or not args[1].strip().isdigit():
-            await message.reply_text(
-                "Usage: <code>/remove 1</code>\n"
-                "The number refers to the upcoming queue position.",
+        args = message.text.split(maxsplit=1)
+
+        if len(args) < 2 or not args[1].isdigit():
+            return await message.reply_text(
+                f"{stylize('Usage:')} <code>/remove 1</code>",
                 parse_mode=ParseMode.HTML,
             )
-            return
 
-        position = int(args[1].strip())
-        removed = await music_queue.remove(message.chat.id, position)
+        position = int(args[1])
 
-        if removed is None:
-            await message.reply_text("❌ That queue position does not exist.")
-            return
+        if position < 1:
+            return await message.reply_text(
+                stylize("Invalid queue position.")
+            )
+
+        try:
+            removed = await music_queue.remove(
+                message.chat.id,
+                position - 1,
+            )
+        except Exception:
+            LOGGER.exception("Queue remove failed")
+            removed = None
+
+        if not removed:
+            return await message.reply_text(
+                stylize("No track found at that position.")
+            )
 
         await message.reply_text(
-            f"🗑 Removed: <b>{_track_title(removed)}</b>",
+            f"🗑 {stylize('Removed:')} {track_title(removed)}",
             parse_mode=ParseMode.HTML,
         )
 
     @app.on_message(filters.command("clearqueue") & filters.group)
-    async def clearqueue_command(client, message):
-        if not await _require_admin(client, message):
-            return
+    async def clear_queue_command(client, message):
+        if not message.from_user or not await is_admin(
+            client,
+            message.chat.id,
+            message.from_user.id,
+        ):
+            return await message.reply_text(
+                stylize("Only admins can clear the queue.")
+            )
 
         try:
-            await stream.stop(message.chat.id)
+            await music_queue.clear_upcoming(message.chat.id)
         except Exception:
-            LOGGER.exception("Could not stop stream while clearing queue.")
-            await music_queue.clear(message.chat.id)
+            LOGGER.exception("Clear queue failed")
+            return await message.reply_text(
+                stylize("Unable to clear the queue.")
+            )
 
-        await message.reply_text("🧹 Queue cleared and playback stopped.")
+        await message.reply_text(
+            stylize("Upcoming queue cleared. Current track is still playing.")
+        )
+
+    LOGGER.info("Queue handlers registered")

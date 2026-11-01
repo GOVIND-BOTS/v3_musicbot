@@ -20,7 +20,7 @@ from music import music_queue
 from buttons import stream_buttons
 from player_ui import now_playing_caption, stylize
 from thumbnails import get_thumb
-from Mongodb import get_chat_settings
+from database.mongodb import get_chat_settings
 
 
 LOGGER = logging.getLogger(__name__)

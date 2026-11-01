@@ -3,7 +3,7 @@ import logging
 from html import escape
 
 from pyrogram import filters
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ChatMemberStatus, ParseMode
 from pyrogram.types import InputMediaPhoto
 
 from music import music_queue
@@ -15,6 +15,18 @@ from player_ui import now_playing_caption
 LOGGER = logging.getLogger(__name__)
 
 
+async def is_admin(client, chat_id, user_id):
+    """Check whether the user is a group administrator."""
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in (
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+        )
+    except Exception:
+        return False
+
+
 async def update_player_message(
     client,
     message,
@@ -22,12 +34,13 @@ async def update_player_message(
     chat_id,
     stream,
 ):
-    """Update the existing player card with a new track."""
+    """Update the existing player card for the next track."""
 
     if not isinstance(track, dict):
         return None
 
     title = track.get("title") or "Unknown Track"
+    thumb = None
 
     try:
         thumb = await get_thumb(
@@ -66,8 +79,7 @@ async def update_player_message(
 
     except Exception:
         LOGGER.warning(
-            "Could not edit existing player card in %s. "
-            "Sending a replacement.",
+            "Could not edit player card in chat %s",
             chat_id,
             exc_info=True,
         )
@@ -75,7 +87,7 @@ async def update_player_message(
     try:
         if thumb:
             sent = await client.send_photo(
-                chat_id=chat_id,
+                chat_id,
                 photo=thumb,
                 caption=caption,
                 parse_mode=ParseMode.HTML,
@@ -83,8 +95,8 @@ async def update_player_message(
             )
         else:
             sent = await client.send_message(
-                chat_id=chat_id,
-                text=caption,
+                chat_id,
+                caption,
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
             )
@@ -106,6 +118,8 @@ def register_callback_handlers(app, stream):
     async def player_controls(client, query):
 
         data = query.data or ""
+        parts = data.split("|")
+        action = parts[0]
 
         if not query.message:
             await query.answer(
@@ -114,16 +128,12 @@ def register_callback_handlers(app, stream):
             )
             return
 
-        parts = data.split("|")
-        action = parts[0]
-
         try:
             chat_id = (
                 int(parts[1])
                 if len(parts) > 1
                 else query.message.chat.id
             )
-
         except (TypeError, ValueError):
             await query.answer(
                 "Invalid chat ID.",
@@ -131,68 +141,67 @@ def register_callback_handlers(app, stream):
             )
             return
 
-        # CLOSE
+        # Prevent a callback from controlling another chat.
+        if chat_id != query.message.chat.id:
+            await query.answer(
+                "Invalid player message.",
+                show_alert=True,
+            )
+            return
+
+        # CLOSE does not control playback.
         if action == "ctrl_close":
             await query.answer()
 
             try:
                 stored = stream.player_messages.get(chat_id)
 
-                if (
-                    stored
-                    and stored.id == query.message.id
-                ):
-                    stream.player_messages.pop(
-                        chat_id,
-                        None,
-                    )
+                if stored and stored.id == query.message.id:
+                    stream.player_messages.pop(chat_id, None)
 
                 await query.message.delete()
 
             except Exception:
-                LOGGER.exception(
-                    "Could not close player message."
-                )
+                LOGGER.exception("Could not close player message.")
 
+            return
+
+        # All playback controls require group admin permission.
+        if not await is_admin(
+            client,
+            chat_id,
+            query.from_user.id,
+        ):
+            await query.answer(
+                "Only group admins can control the music.",
+                show_alert=True,
+            )
             return
 
         try:
 
-            # QUEUE
+            # SHOW QUEUE
             if action == "ctrl_queue":
-
-                items = await music_queue.get_queue(
-                    chat_id
-                )
-
-                current = await music_queue.get_current(
-                    chat_id
-                )
+                current = await music_queue.get_current(chat_id)
+                items = await music_queue.get_queue(chat_id)
 
                 text = "🎶 <b>GOVIND MUSIC QUEUE</b>\n"
 
                 if current:
                     text += (
-                        "\n▶️ <b>Currently Playing:</b>\n"
-                        f"{escape(str(current.get('title', 'Unknown')))}\n"
-                        "👤 Requested by: "
+                        "\n▶️ <b>Now Playing:</b>\n"
+                        f"🎵 {escape(str(current.get('title', 'Unknown')))}\n"
+                        "👤 "
                         f"{escape(str(current.get('requested_by_name', 'Group member')))}\n"
                     )
 
-                if not items:
-                    text += "\n📭 Queue is empty."
-
-                else:
+                if items:
                     text += "\n<b>Up Next:</b>\n"
 
-                    for index, track in enumerate(
-                        items,
-                        1,
-                    ):
+                    for index, track in enumerate(items, 1):
                         title = escape(
                             str(track.get("title", "Unknown"))
                         )
-
                         requester = escape(
                             str(
                                 track.get(
@@ -206,45 +215,43 @@ def register_callback_handlers(app, stream):
                             f"\n{index}. 🎵 {title}\n"
                             f"   👤 {requester}\n"
                         )
+                elif not current:
+                    text += "\n📭 Queue is empty."
+                else:
+                    text += "\n📭 No upcoming songs."
 
-                await query.answer()
+                await query.answer("Queue opened.")
 
                 await query.message.reply_text(
                     text,
                     parse_mode=ParseMode.HTML,
                     reply_markup=queue_buttons(chat_id),
                 )
-
                 return
 
             # PAUSE
-            if action == "ctrl_pause":
-
+            elif action == "ctrl_pause":
                 success = await stream.pause(chat_id)
-
-                if success:
-                    answer = "⏸ Music paused."
-                else:
-                    answer = "No music is currently playing."
+                answer = (
+                    "⏸ Music paused."
+                    if success
+                    else "No music is currently playing."
+                )
 
             # RESUME
             elif action == "ctrl_resume":
-
                 success = await stream.resume(chat_id)
-
-                if success:
-                    answer = "▶️ Music resumed."
-                else:
-                    answer = "No paused music found."
+                answer = (
+                    "▶️ Music resumed."
+                    if success
+                    else "No paused music found."
+                )
 
             # SKIP
             elif action == "ctrl_skip":
-
                 track = await stream.skip(chat_id)
 
-                if isinstance(track, dict):
-
-                    # Prefer the actual player card.
+                if track:
                     player_message = (
                         stream.player_messages.get(chat_id)
                         or query.message
@@ -262,29 +269,29 @@ def register_callback_handlers(app, stream):
                         "⏭ Skipped to: "
                         f"{track.get('title', 'Next track')}"
                     )
-
                 else:
                     answer = "Queue finished. No next song."
 
             # STOP
             elif action == "ctrl_stop":
-
                 await stream.stop(chat_id)
 
-                stream.player_messages.pop(
-                    chat_id,
-                    None,
-                )
+                stream.player_messages.pop(chat_id, None)
 
-                answer = "⏹ Music stopped."
+                try:
+                    await query.message.edit_reply_markup(
+                        reply_markup=None
+                    )
+                except Exception:
+                    pass
+
+                answer = "⏹ Music stopped and queue cleared."
 
             # REPLAY
             elif action == "ctrl_replay":
-
                 track = await stream.replay(chat_id)
 
-                if isinstance(track, dict):
-
+                if track:
                     player_message = (
                         stream.player_messages.get(chat_id)
                         or query.message
@@ -299,9 +306,30 @@ def register_callback_handlers(app, stream):
                     )
 
                     answer = "↻ Replaying current track."
-
                 else:
                     answer = "No track is currently playing."
+
+            # LOOP: OFF → TRACK → QUEUE
+            elif action == "ctrl_loop":
+                mode = await music_queue.cycle_loop(chat_id)
+
+                labels = {
+                    "off": "Loop disabled",
+                    "track": "Loop current track",
+                    "queue": "Loop entire queue",
+                }
+
+                answer = f"🔁 {labels[mode]}."
+
+            # SHUFFLE
+            elif action == "ctrl_shuffle":
+                enabled = await music_queue.shuffle(chat_id)
+
+                answer = (
+                    "🔀 Shuffle enabled."
+                    if enabled
+                    else "➡️ Shuffle disabled."
+                )
 
             else:
                 answer = "Unknown control."
@@ -309,7 +337,6 @@ def register_callback_handlers(app, stream):
             await query.answer(answer)
 
         except Exception as exc:
-
             LOGGER.exception(
                 "Player callback failed: %s",
                 action,
@@ -320,6 +347,5 @@ def register_callback_handlers(app, stream):
                     f"Action failed: {type(exc).__name__}",
                     show_alert=True,
                 )
-
             except Exception:
                 pass

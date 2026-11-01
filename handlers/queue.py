@@ -40,6 +40,7 @@ def track_duration(track):
 
 def register_queue_handlers(app, stream):
 
+    # QUEUE COMMAND
     @app.on_message(filters.command("queue") & filters.group)
     async def queue_command(client, message):
         chat_id = message.chat.id
@@ -78,19 +79,24 @@ def register_queue_handlers(app, stream):
                     f"{stylize('more tracks...')}"
                 )
 
+        total = len(tracks) + (1 if current else 0)
+
         lines.append(
             f"\n\n{stylize('Total Tracks:')} "
-            f"<code>{len(tracks) + (1 if current else 0)}</code>"
+            f"<code>{total}</code>"
+        )
+
+        loop_mode = await music_queue.get_loop(chat_id)
+        shuffle_mode = await music_queue.is_shuffle(chat_id)
+
+        lines.append(
+            f"\n{stylize('Loop:')} "
+            f"<code>{html.escape(str(loop_mode))}</code>"
         )
 
         lines.append(
-            f"{stylize('Loop:')} "
-            f"<code>{html.escape(str(await music_queue.get_loop(chat_id)))}</code>"
-        )
-
-        lines.append(
-            f"{stylize('Shuffle:')} "
-            f"<code>{'ON' if await music_queue.is_shuffle(chat_id) else 'OFF'}</code>"
+            f"\n{stylize('Shuffle:')} "
+            f"<code>{'ON' if shuffle_mode else 'OFF'}</code>"
         )
 
         await message.reply_text(
@@ -98,6 +104,7 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
+    # NOW PLAYING COMMAND
     @app.on_message(filters.command("now") & filters.group)
     async def now_command(client, message):
         current = await music_queue.get_current(message.chat.id)
@@ -118,6 +125,7 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
+    # LOOP COMMAND
     @app.on_message(filters.command("loop") & filters.group)
     async def loop_command(client, message):
         if not message.from_user or not await is_admin(
@@ -152,6 +160,7 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
+    # SHUFFLE COMMAND
     @app.on_message(filters.command("shuffle") & filters.group)
     async def shuffle_command(client, message):
         if not message.from_user or not await is_admin(
@@ -184,8 +193,10 @@ def register_queue_handlers(app, stream):
         else:
             enabled = not current
 
-        if enabled != current:
-            await music_queue.shuffle(message.chat.id)
+        await music_queue.shuffle(
+            message.chat.id,
+            enabled=enabled,
+        )
 
         await message.reply_text(
             f"🔀 {stylize('Shuffle:')} "
@@ -193,6 +204,7 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
+    # REMOVE COMMAND
     @app.on_message(filters.command("remove") & filters.group)
     async def remove_command(client, message):
         if not message.from_user or not await is_admin(
@@ -222,7 +234,7 @@ def register_queue_handlers(app, stream):
         try:
             removed = await music_queue.remove(
                 message.chat.id,
-                position - 1,
+                position,
             )
         except Exception:
             LOGGER.exception("Queue remove failed")
@@ -238,6 +250,7 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
+    # CLEAR UPCOMING QUEUE
     @app.on_message(filters.command("clearqueue") & filters.group)
     async def clear_queue_command(client, message):
         if not message.from_user or not await is_admin(
@@ -258,7 +271,9 @@ def register_queue_handlers(app, stream):
             )
 
         await message.reply_text(
-            stylize("Upcoming queue cleared. Current track is still playing.")
+            stylize(
+                "Upcoming queue cleared. Current track is still playing."
+            )
         )
 
-    LOGGER.info("Queue handlers registered")
+    LOGGER.info("Adisha Music queue handlers registered")

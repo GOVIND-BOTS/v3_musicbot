@@ -1,7 +1,7 @@
 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from player_ui import stylize
+from player_ui import stylize, format_duration, progress_button_text
 
 
 def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
@@ -61,8 +61,25 @@ def help_buttons():
     ])
 
 
-def stream_buttons(chat_id: int):
+def stream_buttons(
+    chat_id: int,
+    elapsed=0,
+    duration=0,
+    loop_mode="off",
+    shuffle=False,
+):
+    loop_label = "ON" if str(loop_mode).lower() not in ("off", "none", "false", "0") else "OFF"
+    shuffle_label = "ON" if shuffle else "OFF"
+
+    progress_text = progress_button_text(elapsed, duration)
+
     return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                progress_text,
+                callback_data=f"ctrl_progress|{chat_id}",
+            ),
+        ],
         [
             InlineKeyboardButton(
                 stylize("▷ RESUME"),
@@ -89,11 +106,11 @@ def stream_buttons(chat_id: int):
         ],
         [
             InlineKeyboardButton(
-                stylize("🔁 LOOP"),
+                stylize(f"🔁 LOOP: {loop_label}"),
                 callback_data=f"ctrl_loop|{chat_id}",
             ),
             InlineKeyboardButton(
-                stylize("🔀 SHUFFLE"),
+                stylize(f"🔀 SHUFFLE: {shuffle_label}"),
                 callback_data=f"ctrl_shuffle|{chat_id}",
             ),
         ],
@@ -110,7 +127,14 @@ def stream_buttons(chat_id: int):
     ])
 
 
-def queue_buttons(chat_id: int):
+def queue_buttons(
+    chat_id: int,
+    loop_mode="off",
+    shuffle=False,
+):
+    loop_label = "ON" if str(loop_mode).lower() not in ("off", "none", "false", "0") else "OFF"
+    shuffle_label = "ON" if shuffle else "OFF"
+
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
@@ -134,11 +158,11 @@ def queue_buttons(chat_id: int):
         ],
         [
             InlineKeyboardButton(
-                stylize("🔁 LOOP"),
+                stylize(f"🔁 LOOP: {loop_label}"),
                 callback_data=f"ctrl_loop|{chat_id}",
             ),
             InlineKeyboardButton(
-                stylize("🔀 SHUFFLE"),
+                stylize(f"🔀 SHUFFLE: {shuffle_label}"),
                 callback_data=f"ctrl_shuffle|{chat_id}",
             ),
         ],

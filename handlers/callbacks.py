@@ -1,5 +1,8 @@
 
+import asyncio
 import logging
+import time
+from contextlib import suppress
 from html import escape
 
 from pyrogram import filters
@@ -13,6 +16,142 @@ from player_ui import format_duration, stylize, now_playing_caption
 
 LOGGER = logging.getLogger(__name__)
 
+_PROGRESS_TASKS = {}
+_PROGRESS_STATE = {}
+
+
+def _get_elapsed(chat_id):
+    state = _PROGRESS_STATE.get(chat_id)
+
+    if not state:
+        return 0
+
+    elapsed = state["elapsed"]
+
+    if not state["paused"]:
+        elapsed += time.monotonic() - state["started_at"]
+
+    duration = state["duration"]
+
+    if duration > 0:
+        elapsed = min(elapsed, duration)
+
+    return max(0, int(elapsed))
+
+
+def start_progress_updater(client, chat_id, track, stream):
+    stop_progress_updater(chat_id)
+
+    try:
+        duration = float(track.get("duration", 0) or 0)
+    except (TypeError, ValueError):
+        duration = 0
+
+    _PROGRESS_STATE[chat_id] = {
+        "track": track,
+        "duration": max(0, duration),
+        "elapsed": 0,
+        "started_at": time.monotonic(),
+        "paused": False,
+    }
+
+    _PROGRESS_TASKS[chat_id] = asyncio.create_task(
+        _progress_loop(client, chat_id, stream)
+    )
+
+
+def stop_progress_updater(chat_id):
+    task = _PROGRESS_TASKS.pop(chat_id, None)
+
+    if task and not task.done():
+        task.cancel()
+
+    _PROGRESS_STATE.pop(chat_id, None)
+
+
+def pause_progress_updater(chat_id):
+    state = _PROGRESS_STATE.get(chat_id)
+
+    if not state or state["paused"]:
+        return
+
+    state["elapsed"] = _get_elapsed(chat_id)
+    state["paused"] = True
+
+
+def resume_progress_updater(chat_id):
+    state = _PROGRESS_STATE.get(chat_id)
+
+    if not state or not state["paused"]:
+        return
+
+    state["started_at"] = time.monotonic()
+    state["paused"] = False
+
+
+def replay_progress_updater(chat_id):
+    state = _PROGRESS_STATE.get(chat_id)
+
+    if not state:
+        return
+
+    state["elapsed"] = 0
+    state["started_at"] = time.monotonic()
+    state["paused"] = False
+
+
+async def refresh_player_keyboard(client, chat_id, stream):
+    message = stream.player_messages.get(chat_id)
+    state = _PROGRESS_STATE.get(chat_id)
+
+    if not message or not state:
+        return
+
+    try:
+        loop_mode = await music_queue.get_loop(chat_id)
+        shuffle_enabled = await music_queue.is_shuffle(chat_id)
+
+        keyboard = stream_buttons(
+            chat_id,
+            elapsed=_get_elapsed(chat_id),
+            duration=state["duration"],
+            loop_mode=loop_mode,
+            shuffle=shuffle_enabled,
+        )
+
+        await message.edit_reply_markup(reply_markup=keyboard)
+
+    except Exception as error:
+        LOGGER.debug(
+            "Player keyboard refresh failed in %s: %s",
+            chat_id,
+            error,
+        )
+
+
+async def _progress_loop(client, chat_id, stream):
+    try:
+        while chat_id in _PROGRESS_STATE:
+            await asyncio.sleep(8)
+
+            if chat_id not in _PROGRESS_STATE:
+                break
+
+            await refresh_player_keyboard(
+                client,
+                chat_id,
+                stream,
+            )
+
+    except asyncio.CancelledError:
+        pass
+
+    except Exception:
+        LOGGER.exception(
+            "Progress updater failed in chat %s",
+            chat_id,
+        )
+
 
 async def update_player_message(client, player_message, track, chat_id, stream):
     if not track:
@@ -20,7 +159,22 @@ async def update_player_message(client, player_message, track, chat_id, stream):
 
     caption = now_playing_caption(track)
     thumbnail = track.get("thumbnail")
-    keyboard = stream_buttons(chat_id)
+
+    try:
+        duration = float(track.get("duration", 0) or 0)
+    except (TypeError, ValueError):
+        duration = 0
+
+    loop_mode = await music_queue.get_loop(chat_id)
+    shuffle_enabled = await music_queue.is_shuffle(chat_id)
+
+    keyboard = stream_buttons(
+        chat_id,
+        elapsed=0,
+        duration=duration,
+        loop_mode=loop_mode,
+        shuffle=shuffle_enabled,
+    )
 
     if player_message:
         try:
@@ -49,11 +203,20 @@ async def update_player_message(client, player_message, track, chat_id, stream):
                 )
 
             stream.player_messages[chat_id] = player_message
+
+            start_progress_updater(
+                client,
+                chat_id,
+                track,
+                stream,
+            )
+
             return player_message
 
         except Exception:
             LOGGER.warning(
-                "Could not edit old player message in chat %s. Sending a new one.",
+                "Could not edit old player message in chat %s. "
+                "Sending a new one.",
                 chat_id,
                 exc_info=True,
             )
@@ -77,16 +240,28 @@ async def update_player_message(client, player_message, track, chat_id, stream):
             )
 
         stream.player_messages[chat_id] = new_message
+
+        start_progress_updater(
+            client,
+            chat_id,
+            track,
+            stream,
+        )
+
         return new_message
 
     except Exception:
-        LOGGER.exception("Could not send updated player message in chat %s", chat_id)
+        LOGGER.exception(
+            "Could not send updated player message in chat %s",
+            chat_id,
+        )
         return None
 
 
 async def is_admin(client, chat_id, user_id):
     try:
         member = await client.get_chat_member(chat_id, user_id)
+
         return member.status in (
             ChatMemberStatus.OWNER,
             ChatMemberStatus.ADMINISTRATOR,
@@ -100,19 +275,24 @@ async def is_authorized(client, chat_id, user_id):
         return True
 
     try:
-        settings = await get_chat_settings(chat_id)
+        settings = await get_chat_settings(chat_id) or {}
         authorized_users = settings.get("authorized_users", [])
-        return int(user_id) in {int(uid) for uid in authorized_users}
+
+        return int(user_id) in {
+            int(uid) for uid in authorized_users
+        }
+
     except Exception:
-        LOGGER.exception("Authorization check failed in %s", chat_id)
+        LOGGER.exception(
+            "Authorization check failed in %s",
+            chat_id,
+        )
         return False
 
 
 async def build_queue_text(chat_id):
     current = await music_queue.get_current(chat_id)
     tracks = await music_queue.get_queue(chat_id)
-    loop_mode = await music_queue.get_loop(chat_id)
-    shuffle_enabled = await music_queue.is_shuffle(chat_id)
 
     lines = [
         f"<b>🎶 {stylize('Adisha Music Queue')}</b>",
@@ -124,6 +304,7 @@ async def build_queue_text(chat_id):
         duration = current.get("duration_text") or format_duration(
             current.get("duration", 0)
         )
+
         lines.extend([
             f"▶️ <b>{stylize('Now Playing')}</b>",
             f"• {title} — {escape(str(duration))}",
@@ -143,6 +324,7 @@ async def build_queue_text(chat_id):
             duration = track.get("duration_text") or format_duration(
                 track.get("duration", 0)
             )
+
             lines.append(
                 f"{index}. {title} — {escape(str(duration))}"
             )
@@ -154,13 +336,6 @@ async def build_queue_text(chat_id):
             )
     else:
         lines.append(f"<i>{stylize('No upcoming tracks.')}</i>")
-
-    lines.extend([
-        "",
-        f"<b>{stylize('Loop')}:</b> {escape(str(loop_mode).upper())}",
-        f"<b>{stylize('Shuffle')}:</b> "
-        f"{stylize('ON' if shuffle_enabled else 'OFF')}",
-    ])
 
     return "\n".join(lines)
 
@@ -202,8 +377,10 @@ def register_callback_handlers(app, stream):
                     pass
 
                 current_message = stream.player_messages.get(chat_id)
+
                 if current_message and current_message.id == message.id:
                     stream.player_messages.pop(chat_id, None)
+                    stop_progress_updater(chat_id)
 
                 return
 
@@ -239,19 +416,36 @@ def register_callback_handlers(app, stream):
                 )
                 return
 
+            if action == "ctrl_progress":
+                await query.answer(
+                    stylize("Playback progress updates automatically.")
+                )
+                return
+
             if action == "ctrl_queue":
                 queue_text = await build_queue_text(chat_id)
+                loop_mode = await music_queue.get_loop(chat_id)
+                shuffle_enabled = await music_queue.is_shuffle(chat_id)
 
                 await query.answer()
+
                 await message.reply_text(
                     queue_text,
                     parse_mode=ParseMode.HTML,
-                    reply_markup=queue_buttons(chat_id),
+                    reply_markup=queue_buttons(
+                        chat_id,
+                        loop_mode=loop_mode,
+                        shuffle=shuffle_enabled,
+                    ),
                 )
                 return
 
             if action == "ctrl_pause":
                 result = await stream.pause(chat_id)
+
+                if result:
+                    pause_progress_updater(chat_id)
+                    await refresh_player_keyboard(client, chat_id, stream)
 
                 await query.answer(
                     stylize(
@@ -264,6 +458,10 @@ def register_callback_handlers(app, stream):
 
             if action == "ctrl_resume":
                 result = await stream.resume(chat_id)
+
+                if result:
+                    resume_progress_updater(chat_id)
+                    await refresh_player_keyboard(client, chat_id, stream)
 
                 await query.answer(
                     stylize(
@@ -279,6 +477,7 @@ def register_callback_handlers(app, stream):
 
                 if isinstance(track, dict):
                     player_message = stream.player_messages.get(chat_id)
+
                     await update_player_message(
                         client,
                         player_message,
@@ -286,6 +485,8 @@ def register_callback_handlers(app, stream):
                         chat_id,
                         stream,
                     )
+                else:
+                    stop_progress_updater(chat_id)
 
                 await query.answer(
                     stylize(
@@ -298,6 +499,7 @@ def register_callback_handlers(app, stream):
 
             if action == "ctrl_stop":
                 await stream.stop(chat_id)
+                stop_progress_updater(chat_id)
                 stream.player_messages.pop(chat_id, None)
 
                 await query.answer(stylize("Playback stopped."))
@@ -312,6 +514,10 @@ def register_callback_handlers(app, stream):
             if action == "ctrl_replay":
                 track = await stream.replay(chat_id)
 
+                if track:
+                    replay_progress_updater(chat_id)
+                    await refresh_player_keyboard(client, chat_id, stream)
+
                 await query.answer(
                     stylize(
                         "Track restarted."
@@ -324,6 +530,8 @@ def register_callback_handlers(app, stream):
             if action == "ctrl_loop":
                 mode = await music_queue.cycle_loop(chat_id)
 
+                await refresh_player_keyboard(client, chat_id, stream)
+
                 await query.answer(
                     f"{stylize('Loop')}: {str(mode).upper()}"
                 )
@@ -331,6 +539,8 @@ def register_callback_handlers(app, stream):
 
             if action == "ctrl_shuffle":
                 enabled = await music_queue.shuffle(chat_id)
+
+                await refresh_player_keyboard(client, chat_id, stream)
 
                 await query.answer(
                     f"{stylize('Shuffle')}: "
@@ -348,6 +558,7 @@ def register_callback_handlers(app, stream):
                 "Player callback failed in chat %s",
                 chat_id,
             )
+
             await query.answer(
                 stylize("Something went wrong. Please try again."),
                 show_alert=True,

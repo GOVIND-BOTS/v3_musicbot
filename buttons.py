@@ -1,19 +1,16 @@
 
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from player_ui import stylize
 
-def start_buttons(
-    owner_id: int,
-    support: str,
-    channel: str,
-    bot_username: str,
-):
+
+def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
     rows = []
 
     if bot_username:
         rows.append([
             InlineKeyboardButton(
-                "➕ Add Me to Group",
+                stylize("➕ Add Me to Group"),
                 url=f"https://t.me/{bot_username}?startgroup=true",
             )
         ])
@@ -22,12 +19,18 @@ def start_buttons(
 
     if support and support.startswith("http"):
         extra.append(
-            InlineKeyboardButton("💬 Support", url=support)
+            InlineKeyboardButton(
+                stylize("💬 Support"),
+                url=support,
+            )
         )
 
     if channel and channel.startswith("http"):
         extra.append(
-            InlineKeyboardButton("📢 Channel", url=channel)
+            InlineKeyboardButton(
+                stylize("📢 Channel"),
+                url=channel,
+            )
         )
 
     if extra:
@@ -35,7 +38,7 @@ def start_buttons(
 
     rows.append([
         InlineKeyboardButton(
-            "🆘 Help",
+            stylize("🆘 Help"),
             callback_data="help_cmd",
         )
     ])
@@ -47,11 +50,11 @@ def help_buttons():
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "🏠 Home",
+                stylize("🏠 Home"),
                 callback_data="start_home",
             ),
             InlineKeyboardButton(
-                "✖ Close",
+                stylize("✖ Close"),
                 callback_data="ctrl_close",
             ),
         ]
@@ -59,50 +62,48 @@ def help_buttons():
 
 
 def stream_buttons(chat_id: int):
-    """Main music player controls."""
-
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "▷ RESUME",
+                stylize("▷ RESUME"),
                 callback_data=f"ctrl_resume|{chat_id}",
             ),
             InlineKeyboardButton(
-                "Ⅱ PAUSE",
+                stylize("Ⅱ PAUSE"),
                 callback_data=f"ctrl_pause|{chat_id}",
             ),
             InlineKeyboardButton(
-                "↻ REPLAY",
+                stylize("↻ REPLAY"),
                 callback_data=f"ctrl_replay|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "⏭ SKIP",
+                stylize("⏭ SKIP"),
                 callback_data=f"ctrl_skip|{chat_id}",
             ),
             InlineKeyboardButton(
-                "⏹ STOP",
+                stylize("⏹ STOP"),
                 callback_data=f"ctrl_stop|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "🔁 LOOP",
+                stylize("🔁 LOOP"),
                 callback_data=f"ctrl_loop|{chat_id}",
             ),
             InlineKeyboardButton(
-                "🔀 SHUFFLE",
+                stylize("🔀 SHUFFLE"),
                 callback_data=f"ctrl_shuffle|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "🎶 QUEUE",
+                stylize("🎶 QUEUE"),
                 callback_data=f"ctrl_queue|{chat_id}",
             ),
             InlineKeyboardButton(
-                "✖ CLOSE",
+                stylize("✖ CLOSE"),
                 callback_data="ctrl_close",
             ),
         ],
@@ -110,42 +111,40 @@ def stream_buttons(chat_id: int):
 
 
 def queue_buttons(chat_id: int):
-    """Queue message controls."""
-
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton(
-                "▷ RESUME",
+                stylize("▷ RESUME"),
                 callback_data=f"ctrl_resume|{chat_id}",
             ),
             InlineKeyboardButton(
-                "Ⅱ PAUSE",
+                stylize("Ⅱ PAUSE"),
                 callback_data=f"ctrl_pause|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "⏭ SKIP",
+                stylize("⏭ SKIP"),
                 callback_data=f"ctrl_skip|{chat_id}",
             ),
             InlineKeyboardButton(
-                "⏹ STOP",
+                stylize("⏹ STOP"),
                 callback_data=f"ctrl_stop|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "🔁 LOOP",
+                stylize("🔁 LOOP"),
                 callback_data=f"ctrl_loop|{chat_id}",
             ),
             InlineKeyboardButton(
-                "🔀 SHUFFLE",
+                stylize("🔀 SHUFFLE"),
                 callback_data=f"ctrl_shuffle|{chat_id}",
             ),
         ],
         [
             InlineKeyboardButton(
-                "✖ CLOSE",
+                stylize("✖ CLOSE"),
                 callback_data="ctrl_close",
             )
         ],

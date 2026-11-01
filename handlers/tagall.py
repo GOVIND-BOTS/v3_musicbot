@@ -71,7 +71,7 @@ def register_tagall_handlers(app):
             usrnum += 1
             usrtxt += f"[{usr.user.first_name}](tg://user?id={usr.user.id}) "
 
-            if usrnum == 5:  # 5 members per message (spam kam)
+            if usrnum == 1:  # 1 members per message (spam kam)
                 txt = f"{usrtxt}\n{random.choice(TAGMES)}"
                 try:
                     await client.send_message(chat_id, txt)

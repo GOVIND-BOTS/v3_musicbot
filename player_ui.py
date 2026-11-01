@@ -21,7 +21,7 @@ FONT_MAP = str.maketrans(
 
 
 def stylize(text):
-    """Convert normal English text into Adisha Music font."""
+    """Convert English text and digits into Adisha Music font."""
     return str(text).translate(FONT_MAP)
 
 
@@ -30,14 +30,12 @@ def stylize(text):
 # ----------------------------------
 
 def format_duration(seconds):
-
     try:
         seconds = int(float(seconds or 0))
     except (TypeError, ValueError):
         return "00:00"
 
-    if seconds < 0:
-        seconds = 0
+    seconds = max(0, seconds)
 
     hours, remainder = divmod(seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
@@ -49,11 +47,39 @@ def format_duration(seconds):
 
 
 # ----------------------------------
+# PROGRESS
+# ----------------------------------
+
+def progress_bar(elapsed, duration, length=10):
+    try:
+        elapsed = max(0, float(elapsed or 0))
+        duration = max(0, float(duration or 0))
+    except (TypeError, ValueError):
+        elapsed = 0
+        duration = 0
+
+    if duration <= 0:
+        return "──────────"
+
+    progress = min(elapsed / duration, 1)
+    filled = min(length, int(progress * length))
+
+    return "━" * filled + "─" * (length - filled)
+
+
+def progress_button_text(elapsed, duration):
+    elapsed_text = format_duration(elapsed)
+    duration_text = format_duration(duration)
+    bar = progress_bar(elapsed, duration, length=8)
+
+    return f"{elapsed_text} {bar} {duration_text}"
+
+
+# ----------------------------------
 # REQUESTER
 # ----------------------------------
 
 def add_requester(track, user):
-
     item = dict(track)
 
     if not user:
@@ -67,14 +93,12 @@ def add_requester(track, user):
         first_name += f" {user.last_name}"
 
     item["requested_by_name"] = first_name
-
     item["requested_by_username"] = user.username
 
     return item
 
 
 def requester_html(track):
-
     name = html.escape(
         str(track.get("requested_by_name", "Group member"))
     )
@@ -94,32 +118,6 @@ def requester_html(track):
 
 
 # ----------------------------------
-# PROGRESS BAR
-# ----------------------------------
-
-def progress_bar(elapsed, duration, length=12):
-
-    try:
-        elapsed = max(0, float(elapsed or 0))
-        duration = max(0, float(duration or 0))
-    except (TypeError, ValueError):
-        elapsed = 0
-        duration = 0
-
-    if duration <= 0:
-        return "─" * length
-
-    progress = min(elapsed / duration, 1)
-
-    filled = int(progress * length)
-
-    return (
-        "━" * filled
-        + "─" * (length - filled)
-    )
-
-
-# ----------------------------------
 # NOW PLAYING CAPTION
 # ----------------------------------
 
@@ -129,7 +127,6 @@ def now_playing_caption(
     loop_mode="off",
     shuffle=False,
 ):
-
     if not isinstance(track, dict):
         track = {}
 
@@ -137,9 +134,7 @@ def now_playing_caption(
         str(track.get("title", "Unknown Track"))
     )
 
-    duration = track.get(
-        "duration_text"
-    ) or format_duration(
+    duration = track.get("duration_text") or format_duration(
         track.get("duration", 0)
     )
 
@@ -149,54 +144,21 @@ def now_playing_caption(
 
     requester = requester_html(track)
 
-    url = (
-        track.get("webpage_url")
-        or track.get("url")
-    )
-
-    safe_url = html.escape(
-        str(url or ""),
-        quote=True,
-    )
+    url = track.get("webpage_url") or track.get("url") or ""
+    safe_url = html.escape(str(url), quote=True)
 
     if safe_url.startswith(("https://", "http://")):
-        title_text = (
-            f'<a href="{safe_url}">{title}</a>'
-        )
+        title_text = f'<a href="{safe_url}">{title}</a>'
     else:
         title_text = title
 
-    elapsed_text = format_duration(elapsed)
-
-    total_duration = track.get(
-        "duration",
-        0,
-    )
-
-    bar = progress_bar(
-        elapsed,
-        total_duration,
-    )
-
-    loop_mode = str(
-        loop_mode or "off"
-    ).upper()
-
-    shuffle_text = (
-        "ON" if shuffle else "OFF"
-    )
-
     return (
-        f"<b>🎶 {stylize('Adisha Music')}</b>\n\n"
-        f"▶️ <b>{stylize('Now Playing')}</b>\n"
-        f"┌ <b>{title_text}</b>\n"
-        f"├ {stylize('Duration')}: {duration}\n"
-        f"├ {stylize('Channel')}: {channel}\n"
-        f"└ {stylize('Requested By')}: {requester}\n\n"
-        f"<code>{bar}</code>\n"
-        f"<code>{elapsed_text} / {duration}</code>\n\n"
-        f"🔁 {stylize('Loop')}: {loop_mode}\n"
-        f"🔀 {stylize('Shuffle')}: {shuffle_text}"
+        f"<b>🎧 {stylize('ADISHA MUSIC')}</b>\n"
+        f"<i>{stylize('NOW PLAYING')}</i>\n\n"
+        f"🎵 <b>{title_text}</b>\n\n"
+        f"⏱ <b>{stylize('Duration')}:</b> {html.escape(str(duration))}\n"
+        f"📡 <b>{stylize('Source')}:</b> {channel}\n"
+        f"👤 <b>{stylize('Requested By')}:</b> {requester}"
     )
 
 
@@ -205,7 +167,6 @@ def now_playing_caption(
 # ----------------------------------
 
 def queue_track_caption(track, position=None):
-
     if not isinstance(track, dict):
         track = {}
 
@@ -213,24 +174,20 @@ def queue_track_caption(track, position=None):
         str(track.get("title", "Unknown Track"))
     )
 
-    duration = track.get(
-        "duration_text"
-    ) or format_duration(
+    duration = track.get("duration_text") or format_duration(
         track.get("duration", 0)
     )
 
     requester = requester_html(track)
 
     text = (
-        f"🎵 <b>{stylize('Queued Track')}</b>\n\n"
+        f"🎵 <b>{stylize('QUEUED TRACK')}</b>\n\n"
         f"<b>{title}</b>\n"
-        f"⏱ {stylize('Duration')}: {duration}\n"
+        f"⏱ {stylize('Duration')}: {html.escape(str(duration))}\n"
         f"👤 {stylize('Requested By')}: {requester}"
     )
 
     if position is not None:
-        text += (
-            f"\n🔢 {stylize('Position')}: {position}"
-        )
+        text += f"\n🔢 {stylize('Position')}: {position}"
 
     return text

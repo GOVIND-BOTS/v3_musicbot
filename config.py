@@ -31,7 +31,7 @@ SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS").strip()
 SUPPORT_CHANNEL = os.getenv("SUPPORT_CHANNEL", "https://t.me/GOVIND_MP_USERBOT_SPPORT").strip()
 BOT_NAME = os.getenv("BOT_NAME", "V3 MUSIC").strip()
 TRIGGER = os.getenv("TRIGGER", "babu").strip()
-LOGGER_ID = int(os.getenv("LOGGER_ID", "0"))
+
 
 if not SUDO_USERS:
     raise RuntimeError("Set SUDO_USERS or OWNER_ID in .env")

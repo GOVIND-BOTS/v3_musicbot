@@ -10,6 +10,7 @@ from .tagall import register_tagall_handlers
 from .translate import register_translate_handlers
 from .whisper import register_whisper_handlers
 from handlers.special_welcome import register_welcome_handlers
+from .moderation import register_moderation_handlers
 
 def register_handlers(app, stream, assistant):
     register_start_handlers(app)
@@ -23,3 +24,4 @@ def register_handlers(app, stream, assistant):
     register_tagall_handlers(app)
     register_translate_handlers(app)
     register_whisper_handlers(app)
+    register_moderation_handlers(app)

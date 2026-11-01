@@ -1,364 +1,399 @@
 
+import html
 import logging
+import re
 from contextlib import suppress
 
 from pyrogram import filters
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ChatMemberStatus, ParseMode
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from buttons import stream_buttons
+from config import OWNER_ID, SUDO_USERS
+from Mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
-from thumbnails import get_thumb
 from youtube import (
     is_youtube_url,
     search_youtube,
+    get_video_info,
     get_stream_url,
 )
 
 LOGGER = logging.getLogger(__name__)
 
 
-async def ensure_assistant_joined(bot, assistant, chat_id):
-    """Ensure the Assistant account is present in the group."""
+def stylize(text):
+    normal = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+    styled = (
+        "𝑨𝑩𝑪𝑫𝑬𝑭𝑮𝑯𝑰𝑱𝑲𝑳𝑴𝑵𝑶𝑷𝑸𝑹𝑺𝑻𝑼𝑽𝑾𝑿𝒀𝒁"
+        "𝒂𝒃𝒄𝒅𝒆𝒇𝒈𝒉𝒊𝒋𝒌𝒍𝒎𝒏𝒐𝒑𝒒𝒓𝒔𝒕𝒖𝒗𝒘𝒙𝒚𝒛"
+    )
+    return str(text).translate(str.maketrans(normal, styled))
 
-    if assistant is None:
-        raise RuntimeError("Assistant client is not available.")
 
-    me = await assistant.get_me()
+def get_owner_ids():
+    ids = set()
+
+    if isinstance(OWNER_ID, (list, tuple, set)):
+        ids.update(OWNER_ID)
+    elif OWNER_ID:
+        ids.add(OWNER_ID)
+
+    if isinstance(SUDO_USERS, (list, tuple, set)):
+        ids.update(SUDO_USERS)
+
+    return ids
+
+
+async def is_chat_admin(client, chat_id, user_id):
+    if user_id in get_owner_ids():
+        return True
 
     try:
-        member = await assistant.get_chat_member(chat_id, me.id)
-        status = str(member.status).lower().split(".")[-1]
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in (
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+        )
+    except Exception:
+        return False
 
-        if status in ("owner", "administrator", "member"):
-            return True
 
-        if status == "restricted" and getattr(member, "is_member", False):
+async def can_play(client, message, settings):
+    user = message.from_user
+    if not user:
+        return False
+
+    if user.id in get_owner_ids():
+        return True
+
+    if await is_chat_admin(client, message.chat.id, user.id):
+        return True
+
+    authorized_users = settings.get("authorized_users", [])
+    return user.id in authorized_users
+
+
+async def ensure_assistant_joined(client, assistant, chat_id):
+    try:
+        member = await assistant.get_chat_member(chat_id, assistant.me.id)
+
+        if member.status not in (
+            ChatMemberStatus.LEFT,
+            ChatMemberStatus.BANNED,
+        ):
             return True
 
     except Exception:
-        LOGGER.info(
-            "Assistant is not currently in group %s.",
-            chat_id,
-        )
-
-    invite_link = None
+        pass
 
     try:
-        chat = await bot.get_chat(chat_id)
+        chat = await client.get_chat(chat_id)
 
         if chat.username:
+            await assistant.join_chat(chat.username)
+        else:
+            invite = await client.create_chat_invite_link(
+                chat_id,
+                member_limit=1,
+            )
             try:
-                await assistant.join_chat(chat.username)
-                return True
-            except Exception:
-                LOGGER.warning(
-                    "Public group join failed.",
-                    exc_info=True,
-                )
+                await assistant.join_chat(invite.invite_link)
+            finally:
+                with suppress(Exception):
+                    await client.revoke_chat_invite_link(
+                        chat_id,
+                        invite.invite_link,
+                    )
 
-        invite = await bot.create_chat_invite_link(
-            chat_id,
-            member_limit=1,
-        )
-        invite_link = invite.invite_link
-
-        await assistant.join_chat(invite_link)
         return True
 
-    except Exception as exc:
-        LOGGER.exception(
-            "Assistant could not join group %s.",
-            chat_id,
-        )
-
-        raise RuntimeError(
-            "Assistant could not join this group. "
-            "Check the Assistant account and bot permissions."
-        ) from exc
-
-    finally:
-        if invite_link:
-            with suppress(Exception):
-                await bot.revoke_chat_invite_link(
-                    chat_id,
-                    invite_link,
-                )
+    except Exception as error:
+        LOGGER.exception("Assistant join failed: %s", error)
+        return False
 
 
 async def send_player_card(client, chat_id, track, stream):
-    """Send the Now Playing card and save its message."""
-
-    thumb = await get_thumb(
-        track.get("videoid"),
-        track.get("title"),
-        track.get("duration_text") or track.get("duration"),
-        track.get("views", 0),
-        track.get("channel", "YouTube"),
-        "GOVIND MUSIC",
-        track.get("requested_by_name", "Group member"),
-    )
-
     caption = now_playing_caption(track)
+
     keyboard = stream_buttons(chat_id)
 
-    if thumb:
-        sent = await client.send_photo(
-            chat_id=chat_id,
-            photo=thumb,
+    try:
+        message = await client.send_photo(
+            chat_id,
+            photo=track.get("thumbnail"),
             caption=caption,
-            parse_mode=ParseMode.HTML,
             reply_markup=keyboard,
+            parse_mode=ParseMode.HTML,
         )
-    else:
-        sent = await client.send_message(
-            chat_id=chat_id,
-            text=caption,
-            parse_mode=ParseMode.HTML,
+    except Exception:
+        message = await client.send_message(
+            chat_id,
+            caption,
             reply_markup=keyboard,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
         )
 
-    stream.player_messages[chat_id] = sent
-    return sent
+    stream.player_messages[chat_id] = message
+    return message
+
+
+async def resolve_track(query, media_type):
+    if is_youtube_url(query):
+        info = await get_video_info(query)
+
+        if not info:
+            return None
+
+        track = dict(info)
+    else:
+        results = await search_youtube(query, limit=1)
+
+        if not results:
+            return None
+
+        track = dict(results[0])
+
+    webpage_url = (
+        track.get("webpage_url")
+        or track.get("url")
+        or query
+    )
+
+    stream_url = await get_stream_url(webpage_url, media_type)
+
+    if isinstance(stream_url, dict):
+        track.update(stream_url)
+    elif stream_url:
+        track["url"] = stream_url
+
+    if not track.get("url"):
+        return None
+
+    track["webpage_url"] = webpage_url
+    track["media_type"] = media_type
+
+    return track
 
 
 def register_play_handlers(app, stream, assistant=None):
 
-    async def handle_play(
-        client,
-        message,
-        force_video=False,
-        query_text=None,
-    ):
-        # Read query before deleting the command message.
-        if not query_text:
-            if not message.command or len(message.command) < 2:
+    async def handle_play(client, message, media_type="audio"):
+        if not message.from_user:
+            return
+
+        chat_id = message.chat.id
+
+        try:
+            settings = await get_chat_settings(chat_id)
+        except Exception:
+            settings = {}
+
+        clean_mode = settings.get("clean_mode", False)
+
+        if not await can_play(client, message, settings):
+            if clean_mode:
                 with suppress(Exception):
                     await message.delete()
-                await client.send_message(
-                    message.chat.id,
-                    "🎵 <b>GOVIND MUSIC</b>\n\n"
-                    "Usage:\n"
-                    "<code>/play song name</code> - Audio\n"
-                    "<code>/vplay song name</code> - Video\n"
-                    "<code>play babu song name</code>\n"
-                    "<code>play baby song name</code>\n"
-                    "<code>adisha play song name</code>",
-                    parse_mode=ParseMode.HTML,
-                )
-                return
 
-            query_text = " ".join(message.command[1:]).strip()
+            await message.reply_text(
+                stylize("Only admins and authorized users can play music."),
+                parse_mode=ParseMode.HTML,
+            )
+            return
 
-        query_text = (query_text or "").strip()
+        query = message.text or message.caption or ""
 
-        if not query_text:
+        if message.text:
+            query = re.sub(r"^/\w+(?:@\w+)?\s*", "", query).strip()
+
+        if not query:
+            if clean_mode:
+                with suppress(Exception):
+                    await message.delete()
+
+            usage = (
+                f"{stylize('Usage:')}\n"
+                f"<code>/play song name</code> — {stylize('Audio')}\n"
+                f"<code>/vplay song name</code> — {stylize('Video')}"
+            )
+
+            await message.reply_text(
+                usage,
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        if clean_mode:
             with suppress(Exception):
                 await message.delete()
 
-            await client.send_message(
-                message.chat.id,
-                "❌ Please enter a song name.",
+        status = None
+
+        if not clean_mode:
+            status = await client.send_message(
+                chat_id,
+                stylize("Searching for your requested track..."),
             )
-            return
-
-        # Delete the user's command message first.
-        with suppress(Exception):
-            await message.delete()
-
-        # Send the bot response after attempting deletion.
-        status = await client.send_message(
-            message.chat.id,
-            "🔎 Searching for your song...",
-        )
 
         try:
-            # Resolve YouTube URL or search for a song.
-            if is_youtube_url(query_text):
-                video_url = query_text
-            else:
-                results = await search_youtube(
-                    query_text,
-                    limit=1,
+            track = await resolve_track(query, media_type)
+
+            if not track:
+                error_text = stylize("No playable track found.")
+                if status:
+                    await status.edit_text(error_text)
+                else:
+                    await client.send_message(chat_id, error_text)
+                return
+
+            if assistant:
+                joined = await ensure_assistant_joined(
+                    client,
+                    assistant,
+                    chat_id,
                 )
 
-                results = [
-                    item for item in results
-                    if item and item.get("webpage_url")
-                ]
-
-                if not results:
-                    await status.edit_text(
-                        "❌ No results found. Try another song."
+                if not joined:
+                    error_text = stylize(
+                        "Assistant account could not join this chat. "
+                        "Please add the assistant to the group."
                     )
+
+                    if status:
+                        await status.edit_text(error_text)
+                    else:
+                        await client.send_message(chat_id, error_text)
                     return
 
-                video_url = results[0]["webpage_url"]
+            add_requester(track, message.from_user)
 
-            media_type = "video" if force_video else "audio"
+            started = await stream.play(chat_id, track)
 
-            await status.edit_text(
-                f"⏳ Preparing {media_type} stream..."
-            )
-
-            playable = await get_stream_url(
-                video_url,
-                media_type,
-            )
-
-            if not playable or not playable.get("url"):
-                await status.edit_text(
-                    "❌ Could not resolve a playable stream."
-                )
+            if not started:
+                if status:
+                    await status.edit_text(
+                        stylize("Track added to the queue.")
+                    )
+                else:
+                    await client.send_message(
+                        chat_id,
+                        stylize("Track added to the queue."),
+                    )
                 return
 
-            await status.edit_text(
-                "👤 Checking Assistant membership..."
-            )
-
-            await ensure_assistant_joined(
-                client,
-                assistant,
-                message.chat.id,
-            )
-
-            playable = add_requester(
-                playable,
-                message.from_user,
-            )
-
-            result = await stream.play(
-                message.chat.id,
-                playable,
-                media_type,
-            )
-
-            if result == "queued":
-                await status.edit_text(
-                    "➕ <b>Added to Queue</b>\n\n"
-                    f"🎵 <b>{playable.get('title', 'Unknown')}</b>\n"
-                    f"🎧 Type: {media_type.title()}\n"
-                    "👤 Requested by: "
-                    f"{playable.get('requested_by_name', 'Group member')}",
-                    parse_mode=ParseMode.HTML,
-                )
-                return
-
-            # First track started successfully.
-            with suppress(Exception):
-                await status.delete()
+            if status:
+                with suppress(Exception):
+                    await status.delete()
 
             await send_player_card(
                 client,
-                message.chat.id,
-                playable,
+                chat_id,
+                track,
                 stream,
             )
 
-            LOGGER.info(
-                "%s playback started in %s: %s",
-                media_type.upper(),
-                message.chat.id,
-                playable.get("title", "Unknown"),
+        except Exception as error:
+            LOGGER.exception("Play handler error")
+
+            error_text = (
+                f"{stylize('Playback error:')}\n"
+                f"<code>{html.escape(str(error))[:500]}</code>"
             )
 
-        except Exception as exc:
-            LOGGER.exception("Unable to start playback.")
-
-            error_message = (
-                "❌ <b>Unable to play this song.</b>\n\n"
-                f"Error: <code>{type(exc).__name__}</code>\n"
-                f"<code>{str(exc)[:500]}</code>"
-            )
-
-            with suppress(Exception):
-                await status.edit_text(
-                    error_message,
+            if status:
+                with suppress(Exception):
+                    await status.edit_text(
+                        error_text,
+                        parse_mode=ParseMode.HTML,
+                    )
+            else:
+                await client.send_message(
+                    chat_id,
+                    error_text,
                     parse_mode=ParseMode.HTML,
                 )
 
-    async def handle_joinuserbot(client, message):
-        with suppress(Exception):
-            await message.delete()
+    @app.on_message(filters.command("play") & filters.group)
+    async def audio_play(client, message):
+        await handle_play(client, message, "audio")
 
-        status = await client.send_message(
-            message.chat.id,
-            "👤 Checking Assistant membership...",
-        )
+    @app.on_message(filters.command("vplay") & filters.group)
+    async def video_play(client, message):
+        await handle_play(client, message, "video")
 
-        try:
-            await ensure_assistant_joined(
-                client,
-                assistant,
-                message.chat.id,
-            )
-
-            await status.edit_text(
-                "✅ Assistant is already in the group or joined successfully."
-            )
-
-        except Exception as exc:
-            LOGGER.exception("Manual Assistant join failed.")
-
-            await status.edit_text(
-                "❌ Assistant could not join the group.\n\n"
-                f"Error: <code>{type(exc).__name__}</code>\n"
-                f"<code>{str(exc)[:400]}</code>",
-                parse_mode=ParseMode.HTML,
-            )
-
-    # /play = AUDIO
-    @app.on_message(
-        filters.command("play") & filters.group
+    aliases = (
+        r"^(?:adisha|babu|baby)\s+(?:play|vplay)"
+        r"|^(?:play|vplay)\s+(?:adisha|babu|baby)"
     )
-    async def play_command(client, message):
-        await handle_play(
-            client,
-            message,
-            force_video=False,
-        )
 
-    # /vplay = VIDEO
     @app.on_message(
-        filters.command("vplay") & filters.group
-    )
-    async def vplay_command(client, message):
-        await handle_play(
-            client,
-            message,
-            force_video=True,
-        )
-
-    # /joinuserbot
-    @app.on_message(
-        filters.command("joinuserbot") & filters.group
-    )
-    async def joinuserbot_command(client, message):
-        await handle_joinuserbot(client, message)
-
-    # Plain text aliases:
-    # play babu, play baby, adisha play, babu play, baby play.
-    @app.on_message(
-        filters.regex(
-            r"(?i)^(?:(?:adisha|babu|baby)\s+)?"
-            r"(play|vplay)\s+(.+)$"
-        )
+        filters.text
         & filters.group
-        & filters.text
+        & filters.regex(aliases, flags=re.IGNORECASE)
     )
-    async def plain_play_command(client, message):
-        if not message.matches:
+    async def play_alias(client, message):
+        text = message.text or ""
+        match = re.match(
+            r"^(?:(?:adisha|babu|baby)\s+)?(play|vplay)"
+            r"|^(play|vplay)\s+(?:adisha|babu|baby)",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        if not match:
             return
 
-        match = message.matches[0]
-        command = match.group(1).lower()
-        query = match.group(2).strip()
+        command = (match.group(1) or match.group(2)).lower()
+
+        query = re.sub(
+            r"^(?:(?:adisha|babu|baby)\s+)?(?:play|vplay)\s*"
+            r"|^(?:play|vplay)\s+(?:adisha|babu|baby)\s*",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        ).strip()
 
         if not query:
             return
 
+        message.text = f"/{command} {query}"
         await handle_play(
             client,
             message,
-            force_video=(command == "vplay"),
-            query_text=query,
+            "video" if command == "vplay" else "audio",
         )
+
+    @app.on_message(filters.command("joinuserbot") & filters.group)
+    async def join_userbot(client, message):
+        if not message.from_user:
+            return
+
+        if not await is_chat_admin(
+            client,
+            message.chat.id,
+            message.from_user.id,
+        ):
+            return
+
+        if not assistant:
+            return await message.reply_text(
+                stylize("Assistant client is not configured.")
+            )
+
+        joined = await ensure_assistant_joined(
+            client,
+            assistant,
+            message.chat.id,
+        )
+
+        text = (
+            stylize("Assistant joined successfully.")
+            if joined
+            else stylize("Assistant could not join this chat.")
+        )
+
+        await message.reply_text(text)
+
+    LOGGER.info("Play handlers registered")

@@ -8,7 +8,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
 )
 
-from Mongodb import get_chat_settings, update_chat_settings
+from database.mongodb import get_chat_settings, update_chat_settings
 from player_ui import stylize
 
 

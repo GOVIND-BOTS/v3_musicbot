@@ -23,6 +23,8 @@ SUDO_USERS = {
 OWNER_ID = int(os.getenv("OWNER_ID", "8250224070"))
 if OWNER_ID:
     SUDO_USERS.add(OWNER_ID)
+    WELCOME_IMAGE = os.getenv("WELCOME_IMAGE", "").strip()
+OWNER_WELCOME_IMAGE = os.getenv("OWNER_WELCOME_IMAGE", "").strip()
 
 START_IMAGE = os.getenv("START_IMAGE", "https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg").strip()
 SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS").strip()

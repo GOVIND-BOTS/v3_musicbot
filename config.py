@@ -20,13 +20,13 @@ SUDO_USERS = {
     for item in os.getenv("SUDO_USERS", "").split(",")
     if item.strip()
 }
-OWNER_ID = int(os.getenv("OWNER_ID", "0"))
+OWNER_ID = int(os.getenv("OWNER_ID", "8250224070"))
 if OWNER_ID:
     SUDO_USERS.add(OWNER_ID)
 
 START_IMAGE = os.getenv("START_IMAGE", "https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg").strip()
-SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/").strip()
-SUPPORT_CHANNEL = os.getenv("SUPPORT_CHANNEL", "https://t.me/").strip()
+SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS").strip()
+SUPPORT_CHANNEL = os.getenv("SUPPORT_CHANNEL", "https://t.me/GOVIND_MP_USERBOT_SPPORT").strip()
 BOT_NAME = os.getenv("BOT_NAME", "V3 MUSIC").strip()
 TRIGGER = os.getenv("TRIGGER", "babu").strip()
 LOGGER_ID = int(os.getenv("LOGGER_ID", "0"))

@@ -7,7 +7,7 @@ from pyrogram.enums import ChatMemberStatus, ParseMode
 
 from music import music_queue
 from buttons import queue_buttons
-from Mongodb import get_chat_settings
+from database.mongodb import get_chat_settings
 from player_ui import format_duration, stylize
 
 

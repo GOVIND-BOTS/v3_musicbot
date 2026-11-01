@@ -8,6 +8,7 @@ from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ParseMode
 
 from buttons import stream_buttons
+from callbacks import start_progress_updater
 from config import OWNER_ID, SUDO_USERS
 from database.mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
@@ -60,12 +61,10 @@ async def is_chat_admin(client, chat_id, user_id):
 
     try:
         member = await client.get_chat_member(chat_id, user_id)
-
         return member.status in (
             ChatMemberStatus.OWNER,
             ChatMemberStatus.ADMINISTRATOR,
         )
-
     except Exception:
         return False
 
@@ -86,7 +85,6 @@ async def can_play(client, message, settings):
         authorized_users = settings.get("authorized_users", [])
         authorized_ids = {int(uid) for uid in authorized_users}
         return user.id in authorized_ids
-
     except (TypeError, ValueError):
         LOGGER.exception("Authorized user ID validation failed.")
         return False
@@ -107,7 +105,6 @@ async def ensure_assistant_joined(client, assistant, chat_id):
             ChatMemberStatus.BANNED,
         ):
             return True
-
     except Exception:
         pass
 
@@ -116,7 +113,6 @@ async def ensure_assistant_joined(client, assistant, chat_id):
 
         if chat.username:
             await assistant.join_chat(chat.username)
-
         else:
             invite = await client.create_chat_invite_link(
                 chat_id,
@@ -125,7 +121,6 @@ async def ensure_assistant_joined(client, assistant, chat_id):
 
             try:
                 await assistant.join_chat(invite.invite_link)
-
             finally:
                 with suppress(Exception):
                     await client.revoke_chat_invite_link(
@@ -142,7 +137,11 @@ async def ensure_assistant_joined(client, assistant, chat_id):
 
 async def send_player_card(client, chat_id, track, stream):
     caption = now_playing_caption(track)
-    keyboard = stream_buttons(chat_id)
+    keyboard = stream_buttons(
+        chat_id,
+        elapsed=0,
+        duration=track.get("duration", 0),
+    )
     thumbnail = track.get("thumbnail")
 
     try:
@@ -186,7 +185,6 @@ async def resolve_track(query, media_type):
             return None
 
         track = dict(info)
-
     else:
         results = await search_youtube(query, limit=1)
 
@@ -202,14 +200,10 @@ async def resolve_track(query, media_type):
         or query
     )
 
-    stream_url = await get_stream_url(
-        webpage_url,
-        media_type,
-    )
+    stream_url = await get_stream_url(webpage_url, media_type)
 
     if isinstance(stream_url, dict):
         track.update(stream_url)
-
     elif stream_url:
         track["url"] = stream_url
 
@@ -247,9 +241,7 @@ def register_play_handlers(app, stream, assistant=None):
                     await message.delete()
 
             await message.reply_text(
-                stylize(
-                    "Only admins and authorized users can play music."
-                )
+                stylize("Only admins and authorized users can play music.")
             )
             return
 
@@ -325,17 +317,11 @@ def register_play_handlers(app, stream, assistant=None):
                     if status:
                         await status.edit_text(error_text)
                     else:
-                        await client.send_message(
-                            chat_id,
-                            error_text,
-                        )
+                        await client.send_message(chat_id, error_text)
 
                     return
 
-            track = add_requester(
-                track,
-                message.from_user,
-            )
+            track = add_requester(track, message.from_user)
 
             started = await stream.play(chat_id, track)
 
@@ -349,7 +335,6 @@ def register_play_handlers(app, stream, assistant=None):
                         chat_id,
                         stylize("Track added to the queue."),
                     )
-
                 return
 
             if status:
@@ -357,6 +342,13 @@ def register_play_handlers(app, stream, assistant=None):
                     await status.delete()
 
             await send_player_card(
+                client,
+                chat_id,
+                track,
+                stream,
+            )
+
+            start_progress_updater(
                 client,
                 chat_id,
                 track,
@@ -377,7 +369,6 @@ def register_play_handlers(app, stream, assistant=None):
                         error_text,
                         parse_mode=ParseMode.HTML,
                     )
-
             else:
                 await client.send_message(
                     chat_id,
@@ -385,17 +376,14 @@ def register_play_handlers(app, stream, assistant=None):
                     parse_mode=ParseMode.HTML,
                 )
 
-    # Normal audio command.
     @app.on_message(filters.command("play") & filters.group)
     async def audio_play(client, message):
         await handle_play(client, message, "audio")
 
-    # Video command.
     @app.on_message(filters.command("vplay") & filters.group)
     async def video_play(client, message):
         await handle_play(client, message, "video")
 
-    # Play aliases.
     alias_pattern = (
         r"^(?:(?:adisha|babu|baby)\s+(?:play|vplay)"
         r"|(?:play|vplay)\s+(?:adisha|babu|baby))\b"
@@ -419,9 +407,7 @@ def register_play_handlers(app, stream, assistant=None):
         if not match:
             return
 
-        command = (
-            match.group(1) or match.group(2)
-        ).lower()
+        command = (match.group(1) or match.group(2)).lower()
 
         query = re.sub(
             r"^(?:(?:adisha|babu|baby)\s+)?(?:play|vplay)\b\s*"
@@ -444,10 +430,7 @@ def register_play_handlers(app, stream, assistant=None):
             query=query,
         )
 
-    # Assistant join command.
-    @app.on_message(
-        filters.command("joinuserbot") & filters.group
-    )
+    @app.on_message(filters.command("joinuserbot") & filters.group)
     async def join_userbot(client, message):
         if not message.from_user:
             return

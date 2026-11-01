@@ -202,9 +202,9 @@ def get_start_keyboard(bot_username):
             callback_data="help_cmd",
         ),
         InlineKeyboardButton(
-            "👑 OWNER",
-            user_id=OWNER_ID,
-        ),
+    "👑 OWNER",
+    url=f"tg://user?id={OWNER_ID}",
+        )
     ])
 
     return InlineKeyboardMarkup(rows)
@@ -470,12 +470,14 @@ def register_start_handlers(app):
                 except Exception:
                     LOGGER.exception("Start logging failed.")
 
-        except Exception:
-            LOGGER.exception("Start handler failed.")
+        except Exception as exc:
+    LOGGER.exception("Start handler failed.")
 
-            await message.reply_text(
-                "❌ Unable to load start menu."
-            )
+    await message.reply_text(
+        f"❌ Start Error: {type(exc).__name__}\n"
+        f"<code>{str(exc)[:300]}</code>",
+        parse_mode=ParseMode.HTML,
+    )
 
     @app.on_message(filters.command("start") & filters.group)
     async def group_start(client, message):

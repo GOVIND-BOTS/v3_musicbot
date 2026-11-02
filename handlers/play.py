@@ -96,9 +96,7 @@ async def generate_track_thumbnail(track):
         video_id = get_video_id(track)
 
         if not video_id:
-            LOGGER.warning(
-                "YouTube video ID not found for thumbnail."
-            )
+            LOGGER.warning("YouTube video ID not found for thumbnail.")
             return track
 
         user = track.get("requested_by") or {}
@@ -123,15 +121,10 @@ async def generate_track_thumbnail(track):
 
         if thumbnail:
             track["thumbnail"] = thumbnail
-            LOGGER.info(
-                "Custom thumbnail generated: %s",
-                thumbnail,
-            )
+            LOGGER.info("Custom thumbnail generated: %s", thumbnail)
 
     except Exception:
-        LOGGER.exception(
-            "Track thumbnail generation failed."
-        )
+        LOGGER.exception("Track thumbnail generation failed.")
 
     return track
 
@@ -149,33 +142,6 @@ async def is_chat_admin(client, chat_id, user_id):
         )
 
     except Exception:
-        return False
-
-
-async def can_play(client, message, settings):
-    user = message.from_user
-
-    if not user:
-        return False
-
-    if user.id in get_owner_ids():
-        return True
-
-    if await is_chat_admin(client, message.chat.id, user.id):
-        return True
-
-    try:
-        authorized_users = settings.get("authorized_users", [])
-        authorized_ids = {
-            int(uid) for uid in authorized_users
-        }
-
-        return user.id in authorized_ids
-
-    except (TypeError, ValueError):
-        LOGGER.exception(
-            "Authorized user ID validation failed."
-        )
         return False
 
 
@@ -211,10 +177,7 @@ async def ensure_assistant_joined(client, assistant, chat_id):
             )
 
             try:
-                await assistant.join_chat(
-                    invite.invite_link
-                )
-
+                await assistant.join_chat(invite.invite_link)
             finally:
                 with suppress(Exception):
                     await client.revoke_chat_invite_link(
@@ -225,10 +188,7 @@ async def ensure_assistant_joined(client, assistant, chat_id):
         return True
 
     except Exception as error:
-        LOGGER.exception(
-            "Assistant join failed: %s",
-            error,
-        )
+        LOGGER.exception("Assistant join failed: %s", error)
         return False
 
 
@@ -252,7 +212,6 @@ async def send_player_card(client, chat_id, track, stream):
                 reply_markup=keyboard,
                 parse_mode=ParseMode.HTML,
             )
-
         else:
             message = await client.send_message(
                 chat_id,
@@ -263,9 +222,7 @@ async def send_player_card(client, chat_id, track, stream):
             )
 
     except Exception:
-        LOGGER.exception(
-            "Player card photo failed; sending text card."
-        )
+        LOGGER.exception("Player card photo failed; sending text card.")
 
         message = await client.send_message(
             chat_id,
@@ -276,7 +233,6 @@ async def send_player_card(client, chat_id, track, stream):
         )
 
     stream.player_messages[chat_id] = message
-
     return message
 
 
@@ -290,10 +246,7 @@ async def resolve_track(query, media_type):
         track = dict(info)
 
     else:
-        results = await search_youtube(
-            query,
-            limit=1,
-        )
+        results = await search_youtube(query, limit=1)
 
         if not results:
             return None
@@ -314,7 +267,6 @@ async def resolve_track(query, media_type):
 
     if isinstance(stream_url, dict):
         track.update(stream_url)
-
     elif stream_url:
         track["url"] = stream_url
 
@@ -341,37 +293,17 @@ def register_play_handlers(app, stream, assistant=None):
         chat_id = message.chat.id
 
         try:
-            settings = await get_chat_settings(
-                chat_id
-            ) or {}
-
+            settings = await get_chat_settings(chat_id) or {}
         except Exception:
-            LOGGER.exception(
-                "Could not load chat settings for %s",
-                chat_id,
-            )
+            LOGGER.exception("Could not load chat settings for %s", chat_id)
             settings = {}
 
-        clean_mode = settings.get(
-            "clean_mode",
-            False,
-        )
+        clean_mode = settings.get("clean_mode", False)
 
-        if not await can_play(
-            client,
-            message,
-            settings,
-        ):
-            if clean_mode:
-                with suppress(Exception):
-                    await message.delete()
-
-            await message.reply_text(
-                stylize(
-                    "Only admins and authorized users can play music."
-                )
-            )
-            return
+        # All group members are allowed to request songs.
+        if clean_mode:
+            with suppress(Exception):
+                await message.delete()
 
         if query is None:
             query = message.text or message.caption or ""
@@ -386,10 +318,6 @@ def register_play_handlers(app, stream, assistant=None):
         query = query.strip()
 
         if not query:
-            if clean_mode:
-                with suppress(Exception):
-                    await message.delete()
-
             usage = (
                 f"{stylize('Usage:')}\n"
                 "<code>/play song name</code> — "
@@ -404,39 +332,24 @@ def register_play_handlers(app, stream, assistant=None):
             )
             return
 
-        if clean_mode:
-            with suppress(Exception):
-                await message.delete()
-
         status = None
 
         if not clean_mode:
             status = await client.send_message(
                 chat_id,
-                stylize(
-                    "Searching for your requested track..."
-                ),
+                stylize("Searching for your requested track..."),
             )
 
         try:
-            track = await resolve_track(
-                query,
-                media_type,
-            )
+            track = await resolve_track(query, media_type)
 
             if not track:
-                error_text = stylize(
-                    "No playable track found."
-                )
+                error_text = stylize("No playable track found.")
 
                 if status:
                     await status.edit_text(error_text)
-
                 else:
-                    await client.send_message(
-                        chat_id,
-                        error_text,
-                    )
+                    await client.send_message(chat_id, error_text)
 
                 return
 
@@ -454,48 +367,42 @@ def register_play_handlers(app, stream, assistant=None):
                     )
 
                     if status:
-                        await status.edit_text(
-                            error_text
-                        )
-
+                        await status.edit_text(error_text)
                     else:
-                        await client.send_message(
-                            chat_id,
-                            error_text,
-                        )
+                        await client.send_message(chat_id, error_text)
 
                     return
 
-            track = add_requester(
-                track,
-                message.from_user,
-            )
+            track = add_requester(track, message.from_user)
+            track = await generate_track_thumbnail(track)
 
-            # Generate custom GOVIND MUSIC thumbnail.
-            track = await generate_track_thumbnail(
-                track
-            )
-
-            started = await stream.play(
+            # Preserve audio/video type when sending to the stream.
+            result = await stream.play(
                 chat_id,
                 track,
+                media_type=media_type,
             )
 
-            if not started:
+            # Queued tracks must not create a new player card.
+            if result == "queued":
                 if status:
                     await status.edit_text(
-                        stylize(
-                            "Track added to the queue."
-                        )
+                        stylize("Track added to the queue.")
                     )
-
                 else:
                     await client.send_message(
                         chat_id,
-                        stylize(
-                            "Track added to the queue."
-                        ),
+                        stylize("Track added to the queue."),
                     )
+                return
+
+            if result != "playing":
+                error_text = stylize("Unable to start playback.")
+
+                if status:
+                    await status.edit_text(error_text)
+                else:
+                    await client.send_message(chat_id, error_text)
 
                 return
 
@@ -518,9 +425,7 @@ def register_play_handlers(app, stream, assistant=None):
             )
 
         except Exception as error:
-            LOGGER.exception(
-                "Play handler error"
-            )
+            LOGGER.exception("Play handler error")
 
             error_text = (
                 f"{stylize('Playback error:')}\n"
@@ -533,7 +438,6 @@ def register_play_handlers(app, stream, assistant=None):
                         error_text,
                         parse_mode=ParseMode.HTML,
                     )
-
             else:
                 await client.send_message(
                     chat_id,
@@ -541,25 +445,13 @@ def register_play_handlers(app, stream, assistant=None):
                     parse_mode=ParseMode.HTML,
                 )
 
-    @app.on_message(
-        filters.command("play") & filters.group
-    )
+    @app.on_message(filters.command("play") & filters.group)
     async def audio_play(client, message):
-        await handle_play(
-            client,
-            message,
-            "audio",
-        )
+        await handle_play(client, message, "audio")
 
-    @app.on_message(
-        filters.command("vplay") & filters.group
-    )
+    @app.on_message(filters.command("vplay") & filters.group)
     async def video_play(client, message):
-        await handle_play(
-            client,
-            message,
-            "video",
-        )
+        await handle_play(client, message, "video")
 
     alias_pattern = (
         r"^(?:(?:adisha|babu|baby)\s+(?:play|vplay)"
@@ -569,10 +461,7 @@ def register_play_handlers(app, stream, assistant=None):
     @app.on_message(
         filters.text
         & filters.group
-        & filters.regex(
-            alias_pattern,
-            flags=re.IGNORECASE,
-        )
+        & filters.regex(alias_pattern, flags=re.IGNORECASE)
     )
     async def play_alias(client, message):
         text = message.text or ""
@@ -587,9 +476,7 @@ def register_play_handlers(app, stream, assistant=None):
         if not match:
             return
 
-        command = (
-            match.group(1) or match.group(2)
-        ).lower()
+        command = (match.group(1) or match.group(2)).lower()
 
         query = re.sub(
             r"^(?:(?:adisha|babu|baby)\s+)?(?:play|vplay)\b\s*"
@@ -601,9 +488,7 @@ def register_play_handlers(app, stream, assistant=None):
 
         if not query:
             await message.reply_text(
-                stylize(
-                    "Please provide a song name or YouTube link."
-                )
+                stylize("Please provide a song name or YouTube link.")
             )
             return
 
@@ -614,9 +499,7 @@ def register_play_handlers(app, stream, assistant=None):
             query=query,
         )
 
-    @app.on_message(
-        filters.command("joinuserbot") & filters.group
-    )
+    @app.on_message(filters.command("joinuserbot") & filters.group)
     async def join_userbot(client, message):
         if not message.from_user:
             return
@@ -630,9 +513,7 @@ def register_play_handlers(app, stream, assistant=None):
 
         if not assistant:
             await message.reply_text(
-                stylize(
-                    "Assistant client is not configured."
-                )
+                stylize("Assistant client is not configured.")
             )
             return
 
@@ -645,9 +526,7 @@ def register_play_handlers(app, stream, assistant=None):
         text = (
             stylize("Assistant joined successfully.")
             if joined
-            else stylize(
-                "Assistant could not join this chat."
-            )
+            else stylize("Assistant could not join this chat.")
         )
 
         await message.reply_text(text)

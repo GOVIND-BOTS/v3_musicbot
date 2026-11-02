@@ -86,7 +86,7 @@ def create_welcome_image(user_photo, user, chat):
             ))
 
             # Circle placement inside left frame
-            diameter = int(390 * sx)
+            diameter = int(500 * sx)
 
             avatar = avatar.resize(
                 (diameter, diameter),

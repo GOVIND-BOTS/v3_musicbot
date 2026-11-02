@@ -15,9 +15,9 @@ LOGGER = logging.getLogger(__name__)
 
 WELCOME_IMAGE = "assets/welcome.png"
 
-# Actual template dimensions
-BASE_WIDTH = 1536
-BASE_HEIGHT = 864
+# Exact generated template dimensions
+BASE_WIDTH = 1672
+BASE_HEIGHT = 941
 
 
 def get_font(size):
@@ -35,7 +35,7 @@ def get_font(size):
     return ImageFont.load_default()
 
 
-def fit_font(draw, text, max_width, size=26):
+def fit_font(draw, text, max_width, size=30):
     while size >= 13:
         font = get_font(size)
         bbox = draw.textbbox((0, 0), text, font=font)
@@ -64,9 +64,9 @@ def create_welcome_image(user_photo, user, chat):
 
     draw = ImageDraw.Draw(image)
 
-    # -----------------------------------------
-    # USER PROFILE PHOTO - PERFECT CIRCLE
-    # -----------------------------------------
+    # =========================================
+    # USER PROFILE PHOTO
+    # =========================================
 
     if user_photo and os.path.isfile(user_photo):
         try:
@@ -85,24 +85,23 @@ def create_welcome_image(user_photo, user, chat):
                 top + crop_size,
             ))
 
-            diameter = int(420 * sx)
+            # Circle placement inside left frame
+            diameter = int(390 * sx)
 
             avatar = avatar.resize(
                 (diameter, diameter),
                 Image.Resampling.LANCZOS,
             )
 
-            # Circular mask
             mask = Image.new("L", (diameter, diameter), 0)
 
-            mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse(
+            ImageDraw.Draw(mask).ellipse(
                 (0, 0, diameter - 1, diameter - 1),
                 fill=255,
             )
 
-            # Correct center for 1536x864 template
-            center_x, center_y = pos(445, 420)
+            # Center of circular portrait frame
+            center_x, center_y = pos(462, 470)
 
             x = center_x - diameter // 2
             y = center_y - diameter // 2
@@ -112,9 +111,9 @@ def create_welcome_image(user_photo, user, chat):
         except Exception:
             LOGGER.exception("Failed to process user profile photo")
 
-    # -----------------------------------------
+    # =========================================
     # USER INFORMATION
-    # -----------------------------------------
+    # =========================================
 
     name = " ".join(
         part for part in (user.first_name, user.last_name) if part
@@ -134,45 +133,46 @@ def create_welcome_image(user_photo, user, chat):
         ZoneInfo("Asia/Kolkata")
     ).strftime("%d %b %Y")
 
-    # Row center positions for the actual template
+    # Each row: text, vertical center, text color
     values = [
-        (name, 315, (0, 210, 255, 255)),
-        (user_id, 380, (255, 45, 230, 255)),
-        (username, 445, (0, 255, 210, 255)),
-        (group_name, 510, (255, 190, 30, 255)),
-        (joined, 575, (255, 65, 220, 255)),
+        (name, 327, (0, 220, 255, 255)),
+        (user_id, 397, (255, 45, 230, 255)),
+        (username, 466, (0, 255, 220, 255)),
+        (group_name, 531, (255, 215, 0, 255)),
+        (joined, 598, (255, 65, 220, 255)),
     ]
 
-    # -----------------------------------------
-    # COVER OLD SAMPLE INFORMATION
-    # -----------------------------------------
+    # =========================================
+    # CLEAR ONLY VALUE AREA
+    # Keep panel borders and labels untouched
+    # =========================================
 
     draw = ImageDraw.Draw(image)
 
     for _, center_y, _ in values:
-        x1, y1 = pos(1080, center_y - 27)
-        x2, y2 = pos(1465, center_y + 27)
+        x1, y1 = pos(1182, center_y - 25)
+        x2, y2 = pos(1550, center_y + 25)
 
         draw.rounded_rectangle(
             (x1, y1, x2, y2),
-            radius=int(7 * sx),
+            radius=int(10 * sx),
             fill=(5, 3, 24, 255),
         )
 
-    # -----------------------------------------
-    # DRAW NEW INFORMATION
-    # -----------------------------------------
+    # =========================================
+    # DRAW DYNAMIC USER INFORMATION
+    # =========================================
 
     draw = ImageDraw.Draw(image)
 
     for text, center_y, color in values:
-        x, y = pos(1095, center_y)
+        x, y = pos(1195, center_y)
 
         font = fit_font(
             draw,
             text,
-            max_width=int(350 * sx),
-            size=int(26 * sx),
+            max_width=int(335 * sx),
+            size=int(29 * sx),
         )
 
         draw.text(
@@ -183,9 +183,9 @@ def create_welcome_image(user_photo, user, chat):
             anchor="lm",
         )
 
-    # -----------------------------------------
+    # =========================================
     # SAVE IMAGE
-    # -----------------------------------------
+    # =========================================
 
     output = tempfile.NamedTemporaryFile(
         suffix=".png",
@@ -198,7 +198,6 @@ def create_welcome_image(user_photo, user, chat):
     image.convert("RGB").save(
         output_path,
         format="PNG",
-        quality=95,
     )
 
     return output_path
@@ -284,7 +283,7 @@ def register_welcome_handlers(app):
                         ),
                     )
                 except Exception:
-                    LOGGER.exception("Fallback welcome message failed")
+                    LOGGER.exception("Fallback welcome failed")
 
             finally:
                 for file_path in (user_photo, welcome_path):

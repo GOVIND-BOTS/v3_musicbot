@@ -1,3 +1,4 @@
+
 import asyncio
 import random
 from collections import defaultdict, deque
@@ -5,8 +6,6 @@ from copy import deepcopy
 
 
 class MusicQueue:
-    """Per-chat queue with repeat and shuffle support."""
-
     LOOP_MODES = {"off", "track", "queue"}
 
     def __init__(self):
@@ -25,7 +24,7 @@ class MusicQueue:
             raise TypeError("Track must be a dictionary.")
 
         if not track.get("url") and not track.get("webpage_url"):
-            raise ValueError("Track must contain a playable URL.")
+            raise ValueError("Track URL is missing.")
 
         item = dict(track)
         item.setdefault("title", "Unknown Title")
@@ -35,22 +34,25 @@ class MusicQueue:
         item.setdefault("requested_by_username", "")
         item.setdefault("duration_text", "Unknown")
         item.setdefault("is_live", False)
+
         return item
 
     async def add(self, chat_id, track):
         item = self._prepare_track(track)
+
         async with self._lock(chat_id):
             self._queues[chat_id].append(item)
             return len(self._queues[chat_id])
 
     async def add_many(self, chat_id, tracks):
         items = [self._prepare_track(track) for track in tracks]
+
         async with self._lock(chat_id):
             self._queues[chat_id].extend(items)
+
             if self._shuffle[chat_id]:
-                shuffled = list(self._queues[chat_id])
-                random.shuffle(shuffled)
-                self._queues[chat_id] = deque(shuffled)
+                random.shuffle(self._queues[chat_id])
+
             return len(self._queues[chat_id])
 
     async def set_current(self, chat_id, track):
@@ -59,32 +61,22 @@ class MusicQueue:
                 self._current.pop(chat_id, None)
                 self._paused.discard(chat_id)
                 return
+
             self._current[chat_id] = self._prepare_track(track)
             self._paused.discard(chat_id)
 
     async def get_current(self, chat_id):
         async with self._lock(chat_id):
-            item = self._current.get(chat_id)
-            return deepcopy(item) if item is not None else None
+            track = self._current.get(chat_id)
+            return deepcopy(track) if track else None
 
     async def get_next(self, chat_id, skip_current=False):
-        """
-        Return the next track.
-
-        skip_current=False is used by StreamEnded:
-          - track mode repeats the current track
-          - queue mode appends current track to the queue
-        skip_current=True is used by manual Skip:
-          - never repeats the current track immediately
-          - queue mode still cycles it to the end
-        """
         async with self._lock(chat_id):
             current = self._current.get(chat_id)
             mode = self._loop_modes[chat_id]
             queue = self._queues[chat_id]
 
             if current and mode == "track" and not skip_current:
-                self._paused.discard(chat_id)
                 return deepcopy(current)
 
             if current and mode == "queue":
@@ -95,14 +87,19 @@ class MusicQueue:
                 self._paused.discard(chat_id)
                 return None
 
-            item = queue.popleft()
-            self._current[chat_id] = item
+            next_track = queue.popleft()
+            self._current[chat_id] = next_track
             self._paused.discard(chat_id)
-            return deepcopy(item)
+
+            return deepcopy(next_track)
 
     async def get_queue(self, chat_id):
         async with self._lock(chat_id):
             return deepcopy(list(self._queues[chat_id]))
+
+    async def queue_length(self, chat_id):
+        async with self._lock(chat_id):
+            return len(self._queues[chat_id])
 
     async def clear(self, chat_id):
         async with self._lock(chat_id):
@@ -116,30 +113,28 @@ class MusicQueue:
         async with self._lock(chat_id):
             self._queues[chat_id].clear()
 
-    async def queue_length(self, chat_id):
-        async with self._lock(chat_id):
-            return len(self._queues[chat_id])
-
     async def remove(self, chat_id, position):
-        """Remove a 1-based position from the upcoming queue."""
         async with self._lock(chat_id):
-            if position < 1 or position > len(self._queues[chat_id]):
+            queue = self._queues[chat_id]
+
+            if position < 1 or position > len(queue):
                 return None
-            items = list(self._queues[chat_id])
-            removed = items.pop(position - 1)
-            self._queues[chat_id] = deque(items)
+
+            queue_list = list(queue)
+            removed = queue_list.pop(position - 1)
+            self._queues[chat_id] = deque(queue_list)
+
             return deepcopy(removed)
 
     async def shuffle(self, chat_id, enabled=None):
         async with self._lock(chat_id):
             if enabled is None:
                 enabled = not self._shuffle[chat_id]
+
             self._shuffle[chat_id] = bool(enabled)
 
             if enabled:
-                items = list(self._queues[chat_id])
-                random.shuffle(items)
-                self._queues[chat_id] = deque(items)
+                random.shuffle(self._queues[chat_id])
 
             return self._shuffle[chat_id]
 
@@ -148,11 +143,13 @@ class MusicQueue:
             return self._shuffle[chat_id]
 
     async def set_loop(self, chat_id, mode):
-        mode = str(mode or "off").lower().strip()
+        mode = str(mode).lower()
+
         if mode not in self.LOOP_MODES:
             raise ValueError(
-                "Invalid loop mode. Use: off, track, or queue."
+                "Loop mode must be off, track, or queue."
             )
+
         async with self._lock(chat_id):
             self._loop_modes[chat_id] = mode
             return mode
@@ -162,14 +159,15 @@ class MusicQueue:
             return self._loop_modes[chat_id]
 
     async def cycle_loop(self, chat_id):
-        order = ("off", "track", "queue")
         async with self._lock(chat_id):
+            modes = ["off", "track", "queue"]
             current = self._loop_modes[chat_id]
-            next_mode = order[(order.index(current) + 1) % len(order)]
+            next_mode = modes[(modes.index(current) + 1) % len(modes)]
+
             self._loop_modes[chat_id] = next_mode
             return next_mode
 
-    async def set_paused(self, chat_id, paused):
+    async def set_paused(self, chat_id, paused=True):
         async with self._lock(chat_id):
             if paused:
                 self._paused.add(chat_id)
@@ -184,12 +182,17 @@ class MusicQueue:
 music_queue = MusicQueue()
 
 
+# Compatibility wrappers
+
 async def add_to_queue(chat_id, track):
     return await music_queue.add(chat_id, track)
 
 
-async def get_next_track(chat_id):
-    return await music_queue.get_next(chat_id)
+async def get_next_track(chat_id, skip_current=False):
+    return await music_queue.get_next(
+        chat_id,
+        skip_current=skip_current
+    )
 
 
 async def get_current_track(chat_id):
@@ -205,4 +208,7 @@ async def clear_queue(chat_id):
 
 
 async def skip_track(chat_id):
-    return await music_queue.get_next(chat_id, skip_current=True)
+    return await music_queue.get_next(
+        chat_id,
+        skip_current=True
+    )

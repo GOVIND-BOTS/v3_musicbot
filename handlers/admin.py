@@ -5,7 +5,12 @@ from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus
 
 from config import TRIGGER
-from .callbacks import update_player_message
+from .callbacks import (
+    update_player_message,
+    pause_progress_updater,
+    resume_progress_updater,
+    stop_progress_updater,
+)
 
 
 LOGGER = logging.getLogger(__name__)
@@ -13,10 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 async def _is_admin(client, chat_id, user_id):
     try:
-        member = await client.get_chat_member(
-            chat_id,
-            user_id,
-        )
+        member = await client.get_chat_member(chat_id, user_id)
 
         return member.status in (
             ChatMemberStatus.OWNER,
@@ -48,10 +50,11 @@ def register_admin_handlers(app, stream):
         chat_id = message.chat.id
 
         try:
-
             if action == "pause":
-
                 success = await stream.pause(chat_id)
+
+                if success:
+                    pause_progress_updater(chat_id)
 
                 text = (
                     "⏸ Playback paused."
@@ -60,8 +63,10 @@ def register_admin_handlers(app, stream):
                 )
 
             elif action == "resume":
-
                 success = await stream.resume(chat_id)
+
+                if success:
+                    resume_progress_updater(chat_id)
 
                 text = (
                     "▶️ Playback resumed."
@@ -70,18 +75,11 @@ def register_admin_handlers(app, stream):
                 )
 
             elif action == "skip":
-
-                # Skip current song and start next song.
                 track = await stream.skip(chat_id)
 
                 if isinstance(track, dict):
+                    player_message = stream.player_messages.get(chat_id)
 
-                    # Get existing Now Playing message.
-                    player_message = (
-                        stream.player_messages.get(chat_id)
-                    )
-
-                    # Generate new thumbnail and update card.
                     await update_player_message(
                         client,
                         player_message,
@@ -96,17 +94,14 @@ def register_admin_handlers(app, stream):
                     )
 
                 else:
-
+                    stop_progress_updater(chat_id)
                     text = "✅ Queue finished. No next song."
 
             elif action == "stop":
-
                 await stream.stop(chat_id)
 
-                stream.player_messages.pop(
-                    chat_id,
-                    None,
-                )
+                stop_progress_updater(chat_id)
+                stream.player_messages.pop(chat_id, None)
 
                 text = "⏹ Playback stopped and queue cleared."
 
@@ -116,7 +111,6 @@ def register_admin_handlers(app, stream):
             await message.reply_text(text)
 
         except Exception as exc:
-
             LOGGER.exception(
                 "Admin command failed: %s",
                 action,
@@ -126,21 +120,18 @@ def register_admin_handlers(app, stream):
                 f"❌ Command failed: `{type(exc).__name__}`"
             )
 
-    # PAUSE
     @app.on_message(
         filters.command("pause") & filters.group
     )
     async def pause_command(client, message):
         await admin_action(client, message, "pause")
 
-    # RESUME
     @app.on_message(
         filters.command("resume") & filters.group
     )
     async def resume_command(client, message):
         await admin_action(client, message, "resume")
 
-    # SKIP: plain text and slash commands
     @app.on_message(
         filters.regex(
             r"(?i)^/?(?:(?:adisha|baby)\s+)?skip$"
@@ -151,14 +142,12 @@ def register_admin_handlers(app, stream):
     async def skip_command(client, message):
         await admin_action(client, message, "skip")
 
-    # STOP
     @app.on_message(
         filters.command("stop") & filters.group
     )
     async def stop_command(client, message):
         await admin_action(client, message, "stop")
 
-    # Existing trigger commands
     @app.on_message(
         filters.regex(
             rf"(?i)^(?:{TRIGGER})\s+(pause|resume|stop)$"
@@ -166,7 +155,6 @@ def register_admin_handlers(app, stream):
         & filters.group
     )
     async def trigger_admin_command(client, message):
-
         match = (
             message.matches[0]
             if message.matches

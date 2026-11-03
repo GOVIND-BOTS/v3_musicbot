@@ -18,7 +18,7 @@ LOGGER = logging.getLogger(__name__)
 WELCOME_IMAGE = "assets/welcome.png"
 
 # ==================== BUTTON LINKS ====================
-BOT_OWNER_USERNAME = "govind_official_mp13"
+BOT_OWNER_USERNAME = "govind_officialmp13"
 SUPPORT_GROUP = "https://t.me/GOVIND_BOTS"
 CHANNEL_LINK = "https://t.me/GOVIND_USERBOT_UPDATE"
 # ======================================================
@@ -71,14 +71,12 @@ def create_welcome_image(user_photo, user, chat):
             top = (h - crop) // 2
             avatar = avatar.crop((left, top, left + crop, top + crop))
 
-            # Better size for the circle
             diameter = int(460 * sx)
             avatar = avatar.resize((diameter, diameter), Image.Resampling.LANCZOS)
 
             mask = Image.new("L", (diameter, diameter), 0)
             ImageDraw.Draw(mask).ellipse((0, 0, diameter - 1, diameter - 1), fill=255)
 
-            # Better center position
             center_x, center_y = pos(450, 445)
             x = center_x - diameter // 2
             y = center_y - diameter // 2
@@ -86,6 +84,16 @@ def create_welcome_image(user_photo, user, chat):
             image.paste(avatar, (x, y), mask)
         except Exception as e:
             LOGGER.warning(f"Failed to process user photo: {e}")
+
+    # ==================== STRONG COVER ====================
+    # Pure right side value area ko ek saath cover
+    cover_x1, cover_y1 = pos(1050, 280)
+    cover_x2, cover_y2 = pos(1490, 620)
+    draw.rounded_rectangle(
+        (cover_x1, cover_y1, cover_x2, cover_y2),
+        radius=int(12 * sx),
+        fill=(5, 3, 24, 255),
+    )
 
     # ==================== USER DETAILS ====================
     name = " ".join(p for p in (user.first_name, user.last_name) if p) or "Unknown"
@@ -95,27 +103,17 @@ def create_welcome_image(user_photo, user, chat):
     joined = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y")
 
     values = [
-        (name,       305, (0, 210, 255, 255)),   # Name
-        (user_id,    370, (255, 45, 230, 255)),  # ID
-        (username,   435, (0, 255, 210, 255)),   # Username
-        (group_name, 500, (255, 190, 30, 255)),  # Group
-        (joined,     565, (255, 65, 220, 255)),  # Joined
+        (name,       305, (0, 210, 255, 255)),
+        (user_id,    370, (255, 45, 230, 255)),
+        (username,   435, (0, 255, 210, 255)),
+        (group_name, 500, (255, 190, 30, 255)),
+        (joined,     565, (255, 65, 220, 255)),
     ]
 
-    # Strong covering (purana text completely hide)
-    for _, y, _ in values:
-        x1, y1 = pos(1065, y - 14)
-        x2, y2 = pos(1480, y + 52)
-        draw.rounded_rectangle(
-            (x1, y1, x2, y2),
-            radius=int(8 * sx),
-            fill=(5, 3, 24, 255),
-        )
-
-    # Draw new text
     draw = ImageDraw.Draw(image)
+
     for text, y, color in values:
-        x, y_pos = pos(1085, y)
+        x, y_pos = pos(1090, y)
         font = fit_font(draw, text, max_width=int(360 * sx), size=int(26 * sx))
         draw.text((x, y_pos), text, font=font, fill=color)
 

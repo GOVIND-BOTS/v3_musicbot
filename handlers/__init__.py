@@ -1,3 +1,4 @@
+
 from handlers.clone import register_clone_handlers
 from .start import register_start_handlers
 from .play import register_play_handlers
@@ -11,7 +12,7 @@ from .adisa import register_adisa_handlers
 from .tagall import register_tagall_handlers
 from .translate import register_translate_handlers
 from .whisper import register_whisper_handlers
-from .moderation import register_moderation_handlers
+from .student_protection import register_handlers as register_student_protection
 
 
 def register_handlers(app, stream, assistant):
@@ -29,5 +30,9 @@ def register_handlers(app, stream, assistant):
     register_tagall_handlers(app)
     register_translate_handlers(app)
     register_whisper_handlers(app)
-    register_moderation_handlers(app)
+
+    
+    register_student_protection(app)
+
+    
     register_clone_handlers(app)

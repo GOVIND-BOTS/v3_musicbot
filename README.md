@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/v3music-banner..png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
+<img src="assets/v3music-banner.png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
 
 <br/>
 
@@ -46,6 +46,169 @@ With a clean interface, interactive buttons, queue management and separate audio
 | Audio streaming | Video streaming | Skip / Stop |
 
 </div>
+
+---
+
+## 📱 LIVE TELEGRAM MUSIC EXPERIENCE
+
+<p align="center">
+  <b>V3MUSIC IN ACTION</b>
+  <br/>
+  <sub>A preview of the Telegram music playback interface</sub>
+</p>
+
+<table align="center" width="340">
+<tr>
+<td bgcolor="#17212B">
+
+<table width="100%">
+<tr>
+<td align="left">
+<font color="#FFFFFF"><b>5:35</b></font>
+</td>
+<td align="right">
+<font color="#FFFFFF">● ● ● 4G ▰</font>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<tr>
+<td bgcolor="#17212B">
+
+<table width="100%">
+<tr>
+<td width="12%" align="center">
+<font color="#FFFFFF">❮</font>
+</td>
+<td>
+<font color="#FFFFFF"><b>ADISHA MUSIC GROUP</b></font>
+<br/>
+<font color="#AAAAAA" size="2">Group · 128 members</font>
+</td>
+<td align="right">
+<font color="#FFFFFF">⋮</font>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+
+<tr>
+<td bgcolor="#0E1621">
+
+<p align="center">
+<font color="#8FA3B8" size="2">Today</font>
+</p>
+
+<table align="right" width="85%">
+<tr>
+<td bgcolor="#2B5278">
+<font color="#FFFFFF">
+<b>Govind</b>
+<br/><br/>
+/play Night Changes
+<br/>
+<font color="#C5D8E8" size="1">5:35 PM ✓✓</font>
+</font>
+</td>
+</tr>
+</table>
+
+<br/><br/><br/><br/>
+
+<table width="95%" align="left">
+<tr>
+<td bgcolor="#182533">
+
+<font color="#63B5F5"><b>🎧 V3MUSIC</b></font>
+
+<br/><br/>
+
+<font color="#FFFFFF"><b>▶ NOW PLAYING</b></font>
+
+<br/><br/>
+
+<table width="100%">
+<tr>
+<td width="42%" align="center" bgcolor="#273849">
+<br/>
+<font color="#FFFFFF" size="6">🎵</font>
+<br/>
+<font color="#A9BACB" size="1">ADISHA MUSIC</font>
+<br/><br/>
+</td>
+<td>
+<font color="#FFFFFF"><b>Night Changes</b></font>
+<br/>
+<font color="#A9BACB" size="2">One Direction</font>
+<br/><br/>
+<font color="#A9BACB" size="1">Duration: 3:46</font>
+</td>
+</tr>
+</table>
+
+<br/>
+
+<font color="#FFFFFF" size="1">1:24 ━━━━━●━━━━ 3:46</font>
+
+<br/><br/>
+
+<table width="100%">
+<tr>
+<td align="center" bgcolor="#26394B">
+<font color="#FFFFFF">⏸️</font>
+</td>
+<td align="center" bgcolor="#26394B">
+<font color="#FFFFFF">⏭️</font>
+</td>
+<td align="center" bgcolor="#26394B">
+<font color="#FFFFFF">⏹️</font>
+</td>
+</tr>
+<tr>
+<td align="center">
+<font color="#A9BACB" size="1">Pause</font>
+</td>
+<td align="center">
+<font color="#A9BACB" size="1">Skip</font>
+</td>
+<td align="center">
+<font color="#A9BACB" size="1">Stop</font>
+</td>
+</tr>
+</table>
+
+<br/>
+
+<font color="#A9BACB" size="1">Requested by: Govind</font>
+<br/>
+<font color="#A9BACB" size="1">Powered by GOVIND-BOTS</font>
+
+<br/>
+
+</td>
+</tr>
+</table>
+
+<br/><br/>
+
+<p align="center">
+<font color="#8FA3B8" size="2">Message · Voice Chat Music Streaming</font>
+</p>
+
+</td>
+</tr>
+</table>
+
+<p align="center">
+<b>🎵 V3MUSIC — Your Group, Your Music.</b>
+</p>
+
+---
 
 <details>
 <summary><b>🎵 AUDIO EXPERIENCE</b></summary>

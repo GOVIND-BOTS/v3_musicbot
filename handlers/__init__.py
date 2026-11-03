@@ -1,10 +1,9 @@
-
+from handlers.clone import register_clone_handlers
 from .start import register_start_handlers
 from .play import register_play_handlers
 from .callbacks import register_callback_handlers
 from .queue import register_queue_handlers
 from .settings import register_settings_handlers
-
 from .admin import register_admin_handlers
 from .welcome import register_welcome_handlers
 from .chatbot import register_chatbot_handlers
@@ -31,3 +30,4 @@ def register_handlers(app, stream, assistant):
     register_translate_handlers(app)
     register_whisper_handlers(app)
     register_moderation_handlers(app)
+    register_clone_handlers(app)

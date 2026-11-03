@@ -19,8 +19,8 @@ BOT_USERNAME = os.getenv("BOT_USERNAME", "")
 
 # MongoDB connection
 mongo = MongoClient(MONGO_DB_URI) if MONGO_DB_URI else None
-vick_db = mongo["VickDb"]["Vick"] if mongo else None          # for on/off status
-word_db = mongo["Word"]["WordDb"] if mongo else None          # for learned replies
+vick_db = mongo["VickDb"]["Vick"] if mongo is not None else None
+word_db = mongo["Word"]["WordDb"] if mongo is not None else None
 
 
 async def is_admin(client, chat_id: int, user_id: int) -> bool:
@@ -33,7 +33,7 @@ async def is_admin(client, chat_id: int, user_id: int) -> bool:
 
 def is_chatbot_enabled(chat_id: int) -> bool:
     """Returns True if chatbot is enabled in the group"""
-    if not vick_db:
+    if vick_db is None:
         return False
     # If chat_id is present in DB → chatbot is OFF
     return not vick_db.find_one({"chat_id": chat_id})
@@ -79,7 +79,7 @@ def register_chatbot_handlers(app):
         group=2
     )
     async def group_chatbot(client, message: Message):
-        if not word_db or not vick_db:
+        if word_db is None or vick_db is None:
             return
 
         # Agar chatbot off hai to ignore
@@ -170,7 +170,7 @@ def register_chatbot_handlers(app):
         (filters.text | filters.sticker) & filters.private & ~filters.bot
     )
     async def private_chatbot(client, message: Message):
-        if not word_db:
+        if word_db is None:
             return
 
         try:

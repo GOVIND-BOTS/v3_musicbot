@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/v3music-banner.png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
+<img src="assets/v3music-banner..png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
 
 <br/>
 

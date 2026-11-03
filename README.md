@@ -104,20 +104,23 @@ With a clean interface, interactive buttons, queue management and separate audio
 
 </div>
 
-----
+---
 
 ## ✦ HOW V3MUSIC WORKS
 
 ```mermaid
 flowchart TD
-    A["👤 User sends command"] --> B{"🎧 Playback type"}
-    B -->|" /play "| C["🎵 Audio request"]
-    B -->|" /vplay "| D["🎬 Video request"]
-    C --> E["⚙️ Playback manager"]
+    A["User sends command"] --> B{"Playback type"}
+    B -->|"Play audio"| C["Audio request"]
+    B -->|"Play video"| D["Video request"]
+    C --> E["Playback manager"]
     D --> E
-    E --> F["🔊 Voice chat streaming"]
-    F --> G["🎛️ Interactive controls"]
-    G --> H["⏭️ Next track / Stop"]
+    E --> F["Voice chat streaming"]
+    F --> G["Interactive controls"]
+    G --> H["Next track or Stop"]
+```
+
+---
 
 ## ✦ FEATURE MATRIX
 
@@ -217,4 +220,3 @@ V3MUSIC can be configured for deployment on supported hosting platforms.
 *Made with Python and passion.*
 
 </div>
-

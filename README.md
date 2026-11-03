@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/v3music-banner..png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
+<img src="assets/v3music-banner.png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
 
 <br/>
 
@@ -29,7 +29,7 @@
 
 > Not just another music bot. A complete music experience for your Telegram group.
 
-V3MUSIC is an advanced Telegram music bot designed to bring music playback and easy controls directly into your group's voice chat.
+V3MUSIC is a Telegram music bot designed to bring music playback and easy controls directly into your group's voice chat.
 
 With a clean interface, interactive buttons, queue management and separate audio/video playback commands, V3MUSIC aims to make group music sessions simple and enjoyable.
 
@@ -118,6 +118,7 @@ flowchart TD
     E --> F["🔊 Voice chat streaming"]
     F --> G["🎛️ Interactive controls"]
     G --> H["⏭️ Next track / Stop"]
+
 ---
 
 ## ✦ FEATURE MATRIX
@@ -218,4 +219,4 @@ V3MUSIC can be configured for deployment on supported hosting platforms.
 *Made with Python and passion.*
 
 </div>
- 
+

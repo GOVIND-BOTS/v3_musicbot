@@ -1,136 +1,160 @@
-<!--
-  GOVIND-BOTS | Animated GitHub Profile README
-  Create a public repository named exactly: GOVIND-BOTS
-  Put this file in the repository as README.md.
--->
-
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,35:7c3aed,70:06b6d4,100:facc15&height=220&section=header&text=GOVIND&fontSize=78&fontColor=ffffff&fontAlignY=38&desc=BUILD%20%E2%80%A2%20CREATE%20%E2%80%A2%20INNOVATE&descAlignY=60&animation=twinkling" width="100%" />
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,25:4c1d95,55:7c3aed,100:06b6d4&height=230&section=header&text=V3MUSIC&fontSize=85&fontColor=ffffff&fontAlignY=38&desc=THE%20NEXT%20GENERATION%20OF%20TELEGRAM%20MUSIC&descAlignY=60&animation=twinkling" width="100%"/>
 
-<a href="https://github.com/GOVIND-BOTS">
-  <img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=700&size=22&duration=2800&pause=900&color=FACC15&center=true&vCenter=true&width=650&lines=Welcome+to+my+GitHub+universe!;Telegram+Bot+Developer;Python+%7C+Automation+%7C+Open+Source;Turning+ideas+into+working+projects." alt="Typing SVG" />
-</a>
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=22&duration=2500&pause=800&color=06B6D4&center=true&vCenter=true&width=650&lines=Welcome+to+V3MUSIC+%F0%9F%8E%B5;Powerful+Telegram+Music+Bot;High+Quality+Audio+Streaming;Fast+%E2%80%A2+Smooth+%E2%80%A2+Reliable;Made+With+%E2%9D%A4%EF%B8%8F+By+GOVIND-BOTS" />
 
 <br/>
 
-<img src="https://komarev.com/ghpvc/?username=GOVIND-BOTS&label=PROFILE%20VISITORS&color=7c3aed&style=for-the-badge" alt="Profile visitors" />
-<img src="https://img.shields.io/github/followers/GOVIND-BOTS?label=Followers&style=for-the-badge&color=06b6d4" alt="GitHub followers" />
-<img src="https://img.shields.io/github/stars/GOVIND-BOTS?affiliations=OWNER%2CCOLLABORATOR&style=for-the-badge&color=facc15" alt="GitHub stars" />
+<img src="https://img.shields.io/badge/PROJECT-V3MUSIC-7C3AED?style=for-the-badge&logo=github&logoColor=white"/>
+<img src="https://img.shields.io/badge/PLATFORM-TELEGRAM-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
+<img src="https://img.shields.io/badge/BUILT%20WITH-PYTHON-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+
+<br/>
+
+<img src="https://komarev.com/ghpvc/?username=GOVIND-BOTS&label=V3MUSIC%20VISITORS&color=7c3aed&style=for-the-badge"/>
 
 </div>
 
 ---
 
-## 🌈 About Me
+## 🎧 ABOUT V3MUSIC
 
-```python
-class Govind:
-    name = "Govind"
-    username = "GOVIND-BOTS"
-    interests = ["Python", "Telegram Bots", "Automation", "Open Source"]
-    currently_building = ["Telegram bots", "Music bot projects"]
-    motto = "Dream big. Build better. Keep learning."
+**V3MUSIC** is a powerful and feature-rich Telegram Group Music Bot designed to deliver a smooth and enjoyable music streaming experience.
 
-    def say_hi(self):
-        return "Thanks for visiting my GitHub profile! 👋"
-```
+Built with Python and modern Telegram technologies, V3MUSIC brings music directly into your Telegram voice chats with simple commands and interactive controls.
 
-- 👋 Hi, I'm **Govind**.
-- 🤖 I enjoy creating Telegram bots and automation projects.
-- 🐍 I work with Python and explore new tools and technologies.
-- 🚀 I believe in learning by building real projects.
-- 💡 Always exploring ideas and improving my work.
-
-## ⚡ Tech & Tools
+Our goal is simple: **Make music streaming smarter, faster and better!**
 
 <div align="center">
 
-<img src="https://skillicons.dev/icons?i=python,git,github,mongodb,linux,bash,vscode&perline=7" alt="Tech stack icons" />
-
-<br/><br/>
-
-<img src="https://img.shields.io/badge/Pyrogram-Telegram%20API-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" />
-<img src="https://img.shields.io/badge/PyTgCalls-Voice%20Chats-7c3aed?style=for-the-badge" />
-<img src="https://img.shields.io/badge/FFmpeg-Media%20Tools-007808?style=for-the-badge&logo=ffmpeg&logoColor=white" />
-<img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=17&duration=2500&pause=700&color=A78BFA&center=true&vCenter=true&width=550&lines=Your+Music%2C+Your+Vibe+%F0%9F%8E%B6;One+Bot.+Endless+Music.+%E2%9C%A8;Experience+The+V3MUSIC+Power."/>
 
 </div>
 
-## 🚀 Featured Projects
+## ✨ FEATURES
+
+| Feature | Description |
+|:---|:---|
+| 🎵 Audio Streaming | Stream music in Telegram voice chats |
+| 🎬 Video Streaming | Play videos in supported voice chats |
+| ⏭️ Skip System | Easily skip currently playing tracks |
+| ⏸️ Playback Controls | Pause and resume your music |
+| 📜 Queue System | Manage your upcoming tracks |
+| 🖼️ Dynamic Thumbnails | Beautiful music information thumbnails |
+| 🔘 Interactive Buttons | Easy-to-use inline controls |
+| 🎧 Assistant System | Assistant-based voice chat playback |
+| ⚙️ Admin Controls | Manage playback with admin commands |
+| 💾 MongoDB | Database-powered settings and storage |
+
+## 🛠️ TECHNOLOGY STACK
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=python,mongodb,git,github,linux,bash,vscode&perline=7"/>
+
+<br/><br/>
+
+<img src="https://img.shields.io/badge/Pyrogram-Telegram%20API-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
+<img src="https://img.shields.io/badge/PyTgCalls-Voice%20Chat%20Engine-7C3AED?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/FFmpeg-Media%20Processing-007808?style=for-the-badge&logo=ffmpeg&logoColor=white"/>
+<img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb&logoColor=white"/>
+
+</div>
+
+## 🚀 PROJECT REPOSITORY
 
 <div align="center">
 
 <a href="https://github.com/GOVIND-BOTS/v3_musicbot">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=GOVIND-BOTS&repo=v3_musicbot&theme=tokyonight&hide_border=true" alt="v3_musicbot repository card" />
+<img src="https://github-readme-stats.vercel.app/api/pin/?username=GOVIND-BOTS&repo=v3_musicbot&theme=tokyonight&hide_border=true&border_radius=15" width="80%"/>
 </a>
-<a href="https://github.com/GOVIND-BOTS/Adishav2">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=GOVIND-BOTS&repo=Adishav2&theme=tokyonight&hide_border=true" alt="Adishav2 repository card" />
-</a>
-<a href="https://github.com/GOVIND-BOTS/Haramimusic">
-  <img src="https://github-readme-stats.vercel.app/api/pin/?username=GOVIND-BOTS&repo=Haramimusic&theme=tokyonight&hide_border=true" alt="Haramimusic repository card" />
-</a>
-
-</div>
-
-## 📊 GitHub Analytics
-
-<div align="center">
-
-<img height="170" src="https://github-readme-stats.vercel.app/api?username=GOVIND-BOTS&show_icons=true&include_all_commits=true&count_private=true&theme=tokyonight&hide_border=true&rank_icon=github" alt="GitHub statistics" />
-<img height="170" src="https://github-readme-stats.vercel.app/api/top-langs/?username=GOVIND-BOTS&layout=compact&theme=tokyonight&hide_border=true" alt="Top languages" />
 
 <br/>
 
-<img src="https://streak-stats.demolab.com?user=GOVIND-BOTS&theme=tokyonight&hide_border=true" alt="GitHub contribution streak" />
+<a href="https://github.com/GOVIND-BOTS/v3_musicbot">
+<img src="https://img.shields.io/badge/EXPLORE%20SOURCE%20CODE-7C3AED?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+
+</div>
+
+## ⚡ COMMANDS
+
+| Command | Function |
+|:---|:---|
+| `/play` | Play music |
+| `/vplay` | Play video |
+| `/pause` | Pause playback |
+| `/resume` | Resume playback |
+| `/skip` | Skip current track |
+| `/stop` | Stop playback |
+| `/queue` | View music queue |
+
+*Note: Available commands may depend on your bot configuration.*
+
+## 📊 GITHUB STATISTICS
+
+<div align="center">
+
+<img src="https://github-readme-stats.vercel.app/api?username=GOVIND-BOTS&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=github" width="95%"/>
 
 <br/>
 
-<img src="https://github-profile-trophy.vercel.app/?username=GOVIND-BOTS&theme=discord&no-frame=true&no-bg=true&margin-w=8&row=1" alt="GitHub trophies" width="100%" />
+<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=GOVIND-BOTS&layout=compact&theme=tokyonight&hide_border=true"/>
+
+<br/><br/>
+
+<img src="https://streak-stats.demolab.com?user=GOVIND-BOTS&theme=tokyonight&hide_border=true" width="95%"/>
 
 </div>
 
-## 🐍 Contribution Journey
+## 🌐 DEPLOYMENT
+
+V3MUSIC can be deployed on supported hosting platforms.
 
 <div align="center">
 
-<!-- For the animated snake, add the GitHub Actions workflow described below. -->
-<img src="https://raw.githubusercontent.com/GOVIND-BOTS/GOVIND-BOTS/output/github-contribution-grid-snake-dark.svg" alt="Animated contribution snake" width="100%" />
+<img src="https://img.shields.io/badge/RAILWAY-0B0D0E?style=for-the-badge&logo=railway&logoColor=white"/>
+<img src="https://img.shields.io/badge/HEROKU-430098?style=for-the-badge&logo=heroku&logoColor=white"/>
+<img src="https://img.shields.io/badge/RENDER-46E3B7?style=for-the-badge&logo=render&logoColor=black"/>
+<img src="https://img.shields.io/badge/VPS-LINUX-FCC624?style=for-the-badge&logo=linux&logoColor=black"/>
 
 </div>
 
-## 🌐 Connect With Me
+## 💜 DEVELOPER
 
 <div align="center">
+
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=700&size=25&duration=2500&pause=1000&color=06B6D4&center=true&vCenter=true&width=450&lines=GOVIND-BOTS;BUILDING+THE+FUTURE+%F0%9F%9A%80"/>
+
+**Developer:** GOVIND
+
+**GitHub:** [@GOVIND-BOTS](https://github.com/GOVIND-BOTS)
+
+**Project:** V3MUSIC
+
+<br/>
 
 <a href="https://github.com/GOVIND-BOTS">
-  <img src="https://img.shields.io/badge/GitHub-GOVIND--BOTS-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
+<img src="https://img.shields.io/badge/GITHUB-FOLLOW%20ME-181717?style=for-the-badge&logo=github&logoColor=white"/>
 </a>
+
 <a href="https://t.me/GOVIND_USERBOT_UPDATE">
-  <img src="https://img.shields.io/badge/Telegram-Updates-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
-</a>
-<a href="https://youtube.com/@fire_tach_gaming">
-  <img src="https://img.shields.io/badge/YouTube-Channel-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="YouTube" />
-</a>
-<a href="https://instagram.com/YOUR_INSTAGRAM_USERNAME">
-  <img src="https://img.shields.io/badge/Instagram-Profile-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram — replace username" />
-</a>
-<a href="https://YOUR_WEBSITE_URL">
-  <img src="https://img.shields.io/badge/Website-Visit-0ea5e9?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website — replace URL" />
+<img src="https://img.shields.io/badge/TELEGRAM-JOIN%20UPDATES-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
 </a>
 
 </div>
-
-> **Before publishing:** Replace `YOUR_INSTAGRAM_USERNAME` and `YOUR_WEBSITE_URL` with your real profile and website links. Remove either badge if you don't have that link yet.
 
 ---
 
 <div align="center">
 
-### ✨ Thanks for stopping by!
+## 🎵 V3MUSIC — FEEL THE MUSIC!
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&duration=2500&pause=1000&color=06B6D4&center=true&vCenter=true&width=500&lines=Keep+learning.;Keep+building.;Keep+shining.+%E2%9C%A8" alt="Closing animation" />
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=18&duration=2200&pause=800&color=7C3AED&center=true&vCenter=true&width=500&lines=Code+With+Passion.;Stream+With+V3MUSIC.;Enjoy+Every+Beat.+%F0%9F%8E%B6"/>
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,35:7c3aed,70:06b6d4,100:facc15&height=120&section=footer" width="100%" />
+**If you like V3MUSIC, don't forget to ⭐ the repository!**
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,25:4c1d95,55:7c3aed,100:06b6d4&height=130&section=footer" width="100%"/>
 
 </div>

@@ -104,7 +104,7 @@ With a clean interface, interactive buttons, queue management and separate audio
 
 </div>
 
----
+----
 
 ## ✦ HOW V3MUSIC WORKS
 
@@ -118,8 +118,6 @@ flowchart TD
     E --> F["🔊 Voice chat streaming"]
     F --> G["🎛️ Interactive controls"]
     G --> H["⏭️ Next track / Stop"]
-
----
 
 ## ✦ FEATURE MATRIX
 

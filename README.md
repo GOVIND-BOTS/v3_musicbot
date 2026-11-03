@@ -1,4 +1,10 @@
-<div align="center">
+<!-- V3MUSIC OFFICIAL LOGO -->
+
+<p align="center">
+  <img src="assets/v3music-banner..png"
+       width="100%"
+       alt="V3MUSIC - ADISHA MUSIC BOT"/>
+</p>
 
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,25:4c1d95,55:7c3aed,100:06b6d4&height=230&section=header&text=V3MUSIC&fontSize=85&fontColor=ffffff&fontAlignY=38&desc=THE%20NEXT%20GENERATION%20OF%20TELEGRAM%20MUSIC&descAlignY=60&animation=twinkling" width="100%"/>
 

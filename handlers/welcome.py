@@ -18,9 +18,9 @@ LOGGER = logging.getLogger(__name__)
 WELCOME_IMAGE = "assets/welcome.png"
 
 # Sirf yeh 2 cheezein change karni hain
-BOT_OWNER_USERNAME = "MrDevilCoder"               # Bot owner username (bina @ ke)
-SUPPORT_GROUP = "https://t.me/YourSupportGroup"   # Support group link
-CHANNEL_LINK = "https://t.me/YourChannel"         # Channel link
+BOT_OWNER_USERNAME = "govind_officialmp13"               
+SUPPORT_GROUP = "https://t.me/GOVIND_BOTS"   
+CHANNEL_LINK = "https://t.me/GOVIND_USERBOT_UPDATE"         
 
 
 def get_font(size):
@@ -176,7 +176,7 @@ def register_welcome_handlers(app):
                         url=f"https://t.me/{chat.username}" if chat.username else "https://t.me/"
                     )
 
-                # ========== BUTTONS ==========
+                
                 buttons = [
                     [
                         owner_btn,

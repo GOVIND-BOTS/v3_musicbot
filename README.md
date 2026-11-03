@@ -1,153 +1,207 @@
-<!-- V3MUSIC OFFICIAL LOGO -->
+<div align="center">
 
-<p align="center">
-  <img src="assets/v3music-banner..png"
-       width="100%"
-       alt="V3MUSIC - ADISHA MUSIC BOT"/>
-</p>
-
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,25:4c1d95,55:7c3aed,100:06b6d4&height=230&section=header&text=V3MUSIC&fontSize=85&fontColor=ffffff&fontAlignY=38&desc=THE%20NEXT%20GENERATION%20OF%20TELEGRAM%20MUSIC&descAlignY=60&animation=twinkling" width="100%"/>
-
-<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=22&duration=2500&pause=800&color=06B6D4&center=true&vCenter=true&width=650&lines=Welcome+to+V3MUSIC+%F0%9F%8E%B5;Powerful+Telegram+Music+Bot;High+Quality+Audio+Streaming;Fast+%E2%80%A2+Smooth+%E2%80%A2+Reliable;Made+With+%E2%9D%A4%EF%B8%8F+By+GOVIND-BOTS" />
+<img src="assets/v3music-banner..png" width="100%" alt="V3MUSIC Anime DJ Girl Banner"/>
 
 <br/>
 
-<img src="https://img.shields.io/badge/PROJECT-V3MUSIC-7C3AED?style=for-the-badge&logo=github&logoColor=white"/>
-<img src="https://img.shields.io/badge/PLATFORM-TELEGRAM-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
-<img src="https://img.shields.io/badge/BUILT%20WITH-PYTHON-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=800&size=30&duration=2500&pause=700&color=CE7BFF&center=true&vCenter=true&width=800&lines=V3MUSIC+%E2%9C%A6+ADISHA+MUSIC+BOT;YOUR+GROUP+YOUR+MUSIC;POWERED+BY+GOVIND-BOTS" />
 
 <br/>
 
-<img src="https://komarev.com/ghpvc/?username=GOVIND-BOTS&label=V3MUSIC%20VISITORS&color=7c3aed&style=for-the-badge"/>
+<img src="https://img.shields.io/badge/PROJECT-V3MUSIC-9B59B6?style=for-the-badge&logo=github&logoColor=white"/>
+<img src="https://img.shields.io/badge/EDITION-ADISHA%20MUSIC-FF4DAD?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/POWERED%20BY-GOVIND--BOTS-7B68EE?style=for-the-badge"/>
+
+<br/><br/>
+
+**A stylish Telegram Group Music Bot built for a better voice-chat experience.**
+
+[![GitHub Stars](https://img.shields.io/github/stars/GOVIND-BOTS/v3_musicbot?style=social)](https://github.com/GOVIND-BOTS/v3_musicbot/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/GOVIND-BOTS/v3_musicbot?style=social)](https://github.com/GOVIND-BOTS/v3_musicbot/network/members)
+[![GitHub Issues](https://img.shields.io/github/issues/GOVIND-BOTS/v3_musicbot?style=flat-square&color=red)](https://github.com/GOVIND-BOTS/v3_musicbot/issues)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 </div>
 
 ---
 
-## 🎧 ABOUT V3MUSIC
+## ✦ WELCOME TO THE V3MUSIC UNIVERSE
 
-**V3MUSIC** is a powerful and feature-rich Telegram Group Music Bot designed to deliver a smooth and enjoyable music streaming experience.
+> Not just another music bot. A complete music experience for your Telegram group.
 
-Built with Python and modern Telegram technologies, V3MUSIC brings music directly into your Telegram voice chats with simple commands and interactive controls.
+V3MUSIC is an advanced Telegram music bot designed to bring music playback and easy controls directly into your group's voice chat.
 
-Our goal is simple: **Make music streaming smarter, faster and better!**
+With a clean interface, interactive buttons, queue management and separate audio/video playback commands, V3MUSIC aims to make group music sessions simple and enjoyable.
+
+---
+
+## 🎧 THE MUSIC CONSOLE
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=17&duration=2500&pause=700&color=A78BFA&center=true&vCenter=true&width=550&lines=Your+Music%2C+Your+Vibe+%F0%9F%8E%B6;One+Bot.+Endless+Music.+%E2%9C%A8;Experience+The+V3MUSIC+Power."/>
+| 🎵 AUDIO MODE | 🎬 VIDEO MODE | 🎛️ CONTROL DECK |
+|:---:|:---:|:---:|
+| Music playback | Video playback | Playback controls |
+| `/play` | `/vplay` | Pause / Resume |
+| Audio streaming | Video streaming | Skip / Stop |
 
 </div>
 
-## ✨ FEATURES
+<details>
+<summary><b>🎵 AUDIO EXPERIENCE</b></summary>
 
-| Feature | Description |
-|:---|:---|
-| 🎵 Audio Streaming | Stream music in Telegram voice chats |
-| 🎬 Video Streaming | Play videos in supported voice chats |
-| ⏭️ Skip System | Easily skip currently playing tracks |
-| ⏸️ Playback Controls | Pause and resume your music |
-| 📜 Queue System | Manage your upcoming tracks |
-| 🖼️ Dynamic Thumbnails | Beautiful music information thumbnails |
-| 🔘 Interactive Buttons | Easy-to-use inline controls |
-| 🎧 Assistant System | Assistant-based voice chat playback |
-| ⚙️ Admin Controls | Manage playback with admin commands |
-| 💾 MongoDB | Database-powered settings and storage |
+<br/>
 
-## 🛠️ TECHNOLOGY STACK
+- Play music in your Telegram group's voice chat.
+- Use `/play` to request audio playback.
+- Interactive playback controls.
+- Queue-based music management.
+- Track information and thumbnail support.
+
+</details>
+
+<details>
+<summary><b>🎬 VIDEO EXPERIENCE</b></summary>
+
+<br/>
+
+- Separate video playback command.
+- Use `/vplay` for video requests.
+- Dedicated video streaming mode.
+- Designed for supported Telegram voice chats.
+
+</details>
+
+<details>
+<summary><b>🎛️ CONTROL EXPERIENCE</b></summary>
+
+<br/>
+
+- Pause current playback.
+- Resume paused playback.
+- Skip the current track.
+- Stop playback.
+- View the current music queue.
+- Interactive buttons for supported actions.
+
+</details>
+
+---
+
+## ✦ COMMAND CENTER
 
 <div align="center">
 
-<img src="https://skillicons.dev/icons?i=python,mongodb,git,github,linux,bash,vscode&perline=7"/>
+| COMMAND | DESCRIPTION |
+|:---|:---|
+| `/play` | Play audio in voice chat |
+| `/vplay` | Start video playback |
+| `/pause` | Pause current playback |
+| `/resume` | Resume playback |
+| `/skip` | Skip current track |
+| `/stop` | Stop playback |
+| `/queue` | Show music queue |
+
+</div>
+
+---
+
+## ✦ HOW V3MUSIC WORKS
+
+```mermaid
+flowchart TD
+    A["👤 User sends command"] --> B{"🎧 Playback type"}
+    B -->|" /play "| C["🎵 Audio request"]
+    B -->|" /vplay "| D["🎬 Video request"]
+    C --> E["⚙️ Playback manager"]
+    D --> E
+    E --> F["🔊 Voice chat streaming"]
+    F --> G["🎛️ Interactive controls"]
+    G --> H["⏭️ Next track / Stop"]
+---
+
+## ✦ FEATURE MATRIX
+
+| FEATURE | DESCRIPTION |
+|:---|:---|
+| 🎵 Audio Playback | Play audio in voice chats |
+| 🎬 Video Playback | Separate video playback command |
+| 📋 Queue System | Manage requested tracks |
+| ⏸️ Pause / Resume | Control playback |
+| ⏭️ Skip System | Move to the next track |
+| 🖼️ Thumbnails | Display track thumbnails where supported |
+| 🎛️ Inline Buttons | Interactive playback interface |
+| 🗄️ MongoDB | Database-backed features |
+| ⚡ Pyrogram V2 | Telegram client framework |
+| 🔊 PyTgCalls | Voice chat streaming |
+
+---
+
+## ✦ TECHNOLOGY STACK
+
+<div align="center">
+
+<img src="https://skillicons.dev/icons?i=python,mongodb,github,linux" />
 
 <br/><br/>
 
-<img src="https://img.shields.io/badge/Pyrogram-Telegram%20API-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
-<img src="https://img.shields.io/badge/PyTgCalls-Voice%20Chat%20Engine-7C3AED?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/Python-3.x-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+<img src="https://img.shields.io/badge/Pyrogram-V2-2CA5E0?style=for-the-badge"/>
+<img src="https://img.shields.io/badge/PyTgCalls-Voice%20Streaming-8A2BE2?style=for-the-badge"/>
 <img src="https://img.shields.io/badge/FFmpeg-Media%20Processing-007808?style=for-the-badge&logo=ffmpeg&logoColor=white"/>
 <img src="https://img.shields.io/badge/MongoDB-Database-47A248?style=for-the-badge&logo=mongodb&logoColor=white"/>
 
 </div>
 
-## 🚀 PROJECT REPOSITORY
+---
+
+## ✦ DEPLOYMENT
+
+V3MUSIC can be configured for deployment on supported hosting platforms.
 
 <div align="center">
 
-<a href="https://github.com/GOVIND-BOTS/v3_musicbot">
-<img src="https://github-readme-stats.vercel.app/api/pin/?username=GOVIND-BOTS&repo=v3_musicbot&theme=tokyonight&hide_border=true&border_radius=15" width="80%"/>
-</a>
-
-<br/>
-
-<a href="https://github.com/GOVIND-BOTS/v3_musicbot">
-<img src="https://img.shields.io/badge/EXPLORE%20SOURCE%20CODE-7C3AED?style=for-the-badge&logo=github&logoColor=white"/>
-</a>
+[![Railway](https://img.shields.io/badge/Deploy%20on-Railway-8B5CF6?style=for-the-badge&logo=railway&logoColor=white)](https://railway.app/)
+[![Render](https://img.shields.io/badge/Deploy%20on-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black)](https://render.com/)
+[![Heroku](https://img.shields.io/badge/Deploy%20on-Heroku-7952B3?style=for-the-badge&logo=heroku&logoColor=white)](https://www.heroku.com/)
 
 </div>
 
-## ⚡ COMMANDS
+### Basic Setup
 
-| Command | Function |
-|:---|:---|
-| `/play` | Play music |
-| `/vplay` | Play video |
-| `/pause` | Pause playback |
-| `/resume` | Resume playback |
-| `/skip` | Skip current track |
-| `/stop` | Stop playback |
-| `/queue` | View music queue |
+1. Fork this repository.
+2. Configure the required environment variables.
+3. Add your database configuration.
+4. Install the project requirements.
+5. Start the bot using the provided startup command.
 
-*Note: Available commands may depend on your bot configuration.*
+**Important:** Check the repository configuration and README instructions before deployment. Required environment variables must be configured correctly.
 
-## 📊 GITHUB STATISTICS
+---
+
+## ✦ PROJECT LINKS
 
 <div align="center">
 
-<img src="https://github-readme-stats.vercel.app/api?username=GOVIND-BOTS&show_icons=true&theme=tokyonight&hide_border=true&rank_icon=github" width="95%"/>
+[![Repository](https://img.shields.io/badge/GitHub-Repository-black?style=for-the-badge&logo=github)](https://github.com/GOVIND-BOTS/v3_musicbot)
 
-<br/>
-
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=GOVIND-BOTS&layout=compact&theme=tokyonight&hide_border=true"/>
-
-<br/><br/>
-
-<img src="https://streak-stats.demolab.com?user=GOVIND-BOTS&theme=tokyonight&hide_border=true" width="95%"/>
+[![Updates](https://img.shields.io/badge/Telegram-Updates-26A5E4?style=for-the-badge&logo=telegram)](https://t.me/GOVIND_USERBOT_UPDATE)
 
 </div>
 
-## 🌐 DEPLOYMENT
+---
 
-V3MUSIC can be deployed on supported hosting platforms.
-
-<div align="center">
-
-<img src="https://img.shields.io/badge/RAILWAY-0B0D0E?style=for-the-badge&logo=railway&logoColor=white"/>
-<img src="https://img.shields.io/badge/HEROKU-430098?style=for-the-badge&logo=heroku&logoColor=white"/>
-<img src="https://img.shields.io/badge/RENDER-46E3B7?style=for-the-badge&logo=render&logoColor=black"/>
-<img src="https://img.shields.io/badge/VPS-LINUX-FCC624?style=for-the-badge&logo=linux&logoColor=black"/>
-
-</div>
-
-## 💜 DEVELOPER
+## ✦ DEVELOPER
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=700&size=25&duration=2500&pause=1000&color=06B6D4&center=true&vCenter=true&width=450&lines=GOVIND-BOTS;BUILDING+THE+FUTURE+%F0%9F%9A%80"/>
+<img src="https://readme-typing-svg.demolab.com?font=Orbitron&weight=700&size=25&duration=2500&pause=800&color=FF75D8&center=true&vCenter=true&width=500&lines=GOVIND;FOUNDER+OF+GOVIND-BOTS;CREATOR+OF+V3MUSIC"/>
 
-**Developer:** GOVIND
+**GOVIND**
 
-**GitHub:** [@GOVIND-BOTS](https://github.com/GOVIND-BOTS)
+*Creator & Developer of V3MUSIC*
 
-**Project:** V3MUSIC
-
-<br/>
-
-<a href="https://github.com/GOVIND-BOTS">
-<img src="https://img.shields.io/badge/GITHUB-FOLLOW%20ME-181717?style=for-the-badge&logo=github&logoColor=white"/>
-</a>
-
-<a href="https://t.me/GOVIND_USERBOT_UPDATE">
-<img src="https://img.shields.io/badge/TELEGRAM-JOIN%20UPDATES-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/>
-</a>
+[GitHub Profile](https://github.com/GOVIND-BOTS)
 
 </div>
 
@@ -155,12 +209,13 @@ V3MUSIC can be deployed on supported hosting platforms.
 
 <div align="center">
 
-## 🎵 V3MUSIC — FEEL THE MUSIC!
+<img src="https://capsule-render.vercel.app/api?type=waving&color=auto&height=120&section=footer&text=V3MUSIC&fontSize=35&fontAlignY=65&animation=twinkling"/>
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=18&duration=2200&pause=800&color=7C3AED&center=true&vCenter=true&width=500&lines=Code+With+Passion.;Stream+With+V3MUSIC.;Enjoy+Every+Beat.+%F0%9F%8E%B6"/>
+**✦ ADISHA MUSIC BOT ✦**
 
-**If you like V3MUSIC, don't forget to ⭐ the repository!**
+`POWERED BY GOVIND-BOTS`
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:09090b,25:4c1d95,55:7c3aed,100:06b6d4&height=130&section=footer" width="100%"/>
+*Made with Python and passion.*
 
 </div>
+ 

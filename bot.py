@@ -12,10 +12,15 @@ from config import (
     SESSION_STRING,
     BOT_NAME,
 )
+
 from database.mongodb import ping_db, close_db
 from handlers import register_handlers
 from stream import setup_stream
 
+
+# --------------------------------------------------
+# LOGGING
+# --------------------------------------------------
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,6 +30,11 @@ logging.basicConfig(
 
 LOGGER = logging.getLogger("v3_musicbot")
 
+
+# --------------------------------------------------
+# BOT CLIENT
+# --------------------------------------------------
+
 bot = Client(
     "v3_musicbot_bot",
     api_id=API_ID,
@@ -32,9 +42,14 @@ bot = Client(
     bot_token=BOT_TOKEN,
 )
 
+
 assistant = None
 music_stream = None
 
+
+# --------------------------------------------------
+# ASSISTANT CLIENT
+# --------------------------------------------------
 
 def create_assistant():
     if not SESSION_STRING or SESSION_STRING.startswith("YOUR_"):
@@ -52,6 +67,10 @@ def create_assistant():
     )
 
 
+# --------------------------------------------------
+# MAIN
+# --------------------------------------------------
+
 async def main():
     global assistant, music_stream
 
@@ -59,27 +78,48 @@ async def main():
     assistant_started = False
 
     try:
+        # MongoDB
         LOGGER.info("Checking MongoDB connection...")
+
         await ping_db()
+
         LOGGER.info("MongoDB connection successful.")
 
+        # Start bot
         await bot.start()
         bot_started = True
 
         me = await bot.get_me()
-        LOGGER.info("Bot started: @%s", me.username or me.id)
 
+        LOGGER.info(
+            "Bot started: @%s",
+            me.username or me.id,
+        )
+
+        # Start assistant
         assistant = create_assistant()
+
         await assistant.start()
         assistant_started = True
 
         LOGGER.info("Assistant account connected.")
 
+        # Start music stream
         music_stream = setup_stream(assistant)
+
         await music_stream.start()
 
-        register_handlers(bot, music_stream, assistant)
+        LOGGER.info("Music stream initialized.")
 
+        # Register handlers
+        register_handlers(
+            bot,
+            music_stream,
+            assistant,
+        )
+
+        LOGGER.info("All handlers registered.")
+        LOGGER.info("Student Protection System handlers registered.")
         LOGGER.info("%s is ready.", BOT_NAME)
 
         await idle()
@@ -89,32 +129,41 @@ async def main():
         raise
 
     finally:
+        # Stop music stream
         if music_stream:
             try:
                 await music_stream.shutdown()
             except Exception:
                 LOGGER.exception("Music stream shutdown failed.")
 
+        # Stop assistant
         if assistant and assistant_started:
             try:
                 await assistant.stop()
             except Exception:
                 LOGGER.exception("Assistant shutdown failed.")
 
+        # Stop bot
         if bot_started:
             try:
                 await bot.stop()
             except Exception:
                 LOGGER.exception("Bot shutdown failed.")
 
+        # Close MongoDB
         try:
             await close_db()
         except Exception:
             LOGGER.exception("MongoDB shutdown failed.")
 
 
+# --------------------------------------------------
+# ENTRY POINT
+# --------------------------------------------------
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
+
     except (KeyboardInterrupt, SystemExit):
         pass

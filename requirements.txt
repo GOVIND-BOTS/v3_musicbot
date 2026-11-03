@@ -15,3 +15,5 @@ yt-dlp-getpot-wpc
 google-genai
 gpytranslate
 tgcrypto
+nudenet
+opencv-python-headless

@@ -19,5 +19,6 @@ gpytranslate
 tgcrypto
 
 
-nudenet
+nudenet>=3.4.2
 opencv-python-headless
+

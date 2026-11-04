@@ -46,4 +46,4 @@ def register_handlers(
     
     register_logo_handlers(app)
     register_anti_abuse_handlers(app)
-    register_eval(bot)
+    register_eval(app)

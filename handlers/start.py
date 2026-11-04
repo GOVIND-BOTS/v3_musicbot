@@ -25,9 +25,7 @@ from database.mongodb import add_user, add_chat
 
 LOGGER = logging.getLogger(__name__)
 
-# ==================== SOURCE MENU VIDEO ====================
-# Yahan apna source menu ka video link daalo (Telegram file_id ya direct link)
-SOURCE_VIDEO = "https://graph.org/file/your-source-video.mp4"   # ← yahan apna video daalo
+SOURCE_VIDEO = "https://graph.org/file/your-source-video.mp4"
 
 
 def _safe_url(value):
@@ -41,89 +39,89 @@ def _safe_url(value):
 def _start_text():
     name = html.escape(BOT_NAME or "GOVIND MUSIC")
     return (
-        f"✦ THIS IS ✿ <b>{name}</b> ✿ ✦ ♫ !\n"
-        "========================================\n"
-        "✦ 🎧 MUSIC PLAYER WITH CLONE FEATURES\n"
-        "✦ 🤖 CREATE YOUR OWN BOT INSTANTLY\n"
-        "✦ ⚡ 24x7 ACTIVE | ★ PREMIUM QUALITY\n"
-        "✦ ❓ CLICK ON THE HELP BUTTON TO GET INFO\n"
-        "   ABOUT MY MODULES AND COMMANDS...!\n"
-        "========================================"
+        f"🍃ᶦϻᷧ)•𝐓ʜɪs ɪs 𝐒ᴛʏʟᴇ•(𝐗ᴅ <b>{name}</b> 🍃\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🎧 𝐌ᴜsɪᴄ 𝐏ʟᴀʏᴇʀ 𝐖ɪᴛʜ 𝐂ʟᴏɴᴇ 𝐅ᴇᴀᴛᴜʀᴇs\n"
+        "🤖 𝐂ʀᴇᴀᴛᴇ 𝐘ᴏᴜʀ 𝐎ᴡɴ 𝐁ᴏᴛ 𝐈ɴsᴛᴀɴᴛʟʏ\n"
+        "⚡ 𝟸𝟺/𝟽 𝐀ᴄᴛɪᴠᴇ | ★ 𝐏ʀᴇᴍɪᴜᴍ 𝐐ᴜᴀʟɪᴛʏ\n"
+        "❓ 𝐂ʟɪᴄᴋ 𝐇ᴇʟᴘ 𝐅ᴏʀ 𝐌ᴏᴅᴜʟᴇs & 𝐂ᴏᴍᴍᴀɴᴅs\n"
+        "━━━━━━━━━━━━━━━━━━━━━━"
     )
 
 
 def _help_home_text():
     return (
-        "✦ <b>CHOOSE THE CATEGORY FOR WHICH YOU WANNA GET HELP.</b>\n"
-        "❓ ASK YOUR DOUBTS AT ✦ SUPPORT CHAT\n"
-        "ALL COMMANDS CAN BE USED WITH : /"
+        "🍃 <b>𝐂ʜᴏᴏsᴇ 𝐀 𝐂ᴀᴛᴇɢᴏʀʏ 𝐅ᴏʀ 𝐇ᴇʟᴘ</b>\n\n"
+        "❓ 𝐀sᴋ 𝐘ᴏᴜʀ 𝐃ᴏᴜʙᴛs 𝐈ɴ 𝐒ᴜᴘᴘᴏʀᴛ 𝐂ʜᴀᴛ\n"
+        "━━━━━━━━━━━━━━━━━━━━━━\n"
+        "✦ 𝐀ʟʟ 𝐂ᴏᴍᴍᴀɴᴅs 𝐔sᴇ 𝐏ʀᴇғɪx : /"
     )
 
 
 def _source_text():
     return (
-        "✦ <b>SOURCE CODE</b> ✦\n\n"
-        "Yeh bot ka source private hai.\n"
-        "Agar aapko source chahiye to Owner se contact karein.\n\n"
-        "👑 Owner se baat karne ke liye neeche button dabayein."
+        "🍃 <b>𝐒ᴏᴜʀᴄᴇ 𝐂ᴏᴅᴇ</b> 🍃\n\n"
+        "𝐓ʜɪs 𝐁ᴏᴛ's 𝐒ᴏᴜʀᴄᴇ ɪs 𝐏ʀɪᴠᴀᴛᴇ.\n"
+        "𝐂ᴏɴᴛᴀᴄᴛ 𝐓ʜᴇ 𝐎ᴡɴᴇʀ ɪғ 𝐘ᴏᴜ 𝐍ᴇᴇᴅ 𝐈ᴛ.\n\n"
+        "👑 𝐓ᴀᴘ 𝐓ʜᴇ 𝐁ᴜᴛᴛᴏɴ 𝐁ᴇʟᴏᴡ 𝐓ᴏ 𝐂ᴏɴᴛᴀᴄᴛ 𝐎ᴡɴᴇʀ."
     )
 
 
 HELP_PAGES = {
     "admin": (
-        "<b>ADMIN COMMANDS :</b>\n\n"
-        "<code>/pause</code> — Pause the current playing stream.\n"
-        "<code>/resume</code> — Resume the paused stream.\n"
-        "<code>/skip</code> — Skip the current playing stream.\n"
-        "<code>/stop</code> — Clears the queue and end stream.\n"
-        "<code>/player</code> — Get interactive player panel.\n"
-        "<code>/queue</code> — Shows the queued tracks list."
+        "<b>👮 𝐀ᴅᴍɪɴ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/pause</code> — 𝐏ᴀᴜsᴇ 𝐓ʜᴇ 𝐂ᴜʀʀᴇɴᴛ 𝐒ᴛʀᴇᴀᴍ.\n"
+        "<code>/resume</code> — 𝐑ᴇsᴜᴍᴇ 𝐓ʜᴇ 𝐏ᴀᴜsᴇᴅ 𝐒ᴛʀᴇᴀᴍ.\n"
+        "<code>/skip</code> — 𝐒ᴋɪᴘ 𝐓ʜᴇ 𝐂ᴜʀʀᴇɴᴛ 𝐓ʀᴀᴄᴋ.\n"
+        "<code>/stop</code> — 𝐂ʟᴇᴀʀ 𝐐ᴜᴇᴜᴇ & 𝐒ᴛᴏᴘ 𝐒ᴛʀᴇᴀᴍ.\n"
+        "<code>/player</code> — 𝐎ᴘᴇɴ 𝐏ʟᴀʏᴇʀ 𝐏ᴀɴᴇʟ.\n"
+        "<code>/queue</code> — 𝐒ʜᴏᴡ 𝐐ᴜᴇᴜᴇ 𝐋ɪsᴛ."
     ),
     "auth": (
-        "<b>AUTH COMMANDS :</b>\n\n"
-        "<code>/auth</code> — Add a user to auth list.\n"
-        "<code>/unauth</code> — Remove a user from auth list.\n"
-        "<code>/authusers</code> — Show all auth users."
+        "<b>🔐 𝐀ᴜᴛʜ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/auth</code> — 𝐀ᴅᴅ 𝐔sᴇʀ 𝐓ᴏ 𝐀ᴜᴛʜ 𝐋ɪsᴛ.\n"
+        "<code>/unauth</code> — 𝐑ᴇᴍᴏᴠᴇ 𝐔sᴇʀ 𝐅ʀᴏᴍ 𝐀ᴜᴛʜ.\n"
+        "<code>/authusers</code> — 𝐒ʜᴏᴡ 𝐀ᴜᴛʜ 𝐔sᴇʀs."
     ),
     "play": (
-        "<b>PLAY COMMANDS :</b>\n\n"
-        "<code>/play</code> — Play the requested song.\n"
-        "<code>/vplay</code> — Play video song.\n"
-        "<code>/cplay</code> — Play in channel."
+        "<b>🎵 𝐏ʟᴀʏ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/play</code> — 𝐏ʟᴀʏ 𝐘ᴏᴜʀ 𝐑ᴇǫᴜᴇsᴛᴇᴅ 𝐒ᴏɴɢ.\n"
+        "<code>/vplay</code> — 𝐏ʟᴀʏ 𝐕ɪᴅᴇᴏ 𝐒ᴏɴɢ.\n"
+        "<code>/cplay</code> — 𝐏ʟᴀʏ 𝐈ɴ 𝐂ʜᴀɴɴᴇʟ."
     ),
     "loop": (
-        "<b>LOOP COMMANDS :</b>\n\n"
-        "<code>/loop</code> — Enable/Disable loop."
+        "<b>🔁 𝐋ᴏᴏᴘ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/loop</code> — 𝐄ɴᴀʙʟᴇ / 𝐃ɪsᴀʙʟᴇ 𝐋ᴏᴏᴘ."
     ),
     "shuffle": (
-        "<b>SHUFFLE QUEUE :</b>\n\n"
-        "<code>/shuffle</code> — Shuffle the queue list."
+        "<b>🔀 𝐒ʜᴜғғʟᴇ 𝐐ᴜᴇᴜᴇ</b>\n\n"
+        "<code>/shuffle</code> — 𝐒ʜᴜғғʟᴇ 𝐓ʜᴇ 𝐐ᴜᴇᴜᴇ."
     ),
     "seek": (
-        "<b>SEEK COMMANDS :</b>\n\n"
-        "<code>/seek</code> — Seek the current playing stream."
+        "<b>⏩ 𝐒ᴇᴇᴋ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/seek</code> — 𝐒ᴇᴇᴋ 𝐂ᴜʀʀᴇɴᴛ 𝐒ᴛʀᴇᴀᴍ."
     ),
     "song": (
-        "<b>SONG DOWNLOAD :</b>\n\n"
-        "<code>/song</code> — Download track in audio.\n"
-        "<code>/video</code> — Download track in video."
+        "<b>🎶 𝐒ᴏɴɢ 𝐃ᴏᴡɴʟᴏᴀᴅ</b>\n\n"
+        "<code>/song</code> — 𝐃ᴏᴡɴʟᴏᴀᴅ 𝐀ᴜᴅɪᴏ 𝐓ʀᴀᴄᴋ.\n"
+        "<code>/video</code> — 𝐃ᴏᴡɴʟᴏᴀᴅ 𝐕ɪᴅᴇᴏ 𝐓ʀᴀᴄᴋ."
     ),
     "speed": (
-        "<b>SPEED COMMANDS :</b>\n\n"
-        "<code>/speed</code> — Change the playback speed."
+        "<b>⚡ 𝐒ᴘᴇᴇᴅ 𝐂ᴏᴍᴍᴀɴᴅs</b>\n\n"
+        "<code>/speed</code> — 𝐂ʜᴀɴɢᴇ 𝐏ʟᴀʏʙᴀᴄᴋ 𝐒ᴘᴇᴇᴅ."
     ),
     "ping": (
-        "<b>PING :</b>\n\n"
-        "<code>/ping</code> — Check bot ping & system stats."
+        "<b>📡 𝐏ɪɴɢ</b>\n\n"
+        "<code>/ping</code> — 𝐂ʜᴇᴄᴋ 𝐁ᴏᴛ 𝐏ɪɴɢ & 𝐒ʏsᴛᴇᴍ 𝐒ᴛᴀᴛs."
     ),
     "gban": (
-        "<b>GLOBAL BAN :</b>\n\n"
-        "<code>/gban</code> — Globally ban a user.\n"
-        "<code>/ungban</code> — Remove global ban."
+        "<b>🛡 𝐆ʟᴏʙᴀʟ 𝐁ᴀɴ</b>\n\n"
+        "<code>/gban</code> — 𝐆ʟᴏʙᴀʟʟʏ 𝐁ᴀɴ 𝐀 𝐔sᴇʀ.\n"
+        "<code>/ungban</code> — 𝐑ᴇᴍᴏᴠᴇ 𝐆ʟᴏʙᴀʟ 𝐁ᴀɴ."
     ),
     "broadcast": (
-        "<b>BROADCAST :</b>\n\n"
-        "<code>/broadcast</code> — Broadcast message to all chats."
+        "<b>📢 𝐁ʀᴏᴀᴅᴄᴀsᴛ</b>\n\n"
+        "<code>/broadcast</code> — 𝐒ᴇɴᴅ 𝐌ᴇssᴀɢᴇ 𝐓ᴏ 𝐀ʟʟ 𝐂ʜᴀᴛs."
     ),
 }
 
@@ -134,29 +132,28 @@ def get_start_keyboard(bot_username):
     if bot_username:
         rows.append([
             InlineKeyboardButton(
-                "➕ ADD ME TO YOUR GROUP",
+                "➕ 𝐀ᴅᴅ 𝐌ᴇ 𝐓ᴏ 𝐆ʀᴏᴜᴘ",
                 url=f"https://t.me/{bot_username}?startgroup=true",
             )
         ])
 
     rows.append([
-        InlineKeyboardButton("👑 OWNER", url=f"tg://user?id={OWNER_ID}"),
-        InlineKeyboardButton("🧬 CLONE", url="https://t.me/YOUR_CLONE_BOT"),  # ← apna clone bot daalo
+        InlineKeyboardButton("👑 𝐎ᴡɴᴇʀ", url=f"tg://user?id={OWNER_ID}"),
+        InlineKeyboardButton("🧬 𝐂ʟᴏɴᴇ", url="https://t.me/YOUR_CLONE_BOT"),
     ])
 
     support = _safe_url(SUPPORT_CHAT)
     third_row = []
     if support:
-        third_row.append(InlineKeyboardButton("💬 SUPPORT", url=support))
-    
-    # SOURCE ab callback se khulega (repo link nahi)
-    third_row.append(InlineKeyboardButton("📦 SOURCE", callback_data="source_menu"))
+        third_row.append(InlineKeyboardButton("💬 𝐒ᴜᴘᴘᴏʀᴛ", url=support))
+
+    third_row.append(InlineKeyboardButton("📦 𝐒ᴏᴜʀᴄᴇ", callback_data="source_menu"))
 
     if third_row:
         rows.append(third_row)
 
     rows.append([
-        InlineKeyboardButton("🎧 HELP AND COMMANDS", callback_data="help_cmd")
+        InlineKeyboardButton("🎧 𝐇ᴇʟᴘ & 𝐂ᴏᴍᴍᴀɴᴅs", callback_data="help_cmd")
     ])
 
     return InlineKeyboardMarkup(rows)
@@ -165,8 +162,8 @@ def get_start_keyboard(bot_username):
 def get_source_keyboard():
     return InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("👑 OWNER", url=f"tg://user?id={OWNER_ID}"),
-            InlineKeyboardButton("🔙 BACK", callback_data="start_home"),
+            InlineKeyboardButton("👑 𝐎ᴡɴᴇʀ", url=f"tg://user?id={OWNER_ID}"),
+            InlineKeyboardButton("🔙 𝐁ᴀᴄᴋ", callback_data="start_home"),
         ]
     ])
 
@@ -175,39 +172,39 @@ def get_help_keyboard(page="home"):
     if page == "home":
         rows = [
             [
-                InlineKeyboardButton("👮 ADMIN", callback_data="help_admin"),
-                InlineKeyboardButton("🔐 AUTH", callback_data="help_auth"),
-                InlineKeyboardButton("📢 G-CAST", callback_data="help_broadcast"),
+                InlineKeyboardButton("👮 𝐀ᴅᴍɪɴ", callback_data="help_admin"),
+                InlineKeyboardButton("🔐 𝐀ᴜᴛʜ", callback_data="help_auth"),
+                InlineKeyboardButton("📢 𝐆-𝐂ᴀsᴛ", callback_data="help_broadcast"),
             ],
             [
-                InlineKeyboardButton("🚫 BL-CHAT", callback_data="help_gban"),
-                InlineKeyboardButton("👤 BL-USER", callback_data="help_gban"),
-                InlineKeyboardButton("▶️ C-PLAY", callback_data="help_play"),
+                InlineKeyboardButton("🚫 𝐁ʟ-𝐂ʜᴀᴛ", callback_data="help_gban"),
+                InlineKeyboardButton("👤 𝐁ʟ-𝐔sᴇʀ", callback_data="help_gban"),
+                InlineKeyboardButton("▶️ 𝐂-𝐏ʟᴀʏ", callback_data="help_play"),
             ],
             [
-                InlineKeyboardButton("🛡 G-BAN", callback_data="help_gban"),
-                InlineKeyboardButton("🔁 LOOP", callback_data="help_loop"),
-                InlineKeyboardButton("⏩ AUTO-PLAY", callback_data="help_play"),
+                InlineKeyboardButton("🛡 𝐆-𝐁ᴀɴ", callback_data="help_gban"),
+                InlineKeyboardButton("🔁 𝐋ᴏᴏᴘ", callback_data="help_loop"),
+                InlineKeyboardButton("⏩ 𝐀ᴜᴛᴏ-𝐏ʟᴀʏ", callback_data="help_play"),
             ],
             [
-                InlineKeyboardButton("📡 PING", callback_data="help_ping"),
-                InlineKeyboardButton("🎵 PLAY", callback_data="help_play"),
-                InlineKeyboardButton("🔀 SHUFFLE", callback_data="help_shuffle"),
+                InlineKeyboardButton("📡 𝐏ɪɴɢ", callback_data="help_ping"),
+                InlineKeyboardButton("🎵 𝐏ʟᴀʏ", callback_data="help_play"),
+                InlineKeyboardButton("🔀 𝐒ʜᴜғғʟᴇ", callback_data="help_shuffle"),
             ],
             [
-                InlineKeyboardButton("⏩ SEEK", callback_data="help_seek"),
-                InlineKeyboardButton("🎶 SONG", callback_data="help_song"),
-                InlineKeyboardButton("⚡ SPEED", callback_data="help_speed"),
+                InlineKeyboardButton("⏩ 𝐒ᴇᴇᴋ", callback_data="help_seek"),
+                InlineKeyboardButton("🎶 𝐒ᴏɴɢ", callback_data="help_song"),
+                InlineKeyboardButton("⚡ 𝐒ᴘᴇᴇᴅ", callback_data="help_speed"),
             ],
             [
-                InlineKeyboardButton("🔙 BACK", callback_data="start_home"),
+                InlineKeyboardButton("🔙 𝐁ᴀᴄᴋ", callback_data="start_home"),
             ],
         ]
     else:
         rows = [
             [
-                InlineKeyboardButton("🔙 BACK", callback_data="help_cmd"),
-                InlineKeyboardButton("❌ CLOSE", callback_data="ctrl_close"),
+                InlineKeyboardButton("🔙 𝐁ᴀᴄᴋ", callback_data="help_cmd"),
+                InlineKeyboardButton("❌ 𝐂ʟᴏsᴇ", callback_data="ctrl_close"),
             ]
         ]
     return InlineKeyboardMarkup(rows)
@@ -245,17 +242,15 @@ async def send_start(client, message):
         except Exception:
             LOGGER.exception("Could not save user.")
 
-    # ========== ANIMATION START ==========
-    anim_msg = await message.reply_text("❤️")
+    anim_msg = await message.reply_text("🍃")
     await asyncio.sleep(0.4)
-    await anim_msg.edit_text("❤️ STARTING...")
+    await anim_msg.edit_text("🍃 𝐒ᴛᴀʀᴛɪɴɢ...")
     await asyncio.sleep(0.4)
-    await anim_msg.edit_text("💖 STARTING...")
+    await anim_msg.edit_text("💚 𝐒ᴛᴀʀᴛɪɴɢ...")
     await asyncio.sleep(0.4)
-    await anim_msg.edit_text("💓 ALMOST READY...")
+    await anim_msg.edit_text("✨ 𝐀ʟᴍᴏsᴛ 𝐑ᴇᴀᴅʏ...")
     await asyncio.sleep(0.5)
     await anim_msg.delete()
-    # ====================================
 
     keyboard = get_start_keyboard(me.username or "")
 
@@ -307,9 +302,9 @@ def register_start_handlers(app):
             await add_chat(message.chat.id)
             me = await client.get_me()
             caption = (
-                f"✦ THIS IS ✿ <b>{html.escape(BOT_NAME)}</b> ✿ ✦\n"
-                f"Welcome to <b>{html.escape(message.chat.title or 'Group')}</b>!\n\n"
-                "Use /play to start music."
+                f"🍃 𝐓ʜɪs ɪs <b>{html.escape(BOT_NAME)}</b> 🍃\n"
+                f"✨ 𝐖ᴇʟᴄᴏᴍᴇ 𝐓ᴏ <b>{html.escape(message.chat.title or 'Group')}</b>!\n\n"
+                "🎧 𝐔sᴇ /play 𝐓ᴏ 𝐒ᴛᴀʀᴛ 𝐌ᴜsɪᴄ."
             )
             keyboard = get_start_keyboard(me.username or "")
             if START_IMAGE:
@@ -331,12 +326,10 @@ def register_start_handlers(app):
     async def help_command(client, message):
         await send_help(message)
 
-    # ==================== SOURCE MENU ====================
     @app.on_callback_query(filters.regex(r"^source_menu$"))
     async def source_menu_callback(client, query: CallbackQuery):
         await query.answer()
         try:
-            # Pehle purana message delete karke naya video bhej rahe hain
             await query.message.delete()
         except Exception:
             pass
@@ -350,7 +343,6 @@ def register_start_handlers(app):
                 reply_markup=get_source_keyboard(),
             )
         except Exception as e:
-            # Agar video fail ho jaye to text bhej do
             LOGGER.warning(f"Source video failed: {e}")
             await client.send_message(
                 chat_id=query.message.chat.id,
@@ -359,7 +351,6 @@ def register_start_handlers(app):
                 reply_markup=get_source_keyboard(),
             )
 
-    # ==================== HELP CALLBACKS ====================
     @app.on_callback_query(filters.regex(r"^help_cmd$"))
     async def help_callback(client, query: CallbackQuery):
         await query.answer()
@@ -369,7 +360,7 @@ def register_start_handlers(app):
     async def help_section_callback(client, query: CallbackQuery):
         page = query.data.split("_", 1)[1]
         await query.answer()
-        text = HELP_PAGES.get(page, "No information available.")
+        text = HELP_PAGES.get(page, "𝐍ᴏ 𝐈ɴғᴏʀᴍᴀᴛɪᴏɴ 𝐀ᴠᴀɪʟᴀʙʟᴇ.")
         await _edit_menu(query, text, get_help_keyboard(page))
 
     @app.on_callback_query(filters.regex(r"^start_home$"))
@@ -381,7 +372,6 @@ def register_start_handlers(app):
         except Exception:
             pass
 
-        # Wapas start menu bhejo
         keyboard = get_start_keyboard(me.username or "")
         if START_IMAGE:
             try:

@@ -1,4 +1,3 @@
-
 import ast
 import asyncio
 import logging
@@ -15,32 +14,13 @@ from pyrogram.types import (
     Message,
 )
 
-from config import OWNER_ID
+from config import OWNER_ID, SUDO_USERS
 
 LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = 5
 MAX_OUTPUT = 12000
 MAX_CODE = 8000
-
-# --------------------------------------------------
-# OWNER CONFIGURATION
-# --------------------------------------------------
-
-def get_owner_ids():
-    if isinstance(OWNER_ID, (list, tuple, set)):
-        return {int(x) for x in OWNER_ID}
-
-    return {int(OWNER_ID)}
-
-
-def is_owner(user_id):
-    return user_id in get_owner_ids()
-
-
-# --------------------------------------------------
-# SAFE PYTHON OPERATIONS
-# --------------------------------------------------
 
 BINARY_OPERATORS = {
     ast.Add: operator.add,
@@ -73,30 +53,23 @@ class SafeTestError(Exception):
 
 
 class SafeRunner:
-
     def __init__(self):
         self.variables = {}
         self.output = []
 
     def evaluate(self, node):
-
         if isinstance(node, ast.Constant):
             if isinstance(node.value, (int, float, str, bool, type(None))):
                 return node.value
-
             raise SafeTestError("Unsupported constant.")
 
         if isinstance(node, ast.Name):
             if node.id in self.variables:
                 return self.variables[node.id]
-
-            raise SafeTestError(
-                f"Undefined variable: {node.id}"
-            )
+            raise SafeTestError(f"Undefined variable: {node.id}")
 
         if isinstance(node, ast.BinOp):
             operation = BINARY_OPERATORS.get(type(node.op))
-
             if operation is None:
                 raise SafeTestError("Unsupported operator.")
 
@@ -118,95 +91,63 @@ class SafeRunner:
 
         if isinstance(node, ast.UnaryOp):
             operation = UNARY_OPERATORS.get(type(node.op))
-
             if operation is None:
                 raise SafeTestError("Unsupported unary operator.")
-
             return operation(self.evaluate(node.operand))
 
         if isinstance(node, ast.Compare):
             left = self.evaluate(node.left)
-
-            for operator_node, comparator in zip(
-                node.ops,
-                node.comparators,
-            ):
+            for operator_node, comparator in zip(node.ops, node.comparators):
                 operation = COMPARE_OPERATORS.get(type(operator_node))
-
                 if operation is None:
                     raise SafeTestError("Unsupported comparison.")
-
                 right = self.evaluate(comparator)
-
                 if not operation(left, right):
                     return False
-
                 left = right
-
             return True
 
         if isinstance(node, ast.BoolOp):
             values = [self.evaluate(value) for value in node.values]
-
             if isinstance(node.op, ast.And):
                 return all(values)
-
             if isinstance(node.op, ast.Or):
                 return any(values)
-
             raise SafeTestError("Unsupported boolean operation.")
 
         if isinstance(node, ast.Call):
             if not isinstance(node.func, ast.Name):
                 raise SafeTestError("Only print() is allowed.")
-
             if node.func.id != "print":
                 raise SafeTestError("Only print() is allowed.")
-
             if node.keywords:
                 raise SafeTestError("Print keyword arguments are disabled.")
 
             values = [self.evaluate(arg) for arg in node.args]
-
-            self.output.append(
-                " ".join(str(value) for value in values)
-            )
-
+            self.output.append(" ".join(str(value) for value in values))
             return None
 
-        raise SafeTestError(
-            f"Unsupported syntax: {type(node).__name__}"
-        )
+        raise SafeTestError(f"Unsupported syntax: {type(node).__name__}")
 
     def run(self, code):
-
         tree = ast.parse(code, mode="exec")
 
         if len(tree.body) > 100:
             raise SafeTestError("Too many statements.")
 
         for statement in tree.body:
-
             if isinstance(statement, ast.Expr):
                 self.evaluate(statement.value)
 
             elif isinstance(statement, ast.Assign):
-
                 if len(statement.targets) != 1:
-                    raise SafeTestError(
-                        "Multiple assignments are disabled."
-                    )
+                    raise SafeTestError("Multiple assignments are disabled.")
 
                 target = statement.targets[0]
-
                 if not isinstance(target, ast.Name):
-                    raise SafeTestError(
-                        "Only simple variables are allowed."
-                    )
+                    raise SafeTestError("Only simple variables are allowed.")
 
-                self.variables[target.id] = self.evaluate(
-                    statement.value
-                )
+                self.variables[target.id] = self.evaluate(statement.value)
 
             else:
                 raise SafeTestError(
@@ -216,22 +157,39 @@ class SafeRunner:
         return "\n".join(self.output) or "Code executed successfully."
 
 
-# --------------------------------------------------
-# TEST RUNNER
-# --------------------------------------------------
+def get_allowed_ids():
+    ids = set()
+
+    try:
+        if isinstance(OWNER_ID, (list, tuple, set)):
+            ids.update(int(x) for x in OWNER_ID)
+        elif OWNER_ID:
+            ids.add(int(OWNER_ID))
+    except Exception:
+        pass
+
+    try:
+        if SUDO_USERS:
+            ids.update(int(x) for x in SUDO_USERS)
+    except Exception:
+        pass
+
+    return ids
+
+
+def is_allowed(user_id):
+    return int(user_id) in get_allowed_ids()
+
 
 async def run_test(code):
-
     start = time.monotonic()
 
     try:
         runner = SafeRunner()
-
         output = await asyncio.wait_for(
             asyncio.to_thread(runner.run, code),
             timeout=TIMEOUT,
         )
-
         return (
             "SUCCESS",
             output[:MAX_OUTPUT],
@@ -239,7 +197,6 @@ async def run_test(code):
         )
 
     except asyncio.TimeoutError:
-
         return (
             "TIMEOUT",
             "Test exceeded the time limit.",
@@ -247,9 +204,6 @@ async def run_test(code):
         )
 
     except Exception as error:
-
-        LOGGER.exception("Code test failed")
-
         return (
             "FAILED",
             f"{type(error).__name__}: {error}",
@@ -257,12 +211,7 @@ async def run_test(code):
         )
 
 
-# --------------------------------------------------
-# RESULT BUTTONS
-# --------------------------------------------------
-
 def make_keyboard(runtime):
-
     return InlineKeyboardMarkup(
         [
             [
@@ -279,18 +228,7 @@ def make_keyboard(runtime):
     )
 
 
-# --------------------------------------------------
-# SEND RESULT
-# --------------------------------------------------
-
-async def send_result(
-    message,
-    code,
-    status,
-    output,
-    runtime,
-):
-
+async def send_result(message, code, status, output, runtime):
     text = (
         "<b>V3MUSIC CODE TEST</b>\n\n"
         f"<b>Status:</b> {escape(str(status))}\n"
@@ -302,32 +240,23 @@ async def send_result(
     )
 
     if len(text) <= 4000:
-
-        sent = await message.reply_text(
-            text,
-            reply_markup=make_keyboard(runtime),
-        )
-
-        return sent
+        await message.reply_text(text, reply_markup=make_keyboard(runtime))
+        return
 
     filename = None
-
     try:
-
         with tempfile.NamedTemporaryFile(
             mode="w",
             suffix=".txt",
             encoding="utf-8",
             delete=False,
         ) as file:
-
             file.write(
                 f"STATUS: {status}\n"
                 f"RUNTIME: {runtime}s\n\n"
                 f"CODE:\n{code}\n\n"
                 f"OUTPUT:\n{output}"
             )
-
             filename = file.name
 
         await message.reply_document(
@@ -338,63 +267,67 @@ async def send_result(
             ),
             reply_markup=make_keyboard(runtime),
         )
-
     finally:
-
         if filename and os.path.exists(filename):
             os.remove(filename)
 
 
-# --------------------------------------------------
-# REGISTER EVAL HANDLERS
-# --------------------------------------------------
-
 def register_eval(app):
+    allowed = get_allowed_ids()
+    LOGGER.info("Eval allowed IDs: %s", allowed)
 
-    owner_ids = list(get_owner_ids())
-
-    if not owner_ids:
-        LOGGER.warning("Eval disabled: No owner IDs configured.")
+    if not allowed:
+        LOGGER.warning("Eval disabled: No OWNER_ID / SUDO_USERS configured.")
         return
 
     @app.on_message(
-        filters.command(
-            ["eval", "test"],
-            prefixes=["/", ".", "?", "-"],
-        )
-        & filters.user(owner_ids)
+        filters.command(["eval", "test"], prefixes=["/", ".", "?", "-"])
     )
     async def eval_command(client, message: Message):
-
         if not message.from_user:
             return
 
-        if not is_owner(message.from_user.id):
-            return
+        uid = message.from_user.id
 
-        if not message.text:
-            return
-
-        parts = message.text.split(None, 1)
-
-        if len(parts) < 2 or not parts[1].strip():
-
+        # Ab silent nahi — clear message
+        if not is_allowed(uid):
+            LOGGER.warning(
+                "Eval blocked for user %s | allowed=%s",
+                uid,
+                get_allowed_ids(),
+            )
             return await message.reply_text(
-                "<b>Send Python code to test.</b>\n\n"
-                "<code>/eval print('Hello V3Music')</code>"
+                f"❌ Owner/Sudo only.\n\n"
+                f"Your ID: `{uid}`\n"
+                f"Allowed: `{', '.join(map(str, get_allowed_ids()))}`"
             )
 
-        code = parts[1].strip()
+        code = None
+
+        # 1) /eval code
+        if message.text:
+            parts = message.text.split(None, 1)
+            if len(parts) >= 2 and parts[1].strip():
+                code = parts[1].strip()
+
+        # 2) reply pe code
+        if not code and message.reply_to_message:
+            reply = message.reply_to_message
+            code = (reply.text or reply.caption or "").strip()
+
+        if not code:
+            return await message.reply_text(
+                "<b>Send Python code to test.</b>\n\n"
+                "<code>/eval print('Hello V3Music')</code>\n\n"
+                "Ya kisi code message pe reply karke <code>/eval</code> likho."
+            )
 
         if len(code) > MAX_CODE:
-
             return await message.reply_text(
                 f"Code too long. Maximum: {MAX_CODE} characters."
             )
 
-        status_message = await message.reply_text(
-            "<b>Testing Python code...</b>"
-        )
+        status_message = await message.reply_text("<b>Testing Python code...</b>")
 
         status, output, runtime = await run_test(code)
 
@@ -403,51 +336,23 @@ def register_eval(app):
         except Exception:
             pass
 
-        await send_result(
-            message,
-            code,
-            status,
-            output,
-            runtime,
-        )
+        await send_result(message, code, status, output, runtime)
 
-    # Runtime callback
-    @app.on_callback_query(
-        filters.regex(r"^eval_runtime$")
-    )
+    @app.on_callback_query(filters.regex(r"^eval_runtime$"))
     async def eval_runtime_callback(client, query):
+        if not is_allowed(query.from_user.id):
+            return await query.answer("Owner only.", show_alert=True)
+        await query.answer("Runtime is displayed in the result.", show_alert=True)
 
-        if not is_owner(query.from_user.id):
-            return await query.answer(
-                "Owner only.",
-                show_alert=True,
-            )
-
-        await query.answer(
-            "Runtime is displayed in the result.",
-            show_alert=True,
-        )
-
-    # Delete callback
-    @app.on_callback_query(
-        filters.regex(r"^eval_delete$")
-    )
+    @app.on_callback_query(filters.regex(r"^eval_delete$"))
     async def eval_delete_callback(client, query):
-
-        if not is_owner(query.from_user.id):
-            return await query.answer(
-                "Owner only.",
-                show_alert=True,
-            )
+        if not is_allowed(query.from_user.id):
+            return await query.answer("Owner only.", show_alert=True)
 
         try:
             await query.message.delete()
             await query.answer("Result deleted.")
-
         except Exception:
-            await query.answer(
-                "Unable to delete result.",
-                show_alert=True,
-            )
+            await query.answer("Unable to delete result.", show_alert=True)
 
     LOGGER.info("Safe Eval/Test handlers registered successfully.")

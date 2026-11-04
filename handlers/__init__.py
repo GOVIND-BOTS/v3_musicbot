@@ -1,4 +1,3 @@
-
 from .start import register_start_handlers
 from .play import register_play_handlers
 from .callbacks import register_callback_handlers
@@ -14,6 +13,7 @@ from .whisper import register_whisper_handlers
 from .student_protection import register_handlers as register_student_protection
 from .clone import register_clone_handlers
 from .logo import register_logo_handlers
+
 
 def register_handlers(
     app,
@@ -41,4 +41,6 @@ def register_handlers(
 
     if include_clone:
         register_clone_handlers(app)
-        register_logo_handlers(app)
+
+    
+    register_logo_handlers(app)

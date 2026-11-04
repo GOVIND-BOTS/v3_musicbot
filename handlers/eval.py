@@ -81,7 +81,7 @@ class SafeRunner:
 
             result = operation(left, right)
 
-            if isinstance(result, (int, float)) and abs(result) > 10**100:
+            if isinstance(result, (int, float)) and abs(result) > 10 ** 100:
                 raise SafeTestError("Result limit exceeded.")
 
             if isinstance(result, str) and len(result) > 5000:
@@ -178,7 +178,10 @@ def get_allowed_ids():
 
 
 def is_allowed(user_id):
-    return int(user_id) in get_allowed_ids()
+    try:
+        return int(user_id) in get_allowed_ids()
+    except Exception:
+        return False
 
 
 async def run_test(code):
@@ -192,7 +195,7 @@ async def run_test(code):
         )
         return (
             "SUCCESS",
-            output[:MAX_OUTPUT],
+            str(output)[:MAX_OUTPUT],
             round(time.monotonic() - start, 3),
         )
 
@@ -236,7 +239,7 @@ async def send_result(message, code, status, output, runtime):
         "<b>Code:</b>\n"
         f"<pre>{escape(code[:1000])}</pre>\n\n"
         "<b>Output:</b>\n"
-        f"<pre>{escape(output[:2000])}</pre>"
+        f"<pre>{escape(str(output)[:2000])}</pre>"
     )
 
     if len(text) <= 4000:
@@ -262,14 +265,17 @@ async def send_result(message, code, status, output, runtime):
         await message.reply_document(
             filename,
             caption=(
-                f"<b>Code Test: {escape(status)}</b>\n"
+                f"<b>Code Test: {escape(str(status))}</b>\n"
                 f"Runtime: <code>{runtime}s</code>"
             ),
             reply_markup=make_keyboard(runtime),
         )
     finally:
         if filename and os.path.exists(filename):
-            os.remove(filename)
+            try:
+                os.remove(filename)
+            except Exception:
+                pass
 
 
 def register_eval(app):
@@ -281,78 +287,85 @@ def register_eval(app):
         return
 
     @app.on_message(
-        filters.command(["eval", "test"], prefixes=["/", ".", "?", "-"])
+        filters.regex(r"(?i)^/(eval|test)(@\w+)?(\s|$)")
+        & filters.private
     )
     async def eval_command(client, message: Message):
-        if not message.from_user:
-            return
+        try:
+            uid = message.from_user.id if message.from_user else None
+            text = message.text or ""
 
-        uid = message.from_user.id
-
-        # Ab silent nahi — clear message
-        if not is_allowed(uid):
-            LOGGER.warning(
-                "Eval blocked for user %s | allowed=%s",
+            LOGGER.info(
+                "EVAL HIT | user=%s | text=%r | allowed=%s",
                 uid,
-                get_allowed_ids(),
-            )
-            return await message.reply_text(
-                f"❌ Owner/Sudo only.\n\n"
-                f"Your ID: `{uid}`\n"
-                f"Allowed: `{', '.join(map(str, get_allowed_ids()))}`"
+                text,
+                allowed,
             )
 
-        code = None
+            await message.reply_text(
+                f"✅ Eval received\n"
+                f"User: `{uid}`\n"
+                f"Allowed: `{allowed}`"
+            )
 
-        # 1) /eval code
-        if message.text:
-            parts = message.text.split(None, 1)
-            if len(parts) >= 2 and parts[1].strip():
+            if not uid or not is_allowed(uid):
+                return await message.reply_text("❌ Owner/Sudo only.")
+
+            code = None
+            parts = (message.text or "").split(None, 1)
+            if len(parts) >= 2:
                 code = parts[1].strip()
 
-        # 2) reply pe code
-        if not code and message.reply_to_message:
-            reply = message.reply_to_message
-            code = (reply.text or reply.caption or "").strip()
+            if not code and message.reply_to_message:
+                code = (
+                    message.reply_to_message.text
+                    or message.reply_to_message.caption
+                    or ""
+                ).strip()
 
-        if not code:
-            return await message.reply_text(
-                "<b>Send Python code to test.</b>\n\n"
-                "<code>/eval print('Hello V3Music')</code>\n\n"
-                "Ya kisi code message pe reply karke <code>/eval</code> likho."
-            )
+            if not code:
+                return await message.reply_text(
+                    "<b>Usage:</b>\n"
+                    "<code>/eval print('Hello')</code>"
+                )
 
-        if len(code) > MAX_CODE:
-            return await message.reply_text(
-                f"Code too long. Maximum: {MAX_CODE} characters."
-            )
+            if len(code) > MAX_CODE:
+                return await message.reply_text(
+                    f"Code too long. Maximum: {MAX_CODE} characters."
+                )
 
-        status_message = await message.reply_text("<b>Testing Python code...</b>")
+            status_message = await message.reply_text("<b>Testing...</b>")
+            status, output, runtime = await run_test(code)
 
-        status, output, runtime = await run_test(code)
+            try:
+                await status_message.delete()
+            except Exception:
+                pass
 
-        try:
-            await status_message.delete()
+            await send_result(message, code, status, output, runtime)
+
         except Exception:
-            pass
-
-        await send_result(message, code, status, output, runtime)
+            LOGGER.exception("EVAL HANDLER CRASH")
+            try:
+                await message.reply_text("❌ Eval crashed. Check logs.")
+            except Exception:
+                pass
 
     @app.on_callback_query(filters.regex(r"^eval_runtime$"))
     async def eval_runtime_callback(client, query):
-        if not is_allowed(query.from_user.id):
+        if not query.from_user or not is_allowed(query.from_user.id):
             return await query.answer("Owner only.", show_alert=True)
         await query.answer("Runtime is displayed in the result.", show_alert=True)
 
     @app.on_callback_query(filters.regex(r"^eval_delete$"))
     async def eval_delete_callback(client, query):
-        if not is_allowed(query.from_user.id):
+        if not query.from_user or not is_allowed(query.from_user.id):
             return await query.answer("Owner only.", show_alert=True)
 
         try:
             await query.message.delete()
             await query.answer("Result deleted.")
         except Exception:
-            await query.answer("Unable to delete result.", show_alert=True)
+            await query.answer("Unable to delete.", show_alert=True)
 
     LOGGER.info("Safe Eval/Test handlers registered successfully.")

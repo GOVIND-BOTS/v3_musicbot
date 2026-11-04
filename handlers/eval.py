@@ -1,4 +1,3 @@
-
 import ast
 import asyncio
 import logging
@@ -180,7 +179,9 @@ class SafeRunner:
 
             return None
 
-        raise SafeTestError(f"Unsupported syntax: {type(node).__name__}")
+        raise SafeTestError(
+            f"Unsupported syntax: {type(node).__name__}"
+        )
 
     def run(self, code):
         tree = ast.parse(code, mode="exec")
@@ -189,19 +190,26 @@ class SafeRunner:
             raise SafeTestError("Too many statements.")
 
         for statement in tree.body:
+
             if isinstance(statement, ast.Expr):
                 self.evaluate(statement.value)
 
             elif isinstance(statement, ast.Assign):
                 if len(statement.targets) != 1:
-                    raise SafeTestError("Multiple assignments are disabled.")
+                    raise SafeTestError(
+                        "Multiple assignments are disabled."
+                    )
 
                 target = statement.targets[0]
 
                 if not isinstance(target, ast.Name):
-                    raise SafeTestError("Only simple variables are allowed.")
+                    raise SafeTestError(
+                        "Only simple variables are allowed."
+                    )
 
-                self.variables[target.id] = self.evaluate(statement.value)
+                self.variables[target.id] = self.evaluate(
+                    statement.value
+                )
 
             else:
                 raise SafeTestError(
@@ -226,14 +234,27 @@ async def run_test(code):
             timeout=TIMEOUT,
         )
 
-        return "SUCCESS", output[:MAX_OUTPUT], round(time.monotonic() - start, 3)
+        return (
+            "SUCCESS",
+            output[:MAX_OUTPUT],
+            round(time.monotonic() - start, 3),
+        )
 
     except asyncio.TimeoutError:
-        return "TIMEOUT", "Test exceeded the time limit.", round(time.monotonic() - start, 3)
+        return (
+            "TIMEOUT",
+            "Test exceeded the time limit.",
+            round(time.monotonic() - start, 3),
+        )
 
     except Exception as error:
         LOGGER.exception("Eval test error")
-        return "FAILED", f"{type(error).__name__}: {error}", round(time.monotonic() - start, 3)
+
+        return (
+            "FAILED",
+            f"{type(error).__name__}: {error}",
+            round(time.monotonic() - start, 3),
+        )
 
 
 # --------------------------------------------------
@@ -260,6 +281,7 @@ def make_keyboard(runtime):
 # --------------------------------------------------
 
 async def send_result(message, code, status, output, runtime):
+
     text = (
         "<b>V3MUSIC CODE TEST</b>\n\n"
         f"<b>Status:</b> {escape(status)}\n"
@@ -290,8 +312,21 @@ def register_eval(app):
     )
     async def eval_command(client, message: Message):
 
-        sender_id = message.from_user.id if message.from_user else None
+        # COMMAND RECEIVED LOG
+        LOGGER.warning(
+            "EVAL RECEIVED | TEXT=%r | USER=%s | CHAT=%s",
+            message.text,
+            message.from_user.id if message.from_user else None,
+            message.chat.type if message.chat else None,
+        )
 
+        sender_id = (
+            message.from_user.id
+            if message.from_user
+            else None
+        )
+
+        # OWNER DEBUG LOG
         LOGGER.info(
             "EVAL CHECK | OWNER_ID=%r | PARSED_OWNER_IDS=%r | MESSAGE_USER_ID=%r | CHAT_TYPE=%s",
             OWNER_ID,
@@ -332,32 +367,57 @@ def register_eval(app):
         try:
             await status_message.delete()
         except Exception:
-            LOGGER.exception("Unable to delete eval status message")
+            LOGGER.exception(
+                "Unable to delete eval status message"
+            )
 
-        await send_result(message, code, status, output, runtime)
+        await send_result(
+            message,
+            code,
+            status,
+            output,
+            runtime,
+        )
 
-    # Runtime button
-    @app.on_callback_query(filters.regex(r"^eval_runtime$"))
+    # --------------------------------------------------
+    # RUNTIME BUTTON
+    # --------------------------------------------------
+
+    @app.on_callback_query(
+        filters.regex(r"^eval_runtime$")
+    )
     async def eval_runtime_callback(client, query):
 
         if not is_owner(query.from_user.id):
-            return await query.answer("Owner only.", show_alert=True)
+            return await query.answer(
+                "Owner only.",
+                show_alert=True,
+            )
 
         await query.answer(
             "Runtime is displayed in the result.",
             show_alert=True,
         )
 
-    # Delete button
-    @app.on_callback_query(filters.regex(r"^eval_delete$"))
+    # --------------------------------------------------
+    # DELETE BUTTON
+    # --------------------------------------------------
+
+    @app.on_callback_query(
+        filters.regex(r"^eval_delete$")
+    )
     async def eval_delete_callback(client, query):
 
         if not is_owner(query.from_user.id):
-            return await query.answer("Owner only.", show_alert=True)
+            return await query.answer(
+                "Owner only.",
+                show_alert=True,
+            )
 
         try:
             await query.message.delete()
             await query.answer("Result deleted.")
+
         except Exception:
             await query.answer(
                 "Unable to delete result.",

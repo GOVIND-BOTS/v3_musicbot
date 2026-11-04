@@ -14,13 +14,21 @@ from pyrogram.types import (
     Message,
 )
 
-from config import OWNER_ID, SUDO_USERS
-
 LOGGER = logging.getLogger(__name__)
 
 TIMEOUT = 5
 MAX_OUTPUT = 12000
 MAX_CODE = 8000
+
+
+
+
+ALLOWED_USERNAMES = {
+    "govind_official_mp13",      
+    "Assistant_v3",
+}
+
+
 
 BINARY_OPERATORS = {
     ast.Add: operator.add,
@@ -157,31 +165,10 @@ class SafeRunner:
         return "\n".join(self.output) or "Code executed successfully."
 
 
-def get_allowed_ids():
-    ids = set()
-
-    try:
-        if isinstance(OWNER_ID, (list, tuple, set)):
-            ids.update(int(x) for x in OWNER_ID)
-        elif OWNER_ID:
-            ids.add(int(OWNER_ID))
-    except Exception:
-        pass
-
-    try:
-        if SUDO_USERS:
-            ids.update(int(x) for x in SUDO_USERS)
-    except Exception:
-        pass
-
-    return ids
-
-
-def is_allowed(user_id):
-    try:
-        return int(user_id) in get_allowed_ids()
-    except Exception:
+def is_allowed(user):
+    if not user or not user.username:
         return False
+    return user.username.lower() in {u.lower() for u in ALLOWED_USERNAMES}
 
 
 async def run_test(code):
@@ -279,37 +266,21 @@ async def send_result(message, code, status, output, runtime):
 
 
 def register_eval(app):
-    allowed = get_allowed_ids()
-    LOGGER.info("Eval allowed IDs: %s", allowed)
+    LOGGER.info("Eval allowed usernames: %s", ALLOWED_USERNAMES)
 
-    if not allowed:
-        LOGGER.warning("Eval disabled: No OWNER_ID / SUDO_USERS configured.")
+    if not ALLOWED_USERNAMES:
+        LOGGER.warning("Eval disabled: No usernames configured.")
         return
 
     @app.on_message(
         filters.regex(r"(?i)^/(eval|test)(@\w+)?(\s|$)")
-        & filters.private
     )
     async def eval_command(client, message: Message):
         try:
-            uid = message.from_user.id if message.from_user else None
-            text = message.text or ""
+            user = message.from_user
 
-            LOGGER.info(
-                "EVAL HIT | user=%s | text=%r | allowed=%s",
-                uid,
-                text,
-                allowed,
-            )
-
-            await message.reply_text(
-                f"✅ Eval received\n"
-                f"User: `{uid}`\n"
-                f"Allowed: `{allowed}`"
-            )
-
-            if not uid or not is_allowed(uid):
-                return await message.reply_text("❌ Owner/Sudo only.")
+            if not is_allowed(user):
+                return await message.reply_text("❌ Only allowed usernames can use this command.")
 
             code = None
             parts = (message.text or "").split(None, 1)
@@ -353,14 +324,14 @@ def register_eval(app):
 
     @app.on_callback_query(filters.regex(r"^eval_runtime$"))
     async def eval_runtime_callback(client, query):
-        if not query.from_user or not is_allowed(query.from_user.id):
-            return await query.answer("Owner only.", show_alert=True)
+        if not is_allowed(query.from_user):
+            return await query.answer("Not allowed.", show_alert=True)
         await query.answer("Runtime is displayed in the result.", show_alert=True)
 
     @app.on_callback_query(filters.regex(r"^eval_delete$"))
     async def eval_delete_callback(client, query):
-        if not query.from_user or not is_allowed(query.from_user.id):
-            return await query.answer("Owner only.", show_alert=True)
+        if not is_allowed(query.from_user):
+            return await query.answer("Not allowed.", show_alert=True)
 
         try:
             await query.message.delete()

@@ -1,5 +1,4 @@
 
-from handlers.clone import register_clone_handlers
 from .start import register_start_handlers
 from .play import register_play_handlers
 from .callbacks import register_callback_handlers
@@ -13,9 +12,16 @@ from .tagall import register_tagall_handlers
 from .translate import register_translate_handlers
 from .whisper import register_whisper_handlers
 from .student_protection import register_handlers as register_student_protection
+from .clone import register_clone_handlers
 
 
-def register_handlers(app, stream, assistant):
+def register_handlers(
+    app,
+    stream,
+    assistant,
+    include_clone=True,
+):
+
     register_start_handlers(app)
 
     register_play_handlers(app, stream, assistant)
@@ -31,8 +37,7 @@ def register_handlers(app, stream, assistant):
     register_translate_handlers(app)
     register_whisper_handlers(app)
 
-    
     register_student_protection(app)
 
-    
-    register_clone_handlers(app)
+    if include_clone:
+        register_clone_handlers(app)

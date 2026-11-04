@@ -25,7 +25,7 @@ from database.mongodb import add_user, add_chat
 
 LOGGER = logging.getLogger(__name__)
 
-SOURCE_VIDEO = "https://graph.org/file/your-source-video.mp4"
+SOURCE_VIDEO = "https://graph.org/file/353b45128ff9e8412698e-4e0ae8dafee5eb951b.mp4"
 
 
 def _safe_url(value):
@@ -39,7 +39,7 @@ def _safe_url(value):
 def _start_text():
     name = html.escape(BOT_NAME or "GOVIND MUSIC")
     return (
-        f"🍃ᶦϻᷧ)•𝐓ʜɪs ɪs 𝐒ᴛʏʟᴇ•(𝐗ᴅ <b>{name}</b> 🍃\n"
+        f"🍃ᶦϻᷧ) <b>{name}</b> 🍃\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
         "🎧 𝐌ᴜsɪᴄ 𝐏ʟᴀʏᴇʀ 𝐖ɪᴛʜ 𝐂ʟᴏɴᴇ 𝐅ᴇᴀᴛᴜʀᴇs\n"
         "🤖 𝐂ʀᴇᴀᴛᴇ 𝐘ᴏᴜʀ 𝐎ᴡɴ 𝐁ᴏᴛ 𝐈ɴsᴛᴀɴᴛʟʏ\n"
@@ -139,7 +139,7 @@ def get_start_keyboard(bot_username):
 
     rows.append([
         InlineKeyboardButton("👑 𝐎ᴡɴᴇʀ", url=f"tg://user?id={OWNER_ID}"),
-        InlineKeyboardButton("🧬 𝐂ʟᴏɴᴇ", url="https://t.me/YOUR_CLONE_BOT"),
+        InlineKeyboardButton("🧬 𝐂ʟᴏɴᴇ", url="https://t.me/Adishax_music_bot"),
     ])
 
     support = _safe_url(SUPPORT_CHAT)

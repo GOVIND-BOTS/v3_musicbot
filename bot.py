@@ -16,6 +16,7 @@ from config import (
 from database.mongodb import ping_db, close_db
 from handlers import register_handlers
 from stream import setup_stream
+from clone_manager import clone_manager
 
 
 # --------------------------------------------------
@@ -85,7 +86,7 @@ async def main():
 
         LOGGER.info("MongoDB connection successful.")
 
-        # Start bot
+        # Start main bot
         await bot.start()
         bot_started = True
 
@@ -111,17 +112,32 @@ async def main():
 
         LOGGER.info("Music stream initialized.")
 
-        # Register handlers
+        # Register main bot handlers
         register_handlers(
             bot,
             music_stream,
             assistant,
         )
 
-        LOGGER.info("All handlers registered.")
-        LOGGER.info("Student Protection System handlers registered.")
+        LOGGER.info("Main bot handlers registered.")
+
+        # Start cloned bots
+        LOGGER.info("Initializing Clone Manager...")
+
+        await clone_manager.start_all(
+            music_stream,
+            assistant,
+        )
+
+        LOGGER.info("Clone Manager initialized.")
+
+        LOGGER.info(
+            "Student Protection System handlers registered."
+        )
+
         LOGGER.info("%s is ready.", BOT_NAME)
 
+        # Keep all clients running
         await idle()
 
     except Exception:
@@ -129,32 +145,50 @@ async def main():
         raise
 
     finally:
+        # Stop cloned bots first
+        try:
+            await clone_manager.stop_all()
+        except Exception:
+            LOGGER.exception(
+                "Clone Manager shutdown failed."
+            )
+
         # Stop music stream
         if music_stream:
             try:
                 await music_stream.shutdown()
             except Exception:
-                LOGGER.exception("Music stream shutdown failed.")
+                LOGGER.exception(
+                    "Music stream shutdown failed."
+                )
 
         # Stop assistant
         if assistant and assistant_started:
             try:
                 await assistant.stop()
             except Exception:
-                LOGGER.exception("Assistant shutdown failed.")
+                LOGGER.exception(
+                    "Assistant shutdown failed."
+                )
 
-        # Stop bot
+        # Stop main bot
         if bot_started:
             try:
                 await bot.stop()
             except Exception:
-                LOGGER.exception("Bot shutdown failed.")
+                LOGGER.exception(
+                    "Bot shutdown failed."
+                )
 
         # Close MongoDB
         try:
             await close_db()
         except Exception:
-            LOGGER.exception("MongoDB shutdown failed.")
+            LOGGER.exception(
+                "MongoDB shutdown failed."
+            )
+
+        LOGGER.info("Bot shutdown completed.")
 
 
 # --------------------------------------------------

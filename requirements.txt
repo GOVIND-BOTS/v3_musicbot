@@ -8,7 +8,7 @@ python-dotenv
 
 aiofiles
 aiohttp
-Pillow
+Pillow>=10.0.0
 numpy
 
 yt-dlp[default] @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz

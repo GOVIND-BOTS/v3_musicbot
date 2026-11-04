@@ -13,7 +13,7 @@ from .whisper import register_whisper_handlers
 from .student_protection import register_handlers as register_student_protection
 from .clone import register_clone_handlers
 from .logo import register_logo_handlers
-
+from .anti_abuse import register_anti_abuse_handlers
 
 def register_handlers(
     app,
@@ -44,3 +44,4 @@ def register_handlers(
 
     
     register_logo_handlers(app)
+    register_anti_abuse_handlers(app)

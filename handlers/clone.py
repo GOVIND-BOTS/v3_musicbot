@@ -1,17 +1,22 @@
+
 import logging
+
 from pyrogram import filters, Client
 from pyrogram.types import Message
 from pyrogram.errors import AccessTokenInvalid
 
 from config import API_ID, API_HASH, OWNER_ID, SUDO_USERS
+
 from database.clone_db import (
     save_clone,
     is_token_exist,
     MAX_CLONES,
     count_active_clones,
     get_clones_by_owner,
+    get_all_clones,
     remove_clone,
 )
+
 from clone_manager import clone_manager
 
 LOGGER = logging.getLogger(__name__)
@@ -20,49 +25,47 @@ clone_waiting = {}
 
 def get_allowed_users():
     users = set()
-    if isinstance(OWNER_ID, (list, tuple, set)):
-        users.update(OWNER_ID)
-    elif OWNER_ID:
-        users.add(OWNER_ID)
 
-    if isinstance(SUDO_USERS, (list, tuple, set)):
-        users.update(SUDO_USERS)
-    elif SUDO_USERS:
-        users.add(SUDO_USERS)
+    if OWNER_ID:
+        users.add(int(OWNER_ID))
 
-    result = set()
-    for uid in users:
-        try:
-            result.add(int(uid))
-        except (TypeError, ValueError):
-            continue
-    return result
+    users.update(int(uid) for uid in SUDO_USERS)
+
+    return users
 
 
-def is_clone_admin(user_id: int) -> bool:
-    try:
-        return int(user_id) in get_allowed_users()
-    except Exception:
-        return False
+def is_clone_admin(user_id: int):
+    return int(user_id) in get_allowed_users()
 
 
 def register_clone_handlers(app):
+
     @app.on_message(filters.command("clone") & filters.private)
     async def clone_command(client, message: Message):
         if not message.from_user:
             return
 
         user_id = message.from_user.id
+
         if not is_clone_admin(user_id):
-            return await message.reply_text("❌ You are not authorized to use this command.")
+            return await message.reply_text(
+                "❌ You are not authorized."
+            )
+
+        if user_id in clone_waiting:
+            return await message.reply_text(
+                "⚠️ Clone process already running. Send token or /cancel."
+            )
 
         count = await count_active_clones()
+
         if count >= MAX_CLONES:
             return await message.reply_text(
                 f"❌ Maximum clone limit reached ({MAX_CLONES})."
             )
 
         clone_waiting[user_id] = True
+
         await message.reply_text(
             "🤖 **BOT CLONING SYSTEM**\n\n"
             "Please send your Bot Token.\n\n"
@@ -73,54 +76,92 @@ def register_clone_handlers(app):
     async def cancel_clone(client, message: Message):
         if not message.from_user:
             return
+
         user_id = message.from_user.id
+
         if user_id in clone_waiting:
             clone_waiting.pop(user_id, None)
-            await message.reply_text("❌ Clone process cancelled.")
+            await message.reply_text(
+                "❌ Clone process cancelled."
+            )
 
     @app.on_message(filters.command("clones") & filters.private)
     async def list_clones(client, message: Message):
-        if not message.from_user or not is_clone_admin(message.from_user.id):
+        if not message.from_user:
+            return
+
+        user_id = message.from_user.id
+
+        if not is_clone_admin(user_id):
             return await message.reply_text("❌ Owner/Sudo only.")
 
-        clones = await get_clones_by_owner(message.from_user.id)
-        if not clones:
-            return await message.reply_text("No active clones found.")
+        if OWNER_ID and user_id == int(OWNER_ID):
+            clones = await get_all_clones()
+        else:
+            clones = await get_clones_by_owner(user_id)
 
-        lines = [f"**Active Clones ({len(clones)}/{MAX_CLONES}):**\n"]
-        for i, c in enumerate(clones, 1):
-            uname = c.get("bot_username") or "Unknown"
-            lines.append(f"{i}. @{uname}")
+        if not clones:
+            return await message.reply_text(
+                "No active clones found."
+            )
+
+        lines = [
+            f"**Active Clones ({len(clones)}/{MAX_CLONES}):**\n"
+        ]
+
+        for index, clone in enumerate(clones, 1):
+            username = clone.get("bot_username") or "Unknown"
+            lines.append(f"{index}. @{username}")
+
         await message.reply_text("\n".join(lines))
 
     @app.on_message(filters.command("removeclone") & filters.private)
     async def remove_clone_cmd(client, message: Message):
-        if not message.from_user or not is_clone_admin(message.from_user.id):
+        if not message.from_user:
+            return
+
+        user_id = message.from_user.id
+
+        if not is_clone_admin(user_id):
             return await message.reply_text("❌ Owner/Sudo only.")
 
         parts = (message.text or "").split(None, 1)
+
         if len(parts) < 2:
             return await message.reply_text(
-                "Usage:\n`/removeclone bot_username`"
+                "Usage:\n/removeclone bot_username"
             )
 
         query = parts[1].strip().lstrip("@")
-        clones = await get_clones_by_owner(message.from_user.id)
-        target = None
-        for c in clones:
-            if (c.get("bot_username") or "").lower() == query.lower():
-                target = c
-                break
+
+        if OWNER_ID and user_id == int(OWNER_ID):
+            clones = await get_all_clones()
+        else:
+            clones = await get_clones_by_owner(user_id)
+
+        target = next(
+            (
+                clone for clone in clones
+                if (clone.get("bot_username") or "").lower()
+                == query.lower()
+            ),
+            None,
+        )
 
         if not target:
             return await message.reply_text("Clone not found.")
 
         token = target["bot_token"]
+
         await clone_manager.stop_clone(token)
-        await remove_clone(token)
-        await message.reply_text(
-            f"✅ Clone removed: @{target.get('bot_username')}"
-        )
+        removed = await remove_clone(token)
+
+        if removed:
+            await message.reply_text(
+                f"✅ Clone removed: @{target.get('bot_username')}"
+            )
+        else:
+            await message.reply_text("❌ Could not remove clone.")
 
     @app.on_message(
         filters.private
@@ -134,6 +175,7 @@ def register_clone_handlers(app):
             return
 
         user_id = message.from_user.id
+
         if user_id not in clone_waiting:
             return
 
@@ -142,8 +184,11 @@ def register_clone_handlers(app):
             return
 
         token = (message.text or "").strip()
+
         if ":" not in token or len(token) < 40:
-            return await message.reply_text("❌ Invalid token format.")
+            return await message.reply_text(
+                "❌ Invalid token format."
+            )
 
         if await is_token_exist(token):
             clone_waiting.pop(user_id, None)
@@ -152,13 +197,17 @@ def register_clone_handlers(app):
             )
 
         count = await count_active_clones()
+
         if count >= MAX_CLONES:
             clone_waiting.pop(user_id, None)
             return await message.reply_text(
                 f"❌ Maximum clone limit reached ({MAX_CLONES})."
             )
 
-        status = await message.reply_text("⏳ Validating your bot token...")
+        status = await message.reply_text(
+            "⏳ Validating your bot token..."
+        )
+
         temp_client = None
         clone_saved = False
 
@@ -170,6 +219,7 @@ def register_clone_handlers(app):
                 bot_token=token,
                 in_memory=True,
             )
+
             await temp_client.start()
             me = await temp_client.get_me()
             await temp_client.stop()
@@ -180,9 +230,10 @@ def register_clone_handlers(app):
                 bot_token=token,
                 bot_username=me.username,
             )
+
             if not saved:
                 return await status.edit_text(
-                    "❌ Could not save clone (limit or duplicate)."
+                    "❌ Could not save clone. Limit or duplicate."
                 )
 
             clone_saved = True
@@ -205,29 +256,33 @@ def register_clone_handlers(app):
             else:
                 await status.edit_text(
                     "✅ Bot token validated and saved.\n\n"
-                    "⚠️ The clone could not start right now.\n"
-                    "It will be retried when the main bot restarts."
+                    "⚠️ Clone could not start right now. "
+                    "It will retry after the main bot restarts."
                 )
 
         except AccessTokenInvalid:
             await status.edit_text(
-                "❌ Invalid Bot Token. Generate a new one from BotFather."
+                "❌ Invalid Bot Token. Generate a new token from BotFather."
             )
+
         except Exception:
             LOGGER.exception("Clone operation failed.")
+
             if clone_saved:
                 await status.edit_text(
-                    "⚠️ Clone was saved, but startup failed. Check server logs."
+                    "⚠️ Clone saved, but startup failed. Check server logs."
                 )
             else:
                 await status.edit_text(
-                    "❌ Cloning failed. Please check the server logs."
+                    "❌ Cloning failed. Please check server logs."
                 )
+
         finally:
             if temp_client is not None:
                 try:
                     if temp_client.is_connected:
                         await temp_client.stop()
                 except Exception:
-                    pass
+                    LOGGER.exception("Temporary clone client cleanup failed.")
+
             clone_waiting.pop(user_id, None)

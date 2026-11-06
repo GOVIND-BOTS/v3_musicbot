@@ -1,4 +1,3 @@
-
 import asyncio
 import logging
 import sys
@@ -14,6 +13,7 @@ from config import (
 )
 
 from database.mongodb import ping_db, close_db
+from database.redis_db import connect_redis, close_redis
 from handlers import register_handlers
 from stream import setup_stream
 from clone_manager import clone_manager
@@ -81,35 +81,29 @@ async def main():
     try:
         # MongoDB
         LOGGER.info("Checking MongoDB connection...")
-
         await ping_db()
-
         LOGGER.info("MongoDB connection successful.")
+
+        # Redis
+        LOGGER.info("Connecting to Redis...")
+        await connect_redis()
 
         # Start main bot
         await bot.start()
         bot_started = True
 
         me = await bot.get_me()
-
-        LOGGER.info(
-            "Bot started: @%s",
-            me.username or me.id,
-        )
+        LOGGER.info("Bot started: @%s", me.username or me.id)
 
         # Start assistant
         assistant = create_assistant()
-
         await assistant.start()
         assistant_started = True
-
         LOGGER.info("Assistant account connected.")
 
         # Start music stream
         music_stream = setup_stream(assistant)
-
         await music_stream.start()
-
         LOGGER.info("Music stream initialized.")
 
         # Register main bot handlers
@@ -118,24 +112,18 @@ async def main():
             music_stream,
             assistant,
         )
-
         LOGGER.info("Main bot handlers registered.")
 
         # Start cloned bots
         LOGGER.info("Initializing Clone Manager...")
-
         await clone_manager.start_all(
             music_stream,
             assistant,
         )
-
         LOGGER.info("Clone Manager initialized.")
 
-        LOGGER.info(
-            "Student Protection System handlers registered."
-        )
-
-        LOGGER.info("%s is ready.", BOT_NAME)
+        LOGGER.info("Student Protection System handlers registered.")
+        LOGGER.info("%s bot start ho gya ab govind ko apni setting ki dilwa.", BOT_NAME)
 
         # Keep all clients running
         await idle()
@@ -149,44 +137,40 @@ async def main():
         try:
             await clone_manager.stop_all()
         except Exception:
-            LOGGER.exception(
-                "Clone Manager shutdown failed."
-            )
+            LOGGER.exception("Clone Manager shutdown failed.")
 
         # Stop music stream
         if music_stream:
             try:
                 await music_stream.shutdown()
             except Exception:
-                LOGGER.exception(
-                    "Music stream shutdown failed."
-                )
+                LOGGER.exception("Music stream shutdown failed.")
 
         # Stop assistant
         if assistant and assistant_started:
             try:
                 await assistant.stop()
             except Exception:
-                LOGGER.exception(
-                    "Assistant shutdown failed."
-                )
+                LOGGER.exception("Assistant shutdown failed.")
 
         # Stop main bot
         if bot_started:
             try:
                 await bot.stop()
             except Exception:
-                LOGGER.exception(
-                    "Bot shutdown failed."
-                )
+                LOGGER.exception("Bot shutdown failed.")
+
+        # Close Redis
+        try:
+            await close_redis()
+        except Exception:
+            LOGGER.exception("Redis shutdown failed.")
 
         # Close MongoDB
         try:
             await close_db()
         except Exception:
-            LOGGER.exception(
-                "MongoDB shutdown failed."
-            )
+            LOGGER.exception("MongoDB shutdown failed.")
 
         LOGGER.info("Bot shutdown completed.")
 
@@ -198,6 +182,5 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-
     except (KeyboardInterrupt, SystemExit):
         pass

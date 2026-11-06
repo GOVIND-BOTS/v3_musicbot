@@ -17,7 +17,7 @@ yt-dlp-getpot-wpc
 google-genai
 gpytranslate
 tgcrypto
-
+redis>=5.0.0
 
 nudenet>=3.4.2
 opencv-python-headless

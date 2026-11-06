@@ -14,6 +14,7 @@ API_HASH = get_required("API_HASH")
 BOT_TOKEN = get_required("BOT_TOKEN")
 SESSION_STRING = os.getenv("SESSION_STRING", "").strip()
 MONGO_DB_URI = get_required("MONGO_DB_URI")
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
 
 SUDO_USERS = {
     int(item.strip())

@@ -15,7 +15,7 @@ from .clone import register_clone_handlers
 from .logo import register_logo_handlers
 from .anti_abuse import register_anti_abuse_handlers
 from .eval import register_eval
-
+from .bio_guard import register_bio_guard_handlers
 def register_handlers(
     app,
     stream,
@@ -39,6 +39,7 @@ def register_handlers(
     register_whisper_handlers(app)
 
     register_student_protection(app)
+    register_bio_guard_handlers(app, assistant)
 
     if include_clone:
         register_clone_handlers(app)

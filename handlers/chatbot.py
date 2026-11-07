@@ -18,6 +18,17 @@ mongo = MongoClient(MONGO_DB_URI) if MONGO_DB_URI else None
 vick_db = mongo["VickDb"]["Vick"] if mongo is not None else None
 word_db = mongo["Word"]["WordDb"] if mongo is not None else None
 
+PRIVATE_EXCLUDED_COMMANDS = [
+    "eval",
+    "test",
+    "start",
+    "help",
+    "clone",
+    "clones",
+    "cancel",
+    "removeclone",
+]
+
 
 async def is_admin(client, chat_id: int, user_id: int) -> bool:
     try:
@@ -223,9 +234,10 @@ def register_chatbot_handlers(app):
         & filters.private
         & ~filters.bot
         & ~filters.command(
-            ["eval", "test", "start", "help"],
+            PRIVATE_EXCLUDED_COMMANDS,
             prefixes=["/", ".", "?", "-"]
-        )
+        ),
+        group=2
     )
     async def private_chatbot(client, message: Message):
 
@@ -267,7 +279,7 @@ def register_chatbot_handlers(app):
                 await message.reply_text(chosen.get("text"))
 
         except Exception:
-            LOGGER.exception("Private chatbot error")
+            LOGGER.exception("Chatbot private error")
 
     LOGGER.info(
         "Vick-style Chatbot handlers registered successfully."

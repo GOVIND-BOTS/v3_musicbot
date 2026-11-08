@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import random
@@ -73,10 +74,6 @@ def logo_caption(name, style):
 
 def register_logo_handlers(app):
 
-    # --------------------------------------------------
-    # LOGO COMMAND
-    # --------------------------------------------------
-
     @app.on_message(filters.command("logo"))
     async def logo_command(client, message):
 
@@ -93,18 +90,13 @@ def register_logo_handlers(app):
             )
             return
 
-        args = message.text.split(
-            maxsplit=1
-        )[1].strip()
+        args = message.text.split(maxsplit=1)[1].strip()
 
-        # Style list
         if args.lower() == "list":
-
             styles = "\n".join(
                 f"• `{style}`"
                 for style in STYLES
             )
-
             await message.reply_text(
                 "**🎨 AVAILABLE LOGO STYLES**\n\n"
                 f"{styles}\n\n"
@@ -113,26 +105,20 @@ def register_logo_handlers(app):
             return
 
         parts = args.split(maxsplit=1)
-
         first = parts[0].lower()
 
         if first in STYLE_ALIASES:
-
             if len(parts) < 2 or not parts[1].strip():
                 await message.reply_text(
                     f"Please provide a name.\n\n"
                     f"Example: `/logo {first} Govind`"
                 )
                 return
-
             style = STYLE_ALIASES[first]
             name = parts[1].strip()
-
         else:
             name = args
-            style = random.choice(
-                list(STYLES.keys())
-            )
+            style = random.choice(list(STYLES.keys()))
 
         name = " ".join(name.split())[:28]
 
@@ -149,9 +135,10 @@ def register_logo_handlers(app):
         path = None
 
         try:
-            path = create_logo_file(
+            path = await asyncio.to_thread(
+                create_logo_file,
                 name,
-                style
+                style,
             )
 
             sent = await message.reply_photo(
@@ -160,7 +147,6 @@ def register_logo_handlers(app):
                 reply_markup=get_keyboard()
             )
 
-            # Save button session
             if len(LOGO_SESSIONS) > 500:
                 LOGO_SESSIONS.clear()
 
@@ -178,23 +164,21 @@ def register_logo_handlers(app):
 
             await status.delete()
 
-        except Exception:
+        except Exception as error:
             LOGGER.exception(
-                "Logo generation failed"
+                "Logo generation failed: %s",
+                error,
             )
-
+            err = str(error)[:120] or type(error).__name__
             await status.edit_text(
-                "❌ **Logo generation failed.**\n"
-                "Please try again later."
+                "❌ **Logo generation failed.**\n\n"
+                f"`{err}`\n\n"
+                "Check server logs / fonts / Pillow."
             )
 
         finally:
             if path and os.path.exists(path):
                 os.remove(path)
-
-    # --------------------------------------------------
-    # LOGO CALLBACKS
-    # --------------------------------------------------
 
     @app.on_callback_query(
         filters.regex(r"^v3logo:(next|random)$")
@@ -238,28 +222,22 @@ def register_logo_handlers(app):
         current_style = session["style"]
 
         if query.data == "v3logo:random":
-
             available = [
-                style for style in styles
-                if style != current_style
+                s for s in styles
+                if s != current_style
             ]
-
             style = random.choice(available)
-
         else:
-
             index = styles.index(current_style)
-
-            style = styles[
-                (index + 1) % len(styles)
-            ]
+            style = styles[(index + 1) % len(styles)]
 
         path = None
 
         try:
-            path = create_logo_file(
+            path = await asyncio.to_thread(
+                create_logo_file,
                 session["name"],
-                style
+                style,
             )
 
             await query.message.edit_media(
@@ -280,10 +258,7 @@ def register_logo_handlers(app):
             )
 
         except Exception:
-            LOGGER.exception(
-                "Logo callback failed"
-            )
-
+            LOGGER.exception("Logo callback failed")
             await query.answer(
                 "Unable to generate logo.",
                 show_alert=True

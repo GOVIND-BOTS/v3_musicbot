@@ -15,11 +15,11 @@ WIDTH, HEIGHT = 1280, 720
 CACHE_DIR = Path("cache")
 MAX_CACHE_FILES = 150
 
-# 10 layouts x 6 colour palettes = 60 branded combinations.
 LAYOUTS = (
     "center-stage", "left-art", "right-art", "diagonal", "top-banner",
     "split-screen", "royal-frame", "equalizer-stage", "neon-card", "minimal-royal",
 )
+
 PALETTES = (
     {"name": "royal-purple", "accent": (174, 42, 255), "second": (0, 174, 255), "gold": (255, 204, 0)},
     {"name": "electric-blue", "accent": (0, 125, 255), "second": (0, 225, 255), "gold": (255, 196, 0)},
@@ -77,72 +77,82 @@ def _background(palette, seed):
     rng = random.Random(seed)
     image = Image.new("RGB", (WIDTH, HEIGHT))
     pixels = image.load()
+
+    # Deep gradient base
     for y in range(HEIGHT):
         t = y / HEIGHT
-        color = tuple(int(a * (1-t) + b*t) for a, b in zip((4, 4, 13), (11, 7, 29)))
+        color = tuple(int(a * (1 - t) + b * t) for a, b in zip((6, 4, 18), (14, 8, 36)))
         for x in range(WIDTH):
             pixels[x, y] = color
 
+    # Soft colorful glows
     glow = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    for _ in range(10):
-        x, y = rng.randint(-100, WIDTH+100), rng.randint(-100, HEIGHT+100)
-        radius = rng.randint(100, 250)
+    for _ in range(12):
+        x = rng.randint(-120, WIDTH + 120)
+        y = rng.randint(-120, HEIGHT + 120)
+        radius = rng.randint(120, 280)
         color = rng.choice((palette["accent"], palette["second"]))
-        gd.ellipse((x-radius, y-radius, x+radius, y+radius),
-                   fill=(*color, rng.randint(22, 55)))
-    glow = glow.filter(ImageFilter.GaussianBlur(72))
+        gd.ellipse((x - radius, y - radius, x + radius, y + radius),
+                   fill=(*color, rng.randint(18, 48)))
+    glow = glow.filter(ImageFilter.GaussianBlur(80))
     image = Image.alpha_composite(image.convert("RGBA"), glow)
 
+    # Light streaks + particles
     effects = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     d = ImageDraw.Draw(effects)
-    for _ in range(34):
-        x, y = rng.randint(-100, WIDTH), rng.randint(0, HEIGHT)
+
+    for _ in range(28):
+        x = rng.randint(-80, WIDTH)
+        y = rng.randint(0, HEIGHT)
         color = rng.choice((palette["accent"], palette["second"]))
-        d.line((x, y, x+rng.randint(40, 190), y-rng.randint(5, 75)),
-               fill=(*color, rng.randint(35, 110)), width=rng.randint(2, 6))
-    for _ in range(100):
-        x, y, r = rng.randrange(WIDTH), rng.randrange(HEIGHT), rng.randint(1, 3)
+        d.line((x, y, x + rng.randint(50, 220), y - rng.randint(8, 70)),
+               fill=(*color, rng.randint(30, 95)), width=rng.randint(2, 5))
+
+    for _ in range(90):
+        x, y = rng.randrange(WIDTH), rng.randrange(HEIGHT)
+        r = rng.randint(1, 3)
         color = rng.choice((palette["accent"], palette["second"], palette["gold"]))
-        d.ellipse((x-r, y-r, x+r, y+r), fill=(*color, rng.randint(80, 200)))
+        d.ellipse((x - r, y - r, x + r, y + r), fill=(*color, rng.randint(70, 180)))
+
     return Image.alpha_composite(image, effects)
 
 
 def _crown(draw, cx, top, scale, gold):
-    w, h = int(150*scale), int(88*scale)
-    x = cx-w//2
+    w, h = int(150 * scale), int(88 * scale)
+    x = cx - w // 2
     pts = [
-        (x, top+h), (x+int(w*.08), top+int(h*.22)),
-        (x+int(w*.28), top+int(h*.58)), (x+int(w*.43), top),
-        (x+int(w*.57), top+int(h*.48)), (x+int(w*.76), top+int(h*.12)),
-        (x+int(w*.91), top+int(h*.58)), (x+w, top+int(h*.22)),
-        (x+int(w*.94), top+h), (x, top+h),
+        (x, top + h), (x + int(w * .08), top + int(h * .22)),
+        (x + int(w * .28), top + int(h * .58)), (x + int(w * .43), top),
+        (x + int(w * .57), top + int(h * .48)), (x + int(w * .76), top + int(h * .12)),
+        (x + int(w * .91), top + int(h * .58)), (x + w, top + int(h * .22)),
+        (x + int(w * .94), top + h), (x, top + h),
     ]
     draw.polygon(pts, fill=gold, outline=(255, 245, 160))
-    draw.line(pts+[pts[0]], fill=(255, 245, 160), width=max(2, int(3*scale)))
+    draw.line(pts + [pts[0]], fill=(255, 245, 160), width=max(2, int(3 * scale)))
     for px, py in (pts[1], pts[3], pts[5], pts[7]):
-        r = max(3, int(7*scale))
-        draw.ellipse((px-r, py-r, px+r, py+r), fill=(255, 255, 220))
+        r = max(3, int(7 * scale))
+        draw.ellipse((px - r, py - r, px + r, py + r), fill=(255, 255, 220))
 
 
 def _equalizer(draw, palette, seed, height=100):
-    rng = random.Random(seed+19)
+    rng = random.Random(seed + 19)
     x = 18
-    while x < WIDTH-18:
+    while x < WIDTH - 18:
         h = rng.randint(12, height)
         color = rng.choice((palette["accent"], palette["second"]))
-        draw.rounded_rectangle((x, HEIGHT-8-h, x+12, HEIGHT-8),
-                               radius=4, fill=(*color, 190))
+        draw.rounded_rectangle((x, HEIGHT - 8 - h, x + 12, HEIGHT - 8),
+                               radius=4, fill=(*color, 180))
         x += 21
 
 
 def _headphones(draw, x, y, scale, color):
-    w, h = int(150*scale), int(150*scale)
-    draw.arc((x, y, x+w, y+h), 185, 355, fill=color, width=max(7, int(13*scale)))
-    pw, ph = int(28*scale), int(58*scale)
-    draw.rounded_rectangle((x-3, y+h//2-12, x+pw, y+h//2+ph),
+    w, h = int(150 * scale), int(150 * scale)
+    draw.arc((x, y, x + w, y + h), 185, 355, fill=color, width=max(7, int(13 * scale)))
+    pw, ph = int(28 * scale), int(58 * scale)
+    draw.rounded_rectangle((x - 3, y + h // 2 - 12, x + pw, y + h // 2 + ph),
                            radius=12, fill=color)
-    draw.rounded_rectangle((x+w-pw, y+h//2-12, x+w+3, y+h//2+ph),
+    draw.rounded_rectangle((x + w - pw, y + h // 2 - 12, x + w + 3, y + h // 2 + ph),
                            radius=12, fill=color)
 
 
@@ -158,124 +168,153 @@ def _load_art(data):
 
 def _paste_art(image, art, box, accent):
     x1, y1, x2, y2 = map(int, box)
-    w, h = x2-x1, y2-y1
+    w, h = x2 - x1, y2 - y1
+
     if art is None:
-        art = Image.new("RGB", (w, h), (12, 8, 30))
-        _headphones(ImageDraw.Draw(art), w//2-55, h//2-70, .8, accent)
+        art = Image.new("RGB", (w, h), (14, 10, 32))
+        _headphones(ImageDraw.Draw(art), w // 2 - 55, h // 2 - 70, .8, accent)
     else:
         art = ImageOps.fit(art, (w, h), method=Image.Resampling.LANCZOS)
+
+    # Soft outer glow
+    glow = Image.new("RGBA", (w + 30, h + 30), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.rounded_rectangle((0, 0, w + 29, h + 29), radius=40, fill=(*accent, 60))
+    glow = glow.filter(ImageFilter.GaussianBlur(12))
+    image.paste(glow, (x1 - 15, y1 - 15), glow)
+
     mask = Image.new("L", (w, h), 0)
-    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w-1, h-1), radius=32, fill=255)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, w - 1, h - 1), radius=28, fill=255)
     image.paste(art, (x1, y1), mask)
+
+    # Clean border
     ImageDraw.Draw(image).rounded_rectangle(
-        (x1-5, y1-5, x2+5, y2+5), radius=37, outline=accent, width=7
+        (x1 - 3, y1 - 3, x2 + 3, y2 + 3), radius=31, outline=accent, width=5
     )
 
 
-def _brand(draw, palette):
-    _crown(draw, 95, 35, .42, palette["gold"])
-    draw.text((145, 48), "GOVIND MUSIC", font=_font(30), fill="white",
-              stroke_width=2, stroke_fill=palette["accent"])
-    draw.text((147, 83), "POWERED BY GOVIND BOTS",
-              font=_font(13), fill=palette["gold"])
+def _brand_top(draw, palette):
+    """Top-left corner branding - GOVIND"""
+    # Small gold accent bar
+    draw.rounded_rectangle((28, 28, 38, 72), radius=4, fill=palette["gold"])
+
+    draw.text((52, 30), "GOVIND", font=_font(34), fill="white",
+              stroke_width=2, stroke_fill=(20, 10, 40))
+    draw.text((53, 68), "MUSIC BOTS", font=_font(14), fill=palette["gold"])
+
+
+def _brand_bottom(draw, bot_name, palette):
+    """Bottom-right corner - dynamic bot name"""
+    text = bot_name.upper()
+    font = _font(20)
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+
+    x = WIDTH - tw - 45
+    y = HEIGHT - 52
+
+    # Soft background pill
+    _rounded(draw, (x - 18, y - 8, x + tw + 18, y + 32), 18,
+             (0, 0, 0, 140), palette["accent"], 2)
+
+    draw.text((x, y), text, font=font, fill="white")
 
 
 def _track_info(draw, title, duration, channel, requester, x, y, width, size=42):
-    font, fitted = _fit(draw, title, width, size, 25)
+    font, fitted = _fit(draw, title, width, size, 24)
     draw.text((x, y), fitted, font=font, fill="white",
-              stroke_width=2, stroke_fill=(25, 8, 48))
-    draw.text((x, y+65), f"{channel}  •  {duration}"[:100],
-              font=_font(21, False), fill=(190, 210, 255))
-    draw.text((x, y+98), f"Requested by: {requester}"[:100],
-              font=_font(18), fill=(*((255, 210, 55)),))
+              stroke_width=2, stroke_fill=(20, 8, 40))
+
+    draw.text((x, y + 62), f"{channel}  •  {duration}"[:95],
+              font=_font(20, False), fill=(185, 205, 255))
+
+    draw.text((x, y + 94), f"Requested by  {requester}"[:90],
+              font=_font(17), fill=(255, 210, 70))
 
 
 def _render(seed, layout, palette, art, title, duration, channel, requester, bot_name):
     rng = random.Random(seed)
     image = _background(palette, seed)
     d = ImageDraw.Draw(image)
-    _equalizer(d, palette, seed, rng.randint(65, 115))
-    _brand(d, palette)
 
+    _equalizer(d, palette, seed, rng.randint(60, 105))
+
+    # ========== TOP LEFT : GOVIND ==========
+    _brand_top(d, palette)
+
+    # ========== LAYOUTS ==========
     if layout == "center-stage":
-        _paste_art(image, art, (55, 175, 390, 510), palette["accent"])
+        _paste_art(image, art, (55, 160, 400, 505), palette["accent"])
         d = ImageDraw.Draw(image)
-        d.text((440, 210), "NOW PLAYING", font=_font(25), fill=palette["second"])
-        _track_info(d, title, duration, channel, requester, 440, 270, 770, 55)
-        _crown(d, 930, 485, .65, palette["gold"])
-    elif layout == "left-art":
-        _paste_art(image, art, (65, 175, 500, 610), palette["second"])
-        d = ImageDraw.Draw(image)
-        d.text((555, 220), "GOVIND", font=_font(68), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        d.text((555, 295), "MUSIC", font=_font(74), fill=palette["gold"])
-        _track_info(d, title, duration, channel, requester, 560, 405, 650, 38)
-    elif layout == "right-art":
-        _paste_art(image, art, (790, 175, 1215, 600), palette["accent"])
-        d = ImageDraw.Draw(image)
-        d.text((65, 215), "ROYAL SOUND", font=_font(28), fill=palette["second"])
-        d.text((65, 275), "GOVIND", font=_font(76), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        d.text((65, 360), "MUSIC", font=_font(84), fill=palette["gold"])
-        _track_info(d, title, duration, channel, requester, 75, 475, 680, 34)
-    elif layout == "diagonal":
-        d.polygon([(0, 500), (780, 110), (1280, 110), (1280, 720), (0, 720)],
-                  fill=(20, 8, 48, 160))
-        _paste_art(image, art, (820, 180, 1170, 530), palette["gold"])
-        d = ImageDraw.Draw(image)
-        d.text((65, 220), "GOVIND MUSIC", font=_font(76), fill="white",
-               stroke_width=4, stroke_fill=palette["accent"])
-        _track_info(d, title, duration, channel, requester, 75, 360, 700, 43)
-    elif layout == "top-banner":
-        _paste_art(image, art, (70, 220, 410, 560), palette["accent"])
-        d = ImageDraw.Draw(image)
-        _rounded(d, (465, 190, 1205, 575), 38, (5, 5, 20, 220), palette["second"], 5)
-        d.text((510, 225), "GOVIND MUSIC", font=_font(58), fill=palette["gold"])
-        _track_info(d, title, duration, channel, requester, 510, 325, 640, 42)
-    elif layout == "split-screen":
-        d.rectangle((0, 0, WIDTH//2, HEIGHT), fill=(8, 5, 24, 230))
-        _paste_art(image, art, (690, 160, 1160, 630), palette["second"])
-        d = ImageDraw.Draw(image)
-        d.text((65, 205), "GOVIND", font=_font(78), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        d.text((65, 290), "MUSIC", font=_font(86), fill=palette["gold"])
-        _track_info(d, title, duration, channel, requester, 70, 420, 560, 37)
-    elif layout == "royal-frame":
-        d.rounded_rectangle((28, 28, WIDTH-28, HEIGHT-28), radius=42,
-                            outline=palette["gold"], width=5)
-        _paste_art(image, art, (75, 210, 405, 540), palette["gold"])
-        d = ImageDraw.Draw(image)
-        _crown(d, 820, 135, 1.0, palette["gold"])
-        d.text((485, 260), "GOVIND MUSIC", font=_font(67), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        _track_info(d, title, duration, channel, requester, 490, 365, 690, 39)
-    elif layout == "equalizer-stage":
-        _paste_art(image, art, (465, 155, 815, 505), palette["second"])
-        d = ImageDraw.Draw(image)
-        d.text((90, 190), "GOVIND", font=_font(67), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        d.text((90, 265), "MUSIC", font=_font(76), fill=palette["gold"])
-        _track_info(d, title, duration, channel, requester, 90, 390, 350, 30)
-        _headphones(d, 930, 245, 1.0, palette["accent"])
-    elif layout == "neon-card":
-        _rounded(d, (65, 150, 1215, 610), 50, (5, 5, 22, 225), palette["accent"], 7)
-        _paste_art(image, art, (95, 190, 445, 540), palette["gold"])
-        d = ImageDraw.Draw(image)
-        d.text((500, 205), "NOW PLAYING", font=_font(25), fill=palette["second"])
-        d.text((500, 260), "GOVIND MUSIC", font=_font(56), fill="white",
-               stroke_width=2, stroke_fill=palette["accent"])
-        _track_info(d, title, duration, channel, requester, 505, 360, 650, 39)
-    else:
-        _paste_art(image, art, (825, 180, 1165, 520), palette["accent"])
-        d = ImageDraw.Draw(image)
-        _crown(d, 390, 185, .9, palette["gold"])
-        d.text((75, 300), "GOVIND MUSIC", font=_font(70), fill="white",
-               stroke_width=3, stroke_fill=palette["accent"])
-        _track_info(d, title, duration, channel, requester, 85, 405, 690, 40)
+        d.text((450, 195), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 450, 250, 760, 52)
 
+    elif layout == "left-art":
+        _paste_art(image, art, (60, 155, 490, 585), palette["second"])
+        d = ImageDraw.Draw(image)
+        d.text((540, 200), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 540, 265, 670, 42)
+
+    elif layout == "right-art":
+        _paste_art(image, art, (780, 155, 1210, 585), palette["accent"])
+        d = ImageDraw.Draw(image)
+        d.text((60, 200), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 60, 265, 680, 42)
+
+    elif layout == "diagonal":
+        d.polygon([(0, 480), (820, 90), (1280, 90), (1280, 720), (0, 720)],
+                  fill=(18, 8, 42, 155))
+        _paste_art(image, art, (830, 165, 1175, 510), palette["gold"])
+        d = ImageDraw.Draw(image)
+        d.text((60, 210), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 60, 275, 720, 46)
+
+    elif layout == "top-banner":
+        _paste_art(image, art, (65, 195, 415, 545), palette["accent"])
+        d = ImageDraw.Draw(image)
+        _rounded(d, (460, 175, 1210, 565), 36, (6, 6, 22, 210), palette["second"], 4)
+        d.text((505, 215), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 505, 280, 650, 42)
+
+    elif layout == "split-screen":
+        d.rectangle((0, 0, WIDTH // 2, HEIGHT), fill=(10, 6, 28, 220))
+        _paste_art(image, art, (690, 145, 1165, 620), palette["second"])
+        d = ImageDraw.Draw(image)
+        d.text((60, 210), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 60, 275, 540, 40)
+
+    elif layout == "royal-frame":
+        d.rounded_rectangle((24, 24, WIDTH - 24, HEIGHT - 24), radius=40,
+                            outline=palette["gold"], width=4)
+        _paste_art(image, art, (70, 185, 410, 525), palette["gold"])
+        d = ImageDraw.Draw(image)
+        d.text((470, 220), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 470, 285, 720, 42)
+
+    elif layout == "equalizer-stage":
+        _paste_art(image, art, (460, 140, 820, 500), palette["second"])
+        d = ImageDraw.Draw(image)
+        d.text((80, 200), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 80, 265, 350, 34)
+        _headphones(d, 920, 230, 1.0, palette["accent"])
+
+    elif layout == "neon-card":
+        _rounded(d, (55, 135, 1225, 600), 46, (6, 6, 24, 215), palette["accent"], 6)
+        _paste_art(image, art, (90, 175, 440, 525), palette["gold"])
+        d = ImageDraw.Draw(image)
+        d.text((490, 210), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 490, 275, 670, 42)
+
+    else:  # minimal-royal
+        _paste_art(image, art, (820, 165, 1165, 510), palette["accent"])
+        d = ImageDraw.Draw(image)
+        d.text((70, 230), "NOW PLAYING", font=_font(22), fill=palette["second"])
+        _track_info(d, title, duration, channel, requester, 70, 295, 700, 44)
+
+    # ========== BOTTOM RIGHT : BOT NAME ==========
     d = ImageDraw.Draw(image)
-    footer = f"{bot_name}  •  PLAY  •  PAUSE  •  SKIP"
-    d.text((WIDTH//2, HEIGHT-34), footer, font=_font(18), fill=(225, 225, 255), anchor="mm")
+    _brand_bottom(d, bot_name, palette)
+
     return image.convert("RGB")
 
 
@@ -329,8 +368,9 @@ async def get_thumb(
     requested_by="Group member",
 ):
     """
-    Generate a 1280x720 GOVIND MUSIC PNG.
-    Keeps the existing get_thumb() arguments and returns a file path.
+    Generate a 1280x720 premium thumbnail.
+    Top-left  → GOVIND
+    Bottom-right → bot_name (dynamic)
     """
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     title = _clean(title, "Unknown Track", 110)
@@ -349,11 +389,11 @@ async def get_thumb(
                         channel, requester, bot_name)
     except Exception:
         LOGGER.exception("Thumbnail rendering failed; using fallback")
-        image = Image.new("RGB", (WIDTH, HEIGHT), (8, 5, 20))
+        image = Image.new("RGB", (WIDTH, HEIGHT), (10, 6, 24))
         d = ImageDraw.Draw(image)
-        d.text((WIDTH//2, 260), "GOVIND MUSIC", font=_font(72),
+        d.text((WIDTH // 2, 260), "GOVIND", font=_font(70),
                fill=(255, 210, 0), anchor="mm")
-        d.text((WIDTH//2, 370), title[:60], font=_font(36),
+        d.text((WIDTH // 2, 360), title[:55], font=_font(34),
                fill="white", anchor="mm")
 
     output = CACHE_DIR / f"govind_music_{uuid.uuid4().hex}.png"

@@ -383,3 +383,21 @@ V3MUSIC can be configured for deployment on supported hosting platforms.
 *Made with Python and passion.*
 
 </div>
+
+
+## 🎬 V3 Media Editor
+
+The Telegram bot includes a lightweight CapCut-style photo/video editor powered by Pillow and FFmpeg.
+
+Reply to a photo or video and use:
+
+- `/edit brightness=1.2 contrast=1.1 saturation=1.3`
+- `/edit filter=warm` — also supports `bw`, `cool`, `blur`, and `sharpen`
+- `/edit crop=square` or `/edit crop=portrait`
+- `/edit rotate=90 mirror text=Govind`
+- `/edit start=5 end=45 speed=1.5` — video trim and speed
+- `/edit mute quality=720p`
+- `/photo2video 15` — turn a replied photo into a 15-second video
+- `/edithelp` — show the full command guide
+
+Rendered video duration is limited to 1–120 seconds. Video rendering requires FFmpeg/ffprobe; the repository Dockerfile already installs FFmpeg. Pillow is already included in requirements.

@@ -16,6 +16,7 @@ from .logo import register_logo_handlers
 from .anti_abuse import register_anti_abuse_handlers
 from .eval import register_eval
 from .bio_guard import register_bio_guard_handlers
+from .editor import register_editor_handlers
 def register_handlers(
     app,
     stream,
@@ -48,3 +49,4 @@ def register_handlers(
     register_logo_handlers(app)
     register_anti_abuse_handlers(app)
     register_eval(app)
+    register_editor_handlers(app)

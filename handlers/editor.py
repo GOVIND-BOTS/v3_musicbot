@@ -36,7 +36,7 @@ HELP = (
     "/edit quality=720p brightness=0.1 contrast=1.1\n"
     "/edit mute mirror rotate=90 text=V3_MUSIC\n\n"
     "**Multi-clip timeline (2–10 clips):**\n"
-    "1. Send /timeline to start a private editing session in this chat.\n"
+    "1. Send /timeline to start your editing session in this chat.\n"
     "2. Send photos/videos one by one in the order you want them.\n"
     "3. Optional: reply to an audio file with /timeline_music.\n"
     "4. Optional: /timeline_order 3,1,2 to reorder uploaded clips.\n"

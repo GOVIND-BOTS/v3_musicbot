@@ -2,7 +2,6 @@ import asyncio
 import os
 import shutil
 import tempfile
-from pathlib import Path
 
 from PIL import Image, ImageEnhance, ImageOps, ImageFilter, ImageDraw, ImageFont
 

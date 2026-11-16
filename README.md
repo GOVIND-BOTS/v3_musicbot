@@ -402,7 +402,7 @@ Reply to a photo or video and use:
 
 Rendered video duration is limited to 1–120 seconds. Video rendering requires FFmpeg/ffprobe; the repository Dockerfile already installs FFmpeg. Pillow is already included in requirements.
 
- 
+
 ## 🎞️ Multi-clip timeline and background music
 
 The editor can combine 2–10 photos/videos into one MP4. Start a session, send clips in upload order, optionally attach music, then export:

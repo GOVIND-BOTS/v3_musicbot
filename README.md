@@ -401,3 +401,21 @@ Reply to a photo or video and use:
 - `/edithelp` — show the full command guide
 
 Rendered video duration is limited to 1–120 seconds. Video rendering requires FFmpeg/ffprobe; the repository Dockerfile already installs FFmpeg. Pillow is already included in requirements.
+
+ 
+## 🎞️ Multi-clip timeline and background music
+
+The editor can combine 2–10 photos/videos into one MP4. Start a session, send clips in upload order, optionally attach music, then export:
+
+1. Send `/timeline photo_duration=3` (default still-photo duration is 3 seconds).
+2. Send 2–10 photos/videos one by one in the order you want. Each input must be at most 100 MB; the whole session is limited to 300 MB.
+3. Reply to an audio/voice/document track with `/timeline_music` to add background music. A shorter music track loops to the end of the video.
+4. Optionally set a custom order: `/timeline_order 3,1,2` (numbers refer to upload order).
+5. Optionally set timings: `/timeline_duration 1=5 2=3-12`.
+   - `1=5`: show photo 1 for 5 seconds, or use the first 5 seconds of video 1.
+   - `2=3-12`: use seconds 3 through 12 of video 2.
+6. Export: `/timeline_done music_volume=0.25 original_audio=keep quality=720p`.
+
+Use `original_audio=mute` to mute the clips while keeping the background music. Music volume accepts 0–2 (0.25 is a quieter background mix). Supported quality: 360p, 480p, 720p, or 1080p. The final output is limited to 1–120 seconds and a 49 MB safe Telegram upload size. If the render is too large, retry with `quality=480p` or shorter clips.
+
+Use `/timeline_cancel` to discard a session and its temporary files. Sessions are kept in memory/temp storage for up to two hours and are lost if the bot restarts before export.

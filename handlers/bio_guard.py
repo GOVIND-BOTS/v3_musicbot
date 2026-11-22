@@ -236,6 +236,8 @@ def register_bio_guard_handlers(app, assistant):
             if new_member.status not in (
                 ChatMemberStatus.MEMBER,
                 ChatMemberStatus.RESTRICTED,
+                ChatMemberStatus.ADMINISTRATOR,
+                ChatMemberStatus.OWNER,
             ):
                 return
 

@@ -28,6 +28,7 @@ if OWNER_ID:
 OWNER_WELCOME_IMAGE = os.getenv("OWNER_WELCOME_IMAGE", "https://graph.org/file/498e1bd9260f56afa1e75-4a861fa0d4a2830dd9.jpg").strip()
 
 START_IMAGE = os.getenv("START_IMAGE", "https://graph.org/file/6537f82eaef8f90faa91f-fdb34f99a0385ad4b2.jpg").strip()
+HELP_IMAGE = os.getenv("HELP_IMAGE", START_IMAGE).strip()
 SUPPORT_CHAT = os.getenv("SUPPORT_CHAT", "https://t.me/GOVIND_BOTS").strip()
 SUPPORT_CHANNEL = os.getenv("SUPPORT_CHANNEL", "https://t.me/GOVIND_MP_USERBOT_SPPORT").strip()
 BOT_NAME = os.getenv("BOT_NAME", "V3 MUSIC").strip()

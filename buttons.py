@@ -190,7 +190,7 @@ HELP_COMMANDS = {
     "joinuserbot": ("👤 Join Assistant", "Music", "/joinuserbot", "Ask the assistant account to join the current group/call when supported.", "Group admin may need to add the assistant.", "/joinuserbot"),
     "pause": ("⏸ Pause", "Music", "/pause", "Pause the current voice-chat stream.", "Group admin or authorized user.", "/pause"),
     "resume": ("▶️ Resume", "Music", "/resume", "Resume a paused voice-chat stream.", "Group admin or authorized user.", "/resume"),
-    "skip": ("⏭ Skip", "Music", "/skip", "Skip the currently playing track and continue the queue.", "Group admin or authorized user.", "/skip"),
+    "skip": ("⏭ Skip", "Music", "skip (or adisha skip / baby skip)", "Skip the currently playing track and continue the queue. This handler uses a text trigger, not /skip.", "Group admin.", "skip"),
     "stop": ("⏹ Stop", "Music", "/stop", "Stop playback and clear the active queue.", "Group admin or authorized user.", "/stop"),
     "queue": ("📜 Queue", "Music", "/queue", "Show tracks waiting in the current group queue.", "Group.", "/queue"),
     "now": ("🎧 Now Playing", "Music", "/now", "Show the currently playing track and its details.", "Group.", "/now"),

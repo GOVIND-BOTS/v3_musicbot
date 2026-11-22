@@ -13,7 +13,7 @@ from pyrogram.types import Message
 import yt_dlp
 
 LOGGER = logging.getLogger(__name__)
-URL_RE = re.compile(r"https?://[^\\s<>]+", re.IGNORECASE)
+URL_RE = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
 MAX_FILE_SIZE = int(os.getenv("VIDEO_DOWNLOAD_MAX_MB", "1900")) * 1024 * 1024
 DOWNLOAD_TIMEOUT = int(os.getenv("VIDEO_DOWNLOAD_TIMEOUT", "900"))
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(2)

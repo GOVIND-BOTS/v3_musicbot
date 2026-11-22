@@ -1,9 +1,9 @@
-
 pyrogrammod>=2.1.2
 py-tgcalls>=2.2.11
 
 motor
 pymongo
+certifi
 python-dotenv
 
 aiofiles
@@ -21,4 +21,3 @@ redis>=5.0.0
 
 nudenet>=3.4.2
 opencv-python-headless
-

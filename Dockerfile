@@ -11,17 +11,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     unzip \
+    ca-certificates \
+    openssl \
+    fonts-noto-core \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Deno install
+# Deno install (used by supported media extractors)
 RUN curl -fsSL https://deno.land/install.sh | sh
 ENV PATH="/root/.deno/bin:$PATH"
 RUN deno --version
-RUN apt-get update && apt-get install -y fonts-noto-core \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

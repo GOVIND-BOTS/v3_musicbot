@@ -17,6 +17,7 @@ from .anti_abuse import register_anti_abuse_handlers
 from .eval import register_eval
 from .bio_guard import register_bio_guard_handlers
 from .editor import register_editor_handlers
+from .video_downloader import register_video_downloader_handlers
 def register_handlers(
     app,
     stream,
@@ -50,3 +51,4 @@ def register_handlers(
     register_anti_abuse_handlers(app)
     register_eval(app)
     register_editor_handlers(app)
+    register_video_downloader_handlers(app)

@@ -400,7 +400,8 @@ def register_anti_abuse_handlers(app):
                 {"enabled": True},
             )
             settings = await get_chat_settings(chat_id)
-            await query.message.edit_caption(
+            edit_method = query.message.edit_caption if query.message.photo else query.message.edit_text
+            await edit_method(
                 "🟢 <b>Anti-Abuse Enabled!</b>\n\n"
                 "V3 MUSIC is now protecting this group.",
                 reply_markup=InlineKeyboardMarkup([

@@ -75,8 +75,7 @@ async def _process_link(message: Message, url: str):
             status = await message.reply_text("⏳ Video link detected! Downloading…")
             loop = asyncio.get_running_loop()
             task = loop.run_in_executor(None, _download_video, url, folder)
-            try:
-                video_path, title = await task
+            video_path, title = await task
             await message.reply_video(video=video_path, caption=f"**{title[:900]}**\n\n๏ Downloaded by V3 MUSIC", supports_streaming=True)
             try:
                 await status.delete()

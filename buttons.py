@@ -1,4 +1,6 @@
 
+from html import escape
+
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from player_ui import stylize, format_duration, progress_button_text

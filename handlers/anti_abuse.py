@@ -122,7 +122,7 @@ async def show_settings(message, settings):
 
 def register_anti_abuse_handlers(app):
 
-    @app.on_message(filters.command("antigali") & filters.group)
+    @app.on_message(filters.command("antigali") & filters.group, group=-1)
     async def anti_gali_panel(client, message):
         if not message.from_user:
             return
@@ -139,7 +139,7 @@ def register_anti_abuse_handlers(app):
         settings = await get_chat_settings(message.chat.id)
         await show_settings(message, settings)
 
-    @app.on_message(filters.command("galiadd") & filters.group)
+    @app.on_message(filters.command("galiadd") & filters.group, group=-1)
     async def add_word(client, message):
         if not message.from_user:
             return
@@ -170,7 +170,7 @@ def register_anti_abuse_handlers(app):
             parse_mode=ParseMode.HTML,
         )
 
-    @app.on_message(filters.command("galidel") & filters.group)
+    @app.on_message(filters.command("galidel") & filters.group, group=-1)
     async def delete_word(client, message):
         if not message.from_user:
             return
@@ -196,7 +196,7 @@ def register_anti_abuse_handlers(app):
             parse_mode=ParseMode.HTML,
         )
 
-    @app.on_message(filters.command("galiwords") & filters.group)
+    @app.on_message(filters.command("galiwords") & filters.group, group=-1)
     async def list_words(client, message):
         if not message.from_user:
             return
@@ -229,7 +229,7 @@ def register_anti_abuse_handlers(app):
             parse_mode=ParseMode.HTML,
         )
 
-    @app.on_message(filters.command("resetwarn") & filters.group)
+    @app.on_message(filters.command("resetwarn") & filters.group, group=-1)
     async def reset_user_warnings(client, message):
         if not message.from_user:
             return
@@ -380,7 +380,7 @@ def register_anti_abuse_handlers(app):
         except Exception as error:
             LOGGER.warning("Could not send moderation alert: %s", error)
 
-    @app.on_callback_query(filters.regex(r"^ab:"))
+    @app.on_callback_query(filters.regex(r"^ab:"), group=-1)
     async def anti_abuse_callbacks(client, query):
         data = query.data.split(":")
         action = data[1]
@@ -400,7 +400,7 @@ def register_anti_abuse_handlers(app):
                 {"enabled": True},
             )
             settings = await get_chat_settings(chat_id)
-            await query.message.edit_text(
+            await query.message.edit_caption(
                 "🟢 <b>Anti-Abuse Enabled!</b>\n\n"
                 "V3 MUSIC is now protecting this group.",
                 reply_markup=InlineKeyboardMarkup([

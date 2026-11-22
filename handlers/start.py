@@ -21,6 +21,7 @@ from config import (
 )
 
 from database.mongodb import add_user, add_chat
+from buttons import command_help_keyboard, command_help_text
 
 
 LOGGER = logging.getLogger(__name__)
@@ -51,10 +52,11 @@ def _start_text():
 
 def _help_home_text():
     return (
-        "🍃 <b>𝐂ʜᴏᴏsᴇ 𝐀 𝐂ᴀᴛᴇɢᴏʀʏ 𝐅ᴏʀ 𝐇ᴇʟᴘ</b>\n\n"
-        "❓ 𝐀sᴋ 𝐘ᴏᴜʀ 𝐃ᴏᴜʙᴛs 𝐈ɴ 𝐒ᴜᴘᴘᴏʀᴛ 𝐂ʜᴀᴛ\n"
+        "🍃 <b>𝐕𝟑 𝐌ᴜsɪᴄ — 𝐂ᴏᴍᴍᴀɴᴅ 𝐇ᴇʟᴘ</b>\n\n"
+        "👇 𝐇ᴀʀ 𝐂ᴏᴍᴍᴀɴᴅ 𝐊ᴀ 𝐀ᴘɴᴀ 𝐀ʟᴀɢ 𝐇ᴇʟᴘ 𝐁ᴜᴛᴛᴏɴ 𝐇ᴀɪ.\n"
+        "𝐂ʟɪᴄᴋ 𝐊ᴀʀᴏ 𝐀ᴜʀ 𝐔sᴀɢᴇ, 𝐄xᴀᴍᴘʟᴇ 𝐀ᴜʀ 𝐏ᴇʀᴍɪssɪᴏɴs 𝐃ᴇᴋʜᴏ.\n"
         "━━━━━━━━━━━━━━━━━━━━━━\n"
-        "✦ 𝐀ʟʟ 𝐂ᴏᴍᴍᴀɴᴅs 𝐔sᴇ 𝐏ʀᴇғɪx : /"
+        "✦ 𝐂ᴏᴍᴍᴀɴᴅ 𝐋ɪsᴛ 𝐏ᴀɢᴇs 𝐌ᴇɪɴ 𝐃ɪᴠɪᴅᴇᴅ 𝐇ᴀɪ."
     )
 
 
@@ -169,45 +171,10 @@ def get_source_keyboard():
 
 
 def get_help_keyboard(page="home"):
-    if page == "home":
-        rows = [
-            [
-                InlineKeyboardButton("👮 𝐀ᴅᴍɪɴ", callback_data="help_admin"),
-                InlineKeyboardButton("🔐 𝐀ᴜᴛʜ", callback_data="help_auth"),
-                InlineKeyboardButton("📢 𝐆-𝐂ᴀsᴛ", callback_data="help_broadcast"),
-            ],
-            [
-                InlineKeyboardButton("🚫 𝐁ʟ-𝐂ʜᴀᴛ", callback_data="help_gban"),
-                InlineKeyboardButton("👤 𝐁ʟ-𝐔sᴇʀ", callback_data="help_gban"),
-                InlineKeyboardButton("▶️ 𝐂-𝐏ʟᴀʏ", callback_data="help_play"),
-            ],
-            [
-                InlineKeyboardButton("🛡 𝐆-𝐁ᴀɴ", callback_data="help_gban"),
-                InlineKeyboardButton("🔁 𝐋ᴏᴏᴘ", callback_data="help_loop"),
-                InlineKeyboardButton("⏩ 𝐀ᴜᴛᴏ-𝐏ʟᴀʏ", callback_data="help_play"),
-            ],
-            [
-                InlineKeyboardButton("📡 𝐏ɪɴɢ", callback_data="help_ping"),
-                InlineKeyboardButton("🎵 𝐏ʟᴀʏ", callback_data="help_play"),
-                InlineKeyboardButton("🔀 𝐒ʜᴜғғʟᴇ", callback_data="help_shuffle"),
-            ],
-            [
-                InlineKeyboardButton("⏩ 𝐒ᴇᴇᴋ", callback_data="help_seek"),
-                InlineKeyboardButton("🎶 𝐒ᴏɴɢ", callback_data="help_song"),
-                InlineKeyboardButton("⚡ 𝐒ᴘᴇᴇᴅ", callback_data="help_speed"),
-            ],
-            [
-                InlineKeyboardButton("🔙 𝐁ᴀᴄᴋ", callback_data="start_home"),
-            ],
-        ]
-    else:
-        rows = [
-            [
-                InlineKeyboardButton("🔙 𝐁ᴀᴄᴋ", callback_data="help_cmd"),
-                InlineKeyboardButton("❌ 𝐂ʟᴏsᴇ", callback_data="ctrl_close"),
-            ]
-        ]
-    return InlineKeyboardMarkup(rows)
+    try:
+        return command_help_keyboard(int(page) if str(page).isdigit() else 0)
+    except Exception:
+        return command_help_keyboard(0)
 
 
 async def _edit_menu(query, text, keyboard):
@@ -355,6 +322,30 @@ def register_start_handlers(app):
     async def help_callback(client, query: CallbackQuery):
         await query.answer()
         await _edit_menu(query, _help_home_text(), get_help_keyboard("home"))
+
+    @app.on_callback_query(filters.regex(r"^help_page_(\d+)$"))
+    async def help_page_callback(client, query: CallbackQuery):
+        page = int(query.matches[0].group(1))
+        await query.answer()
+        await _edit_menu(query, _help_home_text(), command_help_keyboard(page))
+
+    @app.on_callback_query(filters.regex(r"^help_page_info$"))
+    async def help_page_info_callback(client, query: CallbackQuery):
+        await query.answer("Choose any command button to open its own guide.", show_alert=True)
+
+    @app.on_callback_query(filters.regex(r"^help_item_([a-z0-9_]+)$"))
+    async def help_item_callback(client, query: CallbackQuery):
+        command = query.matches[0].group(1)
+        await query.answer()
+        help_text = command_help_text(command)
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔙 Back to Commands", callback_data="help_cmd")],
+            [
+                InlineKeyboardButton("🏠 Home", callback_data="start_home"),
+                InlineKeyboardButton("✖ Close", callback_data="ctrl_close"),
+            ],
+        ])
+        await _edit_menu(query, help_text, keyboard)
 
     @app.on_callback_query(filters.regex(r"^help_(admin|auth|play|loop|shuffle|seek|song|speed|ping|gban|broadcast)$"))
     async def help_section_callback(client, query: CallbackQuery):

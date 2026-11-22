@@ -804,7 +804,7 @@ def register_handlers(app):
         & ~filters.command(
             ["rules", "warns", "resetwarns"]
         )
-    )(moderate_text)
+     )(moderate_text, group=15)
 
     # Photos, stickers, GIFs, videos and supported documents
     app.on_message(
@@ -816,25 +816,25 @@ def register_handlers(app):
             | filters.video
             | filters.document
         )
-    )(moderate_media)
+     )(moderate_media, group=15)
 
     # Rules
     app.on_message(
         filters.group
         & filters.command("rules")
-    )(rules_command)
+     )(rules_command, group=-1)
 
     # Warning count
     app.on_message(
         filters.group
         & filters.command("warns")
-    )(warnings_command)
+     )(warnings_command, group=-1)
 
     # Reset warnings
     app.on_message(
         filters.group
         & filters.command("resetwarns")
-    )(reset_warnings_command)
+     )(reset_warnings_command, group=-1)
 
     LOGGER.info(
         "Student Protection System registered "

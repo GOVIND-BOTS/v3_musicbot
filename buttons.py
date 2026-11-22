@@ -48,19 +48,9 @@ def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
     return InlineKeyboardMarkup(rows)
 
 
-def help_buttons():
-    return InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton(
-                stylize("🏠 Home"),
-                callback_data="start_home",
-            ),
-            InlineKeyboardButton(
-                stylize("✖ Close"),
-                callback_data="ctrl_close",
-            ),
-        ]
-    ])
+def help_buttons(page=0):
+    """Return the central, paginated command-help keyboard."""
+    return command_help_keyboard(page)
 
 
 def stream_buttons(

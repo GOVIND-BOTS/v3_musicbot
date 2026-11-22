@@ -100,9 +100,17 @@ async def is_external_group_link(assistant, target, current_chat):
 
 
 async def get_user_bio(assistant, user_id):
+    # Ask for the full profile first; basic get_users results may omit bio.
+    try:
+        profile = await assistant.get_chat(user_id)
+        bio = getattr(profile, "bio", None)
+        if bio:
+            return bio
+    except Exception as exc:
+        LOGGER.debug("Full profile lookup failed for %s: %s", user_id, exc)
     try:
         user = await assistant.get_users(user_id)
-        return user.bio or ""
+        return getattr(user, "bio", "") or ""
     except Exception as exc:
         LOGGER.debug("Could not read bio for %s: %s", user_id, exc)
         return ""
@@ -155,7 +163,7 @@ async def send_warning(client, chat, user):
     markup = get_owner_keyboard()
 
     try:
-        if WELCOME_IMAGE and os.path.isfile(WELCOME_IMAGE):
+        if WELCOME_IMAGE and (WELCOME_IMAGE.startswith(("http://", "https://")) or os.path.isfile(WELCOME_IMAGE)):
             await client.send_photo(
                 chat.id,
                 photo=WELCOME_IMAGE,
@@ -216,7 +224,7 @@ async def scan_group(client, assistant, chat):
 
 def register_bio_guard_handlers(app, assistant):
 
-    @app.on_chat_member_updated(filters.group)
+    @app.on_chat_member_updated(filters.group, group=15)
     async def bio_guard_new_member(client, update):
         try:
             new_member = update.new_chat_member
@@ -252,7 +260,8 @@ def register_bio_guard_handlers(app, assistant):
             LOGGER.exception("New member bio check failed.")
 
     @app.on_message(
-        filters.command("checkbio") & filters.group
+        filters.command("checkbio") & filters.group,
+        group=-1,
     )
     async def checkbio_command(client, message):
         if not message.from_user:

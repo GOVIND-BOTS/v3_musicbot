@@ -419,10 +419,16 @@ def register_anti_abuse_handlers(app):
                 chat_id,
                 {"enabled": False},
             )
-            await query.message.edit_text(
-                "🔴 <b>Anti-Abuse Disabled!</b>",
-                parse_mode=ParseMode.HTML,
-            )
+            if query.message.photo:
+                await query.message.edit_caption(
+                    "🔴 <b>Anti-Abuse Disabled!</b>",
+                    parse_mode=ParseMode.HTML,
+                )
+            else:
+                await query.message.edit_text(
+                    "🔴 <b>Anti-Abuse Disabled!</b>",
+                    parse_mode=ParseMode.HTML,
+                )
 
         elif action == "settings":
             if not await is_admin(client, chat_id, user_id):
@@ -434,7 +440,8 @@ def register_anti_abuse_handlers(app):
             settings = await get_chat_settings(chat_id)
             status = "🟢 ENABLED" if settings["enabled"] else "🔴 DISABLED"
 
-            await query.message.edit_text(
+            edit_method = query.message.edit_caption if query.message.photo else query.message.edit_text
+            await edit_method(
                 "🍃ᶦϻᷧ) <b>V3 MUSIC</b> 🍃\n"
                 "━━━━━━━━━━━━━━━━━━━━━━\n"
                 "🛡️ <b>𝐀ɴᴛɪ-𝐀ʙᴜsᴇ 𝐒ᴇᴛᴛɪɴɢs</b>\n\n"
@@ -504,6 +511,7 @@ def register_anti_abuse_handlers(app):
         elif action == "close":
             await query.message.delete()
 
-        await query.answer()
+        if action in ("enable", "disable", "settings", "close"):
+            await query.answer()
 
     LOGGER.info("V3 MUSIC Anti-Abuse handlers registered.")

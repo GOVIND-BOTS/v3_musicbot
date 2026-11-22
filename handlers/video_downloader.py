@@ -15,7 +15,6 @@ import yt_dlp
 LOGGER = logging.getLogger(__name__)
 URL_RE = re.compile(r"https?://[^\s<>]+", re.IGNORECASE)
 MAX_FILE_SIZE = int(os.getenv("VIDEO_DOWNLOAD_MAX_MB", "1900")) * 1024 * 1024
-DOWNLOAD_TIMEOUT = int(os.getenv("VIDEO_DOWNLOAD_TIMEOUT", "900"))
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(2)
 ACTIVE_DOWNLOADS = set()
 
@@ -77,9 +76,7 @@ async def _process_link(message: Message, url: str):
             loop = asyncio.get_running_loop()
             task = loop.run_in_executor(None, _download_video, url, folder)
             try:
-                video_path, title = await asyncio.wait_for(task, timeout=DOWNLOAD_TIMEOUT)
-            except asyncio.TimeoutError:
-                raise RuntimeError("Download time limit exceed ho gaya. Chhota video try karein.")
+                video_path, title = await task
             await message.reply_video(video=video_path, caption=f"**{title[:900]}**\n\n๏ Downloaded by V3 MUSIC", supports_streaming=True)
             try:
                 await status.delete()
@@ -113,6 +110,8 @@ def register_video_downloader_handlers(app):
         if not message.from_user or message.from_user.is_bot:
             return
         text = message.text or message.caption or ""
+        if text.lstrip().startswith("/vdownload"):
+            return
         match = URL_RE.search(text)
         if not match:
             return

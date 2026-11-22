@@ -14,6 +14,7 @@ from pyrogram.types import (
 
 from config import (
     START_IMAGE,
+    HELP_IMAGE,
     SUPPORT_CHAT,
     SUPPORT_CHANNEL,
     OWNER_ID,
@@ -242,10 +243,22 @@ async def send_start(client, message):
 
 
 async def send_help(message):
+    keyboard = get_help_keyboard("home")
+    if HELP_IMAGE:
+        try:
+            await message.reply_photo(
+                photo=HELP_IMAGE,
+                caption=_help_home_text(),
+                parse_mode=ParseMode.HTML,
+                reply_markup=keyboard,
+            )
+            return
+        except Exception:
+            LOGGER.warning("Help image failed; sending text help instead.", exc_info=True)
     await message.reply_text(
         _help_home_text(),
         parse_mode=ParseMode.HTML,
-        reply_markup=get_help_keyboard("home"),
+        reply_markup=keyboard,
         disable_web_page_preview=True,
     )
 

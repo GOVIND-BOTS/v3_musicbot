@@ -251,10 +251,10 @@ def command_help_text(command):
     return (
         f"<b>{title}</b>\n"
         f"<i>Category: {category}</i>\n\n"
-        f"<b>Usage</b>\n<code>{usage}</code>\n\n"
+        f"<b>Usage</b>\n<code>{escape(usage)}</code>\n\n"
         f"<b>What it does</b>\n{description}\n\n"
         f"<b>Permissions / Notes</b>\n{permission}\n\n"
-        f"<b>Example</b>\n<code>{example}</code>"
+        f"<b>Example</b>\n<code>{escape(example)}</code>"
     )
 
 

@@ -4,6 +4,7 @@ import os
 import random
 from pathlib import Path
 
+from pyrogram.enums import ParseMode
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import BOT_NAME, OWNER_ID, START_IMAGE, SUPPORT_CHAT
@@ -98,6 +99,7 @@ async def _send_promo(client, chat_id, bot_username):
                 chat_id,
                 photo=START_IMAGE,
                 caption=caption,
+                parse_mode=ParseMode.HTML,
                 reply_markup=keyboard,
             )
             return
@@ -119,6 +121,7 @@ async def _send_promo(client, chat_id, bot_username):
     await client.send_message(
         chat_id,
         text=caption,
+        parse_mode=ParseMode.HTML,
         reply_markup=keyboard,
         disable_web_page_preview=True,
     )

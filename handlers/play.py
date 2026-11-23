@@ -100,7 +100,19 @@ async def generate_track_thumbnail(track, client=None):
             LOGGER.warning("YouTube video ID not found for thumbnail.")
             return track
 
-        user = track.get("requested_by") or {}\n        track["videoid"] = video_id\n        avatar_data = None\n        if client and isinstance(user, int):\n            try:\n                photos = await client.get_user_profile_photos(user, limit=1)\n                if photos and photos.photos and photos.photos[0]:\n                    photo = photos.photos[0][0]\n                    downloaded = await client.download_media(photo.file_id, in_memory=True)\n                    if downloaded:\n                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)\n            except Exception:\n                LOGGER.debug("Requester profile photo unavailable", exc_info=True)
+        user = track.get("requested_by") or {}
+        track["videoid"] = video_id
+        avatar_data = None
+        if client and isinstance(user, int):
+            try:
+                photos = await client.get_user_profile_photos(user, limit=1)
+                if photos and photos.photos and photos.photos[0]:
+                    photo = photos.photos[0][0]
+                    downloaded = await client.download_media(photo.file_id, in_memory=True)
+                    if downloaded:
+                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
+            except Exception:
+                LOGGER.debug("Requester profile photo unavailable", exc_info=True)
 
         if isinstance(user, dict):
             requester = (

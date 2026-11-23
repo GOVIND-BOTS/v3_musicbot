@@ -8,6 +8,20 @@ from pyrogram import Client
 from pyrogram.enums import ParseMode
 from pyrogram.types import InputMediaPhoto
 
+# Compatibility bridge: some Pyrogram forks expose the generated
+# group-call exception classes with a capital "C", while PyTgCalls
+# imports the historical spelling (GroupcallForbidden/GroupcallInvalid).
+# Define aliases before importing PyTgCalls so its internal imports work.
+import pyrogram.errors as _pyrogram_errors
+
+for _old_name, _new_name in (
+    ("GroupcallForbidden", "GroupCallForbidden"),
+    ("GroupcallInvalid", "GroupCallInvalid"),
+):
+    if not hasattr(_pyrogram_errors, _old_name):
+        _exception = getattr(_pyrogram_errors, _new_name, Exception)
+        setattr(_pyrogram_errors, _old_name, _exception)
+
 from pytgcalls import PyTgCalls
 from pytgcalls.types import (
     MediaStream,

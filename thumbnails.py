@@ -339,9 +339,14 @@ async def _download_youtube_thumb(videoid):
         return None
     timeout = aiohttp.ClientTimeout(total=12)
     headers = {"User-Agent": "Mozilla/5.0"}
+    # YouTube does not provide max-resolution art for every video.
+    # Try every standard thumbnail size before falling back to generated artwork.
     urls = (
         f"https://i.ytimg.com/vi/{videoid}/maxresdefault.jpg",
+        f"https://i.ytimg.com/vi/{videoid}/sddefault.jpg",
         f"https://i.ytimg.com/vi/{videoid}/hqdefault.jpg",
+        f"https://i.ytimg.com/vi/{videoid}/mqdefault.jpg",
+        f"https://i.ytimg.com/vi/{videoid}/default.jpg",
     )
     try:
         async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:

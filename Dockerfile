@@ -25,7 +25,7 @@ RUN deno --version
 COPY requirements.txt .
 # Remove the legacy Pyrogram distribution if present; it conflicts with PyrogramMod's
 # shared `pyrogram` import package and lacks the Telegram API methods PyTgCalls needs.
-RUN pip uninstall -y pyrogram || true
+RUN pip uninstall -y pyrogram pyrogrammod || true
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 

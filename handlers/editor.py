@@ -192,7 +192,10 @@ def session_summary(session):
 
 
 def register_editor_handlers(app):
-    @app.on_message(filters.command(["edit", "photoedit", "videoedit"]))
+    # Explicitly enable editor commands in private chats and groups.
+    editor_chats = filters.private | filters.group
+
+    @app.on_message(editor_chats & filters.command(["edit", "photoedit", "videoedit"]))
     async def edit_command(client, message):
         if len(message.command) > 1 and message.command[1].lower() in {"help", "guide"}:
             return await message.reply_text(HELP, disable_web_page_preview=True)
@@ -229,7 +232,7 @@ def register_editor_handlers(app):
         finally:
             cleanup(folder)
 
-    @app.on_message(filters.command("photo2video"))
+    @app.on_message(editor_chats & filters.command("photo2video"))
     async def photo_to_video_command(client, message):
         reply = message.reply_to_message
         if not reply or media_kind(reply) != "photo":
@@ -251,7 +254,7 @@ def register_editor_handlers(app):
         finally:
             cleanup(folder)
 
-    @app.on_message(filters.command("timeline"))
+    @app.on_message(editor_chats & filters.command("timeline"))
     async def timeline_start_command(client, message):
         prune_sessions()
         key = session_key(message)
@@ -300,7 +303,7 @@ def register_editor_handlers(app):
             "• /timeline_cancel"
         )
 
-    @app.on_message(filters.incoming & filters.media, group=10)
+    @app.on_message(editor_chats & filters.incoming & filters.media, group=10)
     async def collect_timeline_clip(client, message):
         key, session = get_session(message)
         if not session:
@@ -353,7 +356,7 @@ def register_editor_handlers(app):
                 LOGGER.exception("Timeline clip download failed")
                 await status.edit_text("❌ Could not add this clip: " + str(error)[-400:])
 
-    @app.on_message(filters.command("timeline_music"))
+    @app.on_message(editor_chats & filters.command("timeline_music"))
     async def timeline_music_command(client, message):
         key, session = get_session(message)
         if not session:
@@ -399,7 +402,7 @@ def register_editor_handlers(app):
                 LOGGER.exception("Timeline music download failed")
                 await status.edit_text("❌ Could not add music: " + str(error)[-400:])
 
-    @app.on_message(filters.command("timeline_order"))
+    @app.on_message(editor_chats & filters.command("timeline_order"))
     async def timeline_order_command(client, message):
         key, session = get_session(message)
         if not session:
@@ -417,7 +420,7 @@ def register_editor_handlers(app):
                 return await message.reply_text("⚠️ " + str(error))
         await message.reply_text("🔀 Timeline order set: " + ", ".join(map(str, session["order"])))
 
-    @app.on_message(filters.command("timeline_duration"))
+    @app.on_message(editor_chats & filters.command("timeline_duration"))
     async def timeline_duration_command(client, message):
         key, session = get_session(message)
         if not session:
@@ -440,7 +443,7 @@ def register_editor_handlers(app):
                 return await message.reply_text("⚠️ " + str(error))
         await message.reply_text("⏱ Clip timing updated. Clip numbers refer to upload order.")
 
-    @app.on_message(filters.command("timeline_done"))
+    @app.on_message(editor_chats & filters.command("timeline_done"))
     async def timeline_done_command(client, message):
         key, session = get_session(message)
         if not session:
@@ -529,7 +532,7 @@ def register_editor_handlers(app):
                     except OSError:
                         pass
 
-    @app.on_message(filters.command("timeline_cancel"))
+    @app.on_message(editor_chats & filters.command("timeline_cancel"))
     async def timeline_cancel_command(client, message):
         key, session = get_session(message)
         if not session:
@@ -541,6 +544,6 @@ def register_editor_handlers(app):
             cleanup(session["folder"])
         await message.reply_text("🗑 Timeline session cancelled and temporary files removed.")
 
-    @app.on_message(filters.command("edithelp"))
+    @app.on_message(editor_chats & filters.command("edithelp"))
     async def edit_help_command(client, message):
         await message.reply_text(HELP, disable_web_page_preview=True)

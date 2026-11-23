@@ -60,6 +60,7 @@ def stream_buttons(
     duration=0,
     loop_mode="off",
     shuffle=False,
+    owner_url=None,
 ):
     loop_label = "ON" if str(loop_mode).lower() not in ("off", "none", "false", "0") else "OFF"
     shuffle_label = "ON" if shuffle else "OFF"

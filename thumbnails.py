@@ -402,3 +402,268 @@ async def get_thumb(
     LOGGER.info("Generated thumbnail: layout=%s palette=%s path=%s",
                 layout, palette["name"], output)
     return str(output)
+
+
+# ---------------------------------------------------------------------------
+# V3 PREMIUM 90-DESIGN ENGINE
+# Ten genuinely different compositions multiplied by nine visual treatments.
+# Each preset changes geometry/composition/effects, not just the colour palette.
+# ---------------------------------------------------------------------------
+DESIGN_COMPOSITIONS = (
+    "left_orbit", "right_orbit", "center_poster", "split_diagonal",
+    "top_stage", "bottom_stage", "corner_focus", "double_panel",
+    "wide_halo", "asymmetric",
+)
+DESIGN_MOTIFS = (
+    "circuit", "radial_rays", "wave_ribbons", "shards", "starfield",
+    "concentric", "equalizer", "speed_lines", "polygon_mesh",
+)
+DESIGN_PRESETS = tuple(
+    (f"design_{index + 1:02d}", composition, motif)
+    for index, (composition, motif) in enumerate(
+        ( (composition, motif) for composition in DESIGN_COMPOSITIONS
+          for motif in DESIGN_MOTIFS )
+    )
+)
+
+
+def _circle_crop(source, size, border=0, border_color=(255, 255, 255)):
+    source = ImageOps.fit(source.convert("RGBA"), (size, size),
+                          method=Image.Resampling.LANCZOS)
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse((1, 1, size - 2, size - 2), fill=255)
+    result = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    result.paste(source, (0, 0), mask)
+    if border:
+        ImageDraw.Draw(result).ellipse(
+            (border // 2, border // 2, size - border // 2 - 1,
+             size - border // 2 - 1),
+            outline=(*border_color, 255), width=border
+        )
+    return result
+
+
+def _avatar_image(data):
+    if not data:
+        return None
+    try:
+        return Image.open(BytesIO(data)).convert("RGBA")
+    except Exception:
+        LOGGER.debug("Requester avatar could not be decoded", exc_info=True)
+        return None
+
+
+def _draw_motif(draw, motif, accent, second, seed):
+    rng = random.Random(seed)
+    a, b = (*accent, 110), (*second, 95)
+    if motif == "circuit":
+        for x in range(35, WIDTH, 105):
+            y = rng.randint(90, HEIGHT - 90)
+            draw.line((x, y, x + 55, y, x + 75, y + 35), fill=a, width=3)
+            draw.ellipse((x + 68, y + 28, x + 82, y + 42), outline=b, width=3)
+    elif motif == "radial_rays":
+        cx, cy = WIDTH // 2, HEIGHT // 2
+        for angle in range(0, 360, 12):
+            import math
+            r1, r2 = rng.randint(90, 230), rng.randint(430, 760)
+            x1, y1 = cx + int(math.cos(math.radians(angle))*r1), cy + int(math.sin(math.radians(angle))*r1)
+            x2, y2 = cx + int(math.cos(math.radians(angle))*r2), cy + int(math.sin(math.radians(angle))*r2)
+            draw.line((x1, y1, x2, y2), fill=a, width=rng.randint(2, 5))
+    elif motif == "wave_ribbons":
+        for band in range(7):
+            points = []
+            for x in range(-20, WIDTH + 40, 18):
+                import math
+                y = 110 + band * 78 + int(math.sin(x / 85 + band) * 34)
+                points.append((x, y))
+            draw.line(points, fill=a if band % 2 else b, width=5)
+    elif motif == "shards":
+        for _ in range(30):
+            x, y = rng.randrange(WIDTH), rng.randrange(HEIGHT)
+            w, h = rng.randint(18, 90), rng.randint(25, 150)
+            draw.polygon([(x, y), (x+w, y-h//3), (x+w//2, y+h)], outline=a, width=3)
+    elif motif == "starfield":
+        for _ in range(170):
+            x, y, r = rng.randrange(WIDTH), rng.randrange(HEIGHT), rng.randint(1, 4)
+            draw.ellipse((x-r, y-r, x+r, y+r), fill=a if r % 2 else b)
+    elif motif == "concentric":
+        for r in range(80, 760, 48):
+            draw.ellipse((WIDTH//2-r, HEIGHT//2-r, WIDTH//2+r, HEIGHT//2+r),
+                         outline=a if r % 2 else b, width=3)
+    elif motif == "equalizer":
+        for x in range(28, WIDTH-20, 24):
+            h = rng.randint(22, 160)
+            draw.rounded_rectangle((x, HEIGHT-18-h, x+10, HEIGHT-18),
+                                   radius=5, fill=a if x % 2 else b)
+    elif motif == "speed_lines":
+        for _ in range(70):
+            x, y = rng.randint(-100, WIDTH), rng.randrange(HEIGHT)
+            draw.line((x, y, x+rng.randint(60, 260), y-rng.randint(4, 30)),
+                      fill=a, width=rng.randint(1, 4))
+    else:
+        nodes = [(rng.randrange(WIDTH), rng.randrange(HEIGHT)) for _ in range(34)]
+        for i, (x, y) in enumerate(nodes):
+            for nx, ny in nodes[i+1:i+4]:
+                if abs(nx-x) + abs(ny-y) < 360:
+                    draw.line((x, y, nx, ny), fill=a, width=2)
+            draw.ellipse((x-4, y-4, x+4, y+4), fill=b)
+
+
+def _render_premium(seed, composition, motif, palette, art, avatar,
+                    title, duration, channel, requester, bot_name):
+    rng = random.Random(seed)
+    image = _background(palette, seed)
+    overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+    d = ImageDraw.Draw(overlay)
+    _draw_motif(d, motif, palette["accent"], palette["second"], seed)
+
+    # A composition-specific stage panel.
+    panels = {
+        "left_orbit": (430, 120, 1220, 610),
+        "right_orbit": (60, 120, 850, 610),
+        "center_poster": (170, 85, 1110, 640),
+        "split_diagonal": (55, 105, 1225, 620),
+        "top_stage": (55, 350, 1225, 650),
+        "bottom_stage": (55, 65, 1225, 360),
+        "corner_focus": (330, 145, 1210, 610),
+        "double_panel": (430, 110, 1220, 625),
+        "wide_halo": (95, 90, 1185, 630),
+        "asymmetric": (500, 75, 1230, 650),
+    }
+    panel = panels[composition]
+    d.rounded_rectangle(panel, radius=42, fill=(5, 5, 22, 176),
+                        outline=(*palette["accent"], 210), width=4)
+
+    # Ten intentionally different cover placements and sizes.
+    cover_boxes = {
+        "left_orbit": (70, 175, 390),
+        "right_orbit": (820, 175, 390),
+        "center_poster": (470, 90, 340),
+        "split_diagonal": (835, 175, 330),
+        "top_stage": (465, 35, 350),
+        "bottom_stage": (465, 335, 350),
+        "corner_focus": (75, 95, 300),
+        "double_panel": (70, 190, 320),
+        "wide_halo": (470, 175, 340),
+        "asymmetric": (95, 325, 285),
+    }
+    cx, cy, diameter = cover_boxes[composition]
+    cover = _circle_crop(art or Image.new("RGB", (500, 500), (18, 12, 42)),
+                         diameter, border=10, border_color=palette["accent"])
+
+    # Diffused halo behind the circular artwork.
+    halo = Image.new("RGBA", (diameter + 100, diameter + 100), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    hd.ellipse((10, 10, diameter + 90, diameter + 90),
+               fill=(*palette["second"], 100))
+    halo = halo.filter(ImageFilter.GaussianBlur(30))
+    image.alpha_composite(halo, (cx - 50, cy - 50))
+    image.alpha_composite(overlay)
+    image.alpha_composite(cover, (cx, cy))
+
+    # Requester avatar: small transparent circular PNG with a double ring.
+    if avatar is not None:
+        avatar_size = 118
+        avatar_circle = _circle_crop(avatar, avatar_size, border=7,
+                                     border_color=palette["gold"])
+        ax = min(WIDTH - avatar_size - 36, cx + diameter - 72)
+        ay = min(HEIGHT - avatar_size - 36, cy + diameter - 72)
+        shadow = Image.new("RGBA", (avatar_size + 26, avatar_size + 26), (0,0,0,0))
+        ImageDraw.Draw(shadow).ellipse((3,3,avatar_size+23,avatar_size+23),
+                                       fill=(*palette["gold"], 100))
+        shadow = shadow.filter(ImageFilter.GaussianBlur(12))
+        image.alpha_composite(shadow, (ax-13, ay-13))
+        image.alpha_composite(avatar_circle, (ax, ay))
+    else:
+        ax, ay = WIDTH - 150, HEIGHT - 160
+        badge = Image.new("RGBA", (118,118), (0,0,0,0))
+        bd = ImageDraw.Draw(badge)
+        bd.ellipse((5,5,112,112), fill=(12,10,35,255),
+                   outline=(*palette["gold"],255), width=6)
+        bd.text((59,59), "♪", font=_font(62), fill="white", anchor="mm")
+        image.alpha_composite(badge, (ax, ay))
+
+    d = ImageDraw.Draw(image)
+    _brand_top(d, palette)
+    d.text((cx + diameter + 35 if cx + diameter + 35 < 720 else 55,
+            150 if composition not in ("top_stage", "bottom_stage") else 405),
+           "NOW PLAYING", font=_font(23), fill=palette["second"])
+
+    # Typography placement varies with the composition.
+    if composition in ("left_orbit", "corner_focus", "asymmetric"):
+        tx, ty, tw = 450, 235, 720
+    elif composition in ("right_orbit", "split_diagonal"):
+        tx, ty, tw = 70, 245, 700
+    elif composition in ("top_stage", "bottom_stage"):
+        tx, ty, tw = 80, (475 if composition == "top_stage" else 145), 1100
+    elif composition == "center_poster":
+        tx, ty, tw = 95, 510, 1090
+    elif composition == "double_panel":
+        tx, ty, tw = 455, 265, 700
+    elif composition == "wide_halo":
+        tx, ty, tw = 850, 270, 330
+    else:
+        tx, ty, tw = 455, 250, 720
+
+    font, fitted = _fit(d, title, tw, 47, 25)
+    d.text((tx, ty), fitted, font=font, fill="white",
+           stroke_width=2, stroke_fill=(8, 4, 24))
+    d.text((tx, ty+66), f"{channel[:48]}  •  {duration}",
+           font=_font(21, False), fill=(195, 210, 255))
+    d.text((tx, ty+105), f"REQUESTED BY  {requester[:42]}",
+           font=_font(18), fill=palette["gold"])
+    _brand_bottom(d, bot_name, palette)
+
+    # Distinct frame language per motif, independent of palette.
+    if motif in ("concentric", "radial_rays"):
+        d.ellipse((20, 20, WIDTH-20, HEIGHT-20), outline=(*palette["gold"], 180), width=3)
+    elif motif in ("shards", "polygon_mesh"):
+        d.polygon([(0,0),(WIDTH,0),(WIDTH,38),(0,180)], outline=(*palette["second"],180))
+    elif motif == "circuit":
+        d.rounded_rectangle((18, 18, WIDTH-18, HEIGHT-18), radius=18,
+                            outline=(*palette["second"], 180), width=3)
+    return image.convert("RGB")
+
+
+async def get_thumb(
+    videoid, title, duration="Unknown", views=0, channel="YouTube",
+    bot_name="GOVIND MUSIC", requested_by="Group member",
+    requester_avatar=None, design_index=None,
+):
+    """Render one of 90 distinct 1280x720 compositions as a PNG."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    title = _clean(title, "Unknown Track", 110)
+    duration = _clean(duration, "Unknown", 24)
+    channel = _clean(channel, "YouTube", 60)
+    requester = _clean(requested_by, "Group member", 55)
+    bot_name = _clean(bot_name, "GOVIND MUSIC", 32)
+
+    if design_index is None:
+        design_index = random.SystemRandom().randrange(90)
+    design_index = int(design_index) % 90
+    design_name, composition, motif = DESIGN_PRESETS[design_index]
+    seed = random.SystemRandom().randrange(0, 2**31)
+    palette = random.choice(PALETTES)
+    art = _load_art(await _download_youtube_thumb(videoid))
+    avatar = _avatar_image(requester_avatar)
+
+    try:
+        image = _render_premium(
+            seed, composition, motif, palette, art, avatar,
+            title, duration, channel, requester, bot_name,
+        )
+    except Exception:
+        LOGGER.exception("Premium thumbnail rendering failed; using fallback")
+        image = Image.new("RGB", (WIDTH, HEIGHT), (10, 6, 24))
+        d = ImageDraw.Draw(image)
+        d.text((WIDTH//2, 250), "GOVIND MUSIC", font=_font(58),
+               fill=(255, 210, 0), anchor="mm")
+        d.text((WIDTH//2, 360), title[:55], font=_font(34),
+               fill="white", anchor="mm")
+
+    output = CACHE_DIR / f"govind_music_{uuid.uuid4().hex}.png"
+    image.save(output, format="PNG", optimize=True)
+    _cleanup_cache()
+    LOGGER.info("Generated %s (preset %d/90, %s + %s): %s",
+                design_name, design_index + 1, composition, motif, output)
+    return str(output)

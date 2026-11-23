@@ -37,7 +37,6 @@ def register_tagall_handlers(app):
         chat_id = message.chat.id
         stop_event = asyncio.Event()
         SPAM_CHATS[chat_id] = stop_event
-
         sent_count = 0
         batch = []
 
@@ -71,9 +70,10 @@ def register_tagall_handlers(app):
             # Send the remaining 1–4 members too.
             if batch and not stop_event.is_set():
                 prefix = f"{html.escape(custom_text)}\n\n" if custom_text else ""
+                body = "\n".join(batch)
                 await client.send_message(
                     chat_id,
-                    f"{prefix}{'\n'.join(batch)}",
+                    f"{prefix}{body}",
                     parse_mode="html",
                     disable_web_page_preview=True,
                 )
@@ -89,15 +89,21 @@ def register_tagall_handlers(app):
                 )
 
         except FloodWait as exc:
-            LOGGER.warning("Tagging hit FloodWait in %s: %s seconds", chat_id, exc.value)
+            LOGGER.warning(
+                "Tagging hit FloodWait in %s: %s seconds",
+                chat_id,
+                exc.value,
+            )
             await message.reply_text(
-                f"Telegram rate limit reached. Tagging stopped; please try again after {exc.value} seconds."
+                f"Telegram rate limit reached. Tagging stopped; "
+                f"please try again after {exc.value} seconds."
             )
         except Exception:
             LOGGER.exception("Tagging failed in chat %s", chat_id)
             try:
                 await message.reply_text(
-                    "Tagging could not be completed. Please check that the bot can view group members and send messages."
+                    "Tagging could not be completed. Please check that "
+                    "the bot can view group members and send messages."
                 )
             except Exception:
                 pass
@@ -116,34 +122,50 @@ def register_tagall_handlers(app):
         chat_id = message.chat.id
 
         if not _is_group(message):
-            return await message.reply_text("This command works in groups only.")
+            return await message.reply_text(
+                "This command works in groups only."
+            )
 
         if not message.from_user or not await _is_admin(
             client, chat_id, message.from_user.id
         ):
-            return await message.reply_text("Only group admins can use this command.")
+            return await message.reply_text(
+                "Only group admins can use this command."
+            )
 
         if chat_id in SPAM_CHATS:
             return await message.reply_text(
-                "A tagging process is already active in this group. Use /stoputag to stop it."
+                "A tagging process is already active in this group. "
+                "Use /stoputag to stop it."
             )
 
         parts = (message.text or "").split(maxsplit=1)
         custom_text = parts[1].strip() if len(parts) > 1 else ""
 
-        if message.command and message.command[0].lower() in ("utag", "uall") and not custom_text:
+        command = message.command[0].lower() if message.command else ""
+        if command in ("utag", "uall") and not custom_text:
             return await message.reply_text(
-                "Please add a message to tag with. Example: /utag Hi everyone!"
+                "Please add a message to tag with. "
+                "Example: /utag Hi everyone!"
             )
 
         await message.reply_text(
-            "Tagging started. Members will be mentioned in batches of 5 with a 7-second pause. Use /stoputag to stop."
+            "Tagging started. Members will be mentioned in batches of 5 "
+            "with a 7-second pause. Use /stoputag to stop."
         )
         await run_tagging(client, message, custom_text)
 
     @app.on_message(
         filters.command(
-            ["stoputag", "stopuall", "offutag", "offuall", "utagoff", "ualloff", "cancel"],
+            [
+                "stoputag",
+                "stopuall",
+                "offutag",
+                "offuall",
+                "utagoff",
+                "ualloff",
+                "cancel",
+            ],
             prefixes=["/", "@", ".", "#"],
         )
         & filters.group
@@ -153,11 +175,17 @@ def register_tagall_handlers(app):
         if not message.from_user or not await _is_admin(
             client, chat_id, message.from_user.id
         ):
-            return await message.reply_text("Only group admins can stop tagging.")
+            return await message.reply_text(
+                "Only group admins can stop tagging."
+            )
 
         stop_event = SPAM_CHATS.get(chat_id)
         if not stop_event:
-            return await message.reply_text("No tagging process is active.")
+            return await message.reply_text(
+                "No tagging process is active."
+            )
 
         stop_event.set()
-        await message.reply_text("Please wait, stopping the tagging process...")
+        await message.reply_text(
+            "Please wait, stopping the tagging process..."
+        )

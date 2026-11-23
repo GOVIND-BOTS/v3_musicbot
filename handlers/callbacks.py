@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import time
+import re
 from contextlib import suppress
 from html import escape
 
@@ -13,6 +14,8 @@ from music import music_queue
 from buttons import queue_buttons, stream_buttons
 from database.mongodb import get_chat_settings
 from player_ui import format_duration, stylize, now_playing_caption
+from thumbnails import get_thumb
+from owner_manager import get_owner_url
 
 LOGGER = logging.getLogger(__name__)
 
@@ -117,6 +120,7 @@ async def refresh_player_keyboard(client, chat_id, stream):
             duration=state["duration"],
             loop_mode=loop_mode,
             shuffle=shuffle_enabled,
+            owner_url=state.get("track", {}).get("_owner_url"),
         )
 
         await message.edit_reply_markup(reply_markup=keyboard)
@@ -157,6 +161,8 @@ async def update_player_message(client, player_message, track, chat_id, stream):
     if not track:
         return None
 
+    track["_owner_url"] = await get_owner_url()
+
     caption = now_playing_caption(track)
     thumbnail = track.get("thumbnail")
 
@@ -174,6 +180,7 @@ async def update_player_message(client, player_message, track, chat_id, stream):
         duration=duration,
         loop_mode=loop_mode,
         shuffle=shuffle_enabled,
+        owner_url=track.get("_owner_url"),
     )
 
     if player_message:
@@ -341,6 +348,80 @@ async def build_queue_text(chat_id):
 
 
 def register_callback_handlers(app, stream):
+
+
+    @app.on_callback_query(filters.regex(r"^thumb_change\|"))
+    async def thumbnail_change_callback(client, query):
+        message = query.message
+        user = query.from_user
+        if not message or not user:
+            await query.answer("Invalid player message.", show_alert=True)
+            return
+        try:
+            target_chat = int((query.data or "").split("|", 1)[1])
+        except (IndexError, ValueError):
+            await query.answer("Invalid thumbnail request.", show_alert=True)
+            return
+        if target_chat != message.chat.id:
+            await query.answer("This player belongs to another chat.", show_alert=True)
+            return
+
+        state = _PROGRESS_STATE.get(target_chat)
+        track = state.get("track") if state else None
+        if not track:
+            await query.answer("No active track found.", show_alert=True)
+            return
+        requester_id = track.get("requested_by")
+        if user.id != requester_id and not await is_authorized(client, target_chat, user.id):
+            await query.answer("Only the requester or a group admin can change this thumbnail.", show_alert=True)
+            return
+
+        videoid = track.get("videoid")
+        if not videoid:
+            match = re.search(r"(?:v=|youtu\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,20})",
+                              str(track.get("webpage_url") or track.get("url") or ""))
+            videoid = match.group(1) if match else None
+        if not videoid:
+            await query.answer("Track artwork is unavailable.", show_alert=True)
+            return
+
+        await query.answer("Creating a new design…")
+        avatar_data = None
+        if requester_id:
+            try:
+                photos = await client.get_user_profile_photos(int(requester_id), limit=1)
+                if photos and photos.photos and photos.photos[0]:
+                    downloaded = await client.download_media(
+                        photos.photos[0][0].file_id, in_memory=True
+                    )
+                    if downloaded:
+                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
+            except Exception:
+                LOGGER.debug("Could not refresh requester avatar", exc_info=True)
+
+        try:
+            thumbnail = await get_thumb(
+                videoid=videoid,
+                title=track.get("title", "Unknown Track"),
+                duration=track.get("duration_text") or track.get("duration", "Unknown"),
+                channel=track.get("channel", "YouTube"),
+                bot_name="GOVIND MUSIC",
+                requested_by=track.get("requested_by_name", "Group member"),
+                requester_avatar=avatar_data,
+            )
+            track["thumbnail"] = thumbnail
+            await message.edit_media(
+                InputMediaPhoto(
+                    media=thumbnail,
+                    caption=now_playing_caption(track),
+                    parse_mode=ParseMode.HTML,
+                )
+            )
+            await refresh_player_keyboard(client, target_chat, stream)
+            await query.answer("Thumbnail design changed.")
+        except Exception:
+            LOGGER.exception("Thumbnail change failed in chat %s", target_chat)
+            await query.answer("Could not change thumbnail. Please try again.", show_alert=True)
 
     @app.on_callback_query(filters.regex(r"^ctrl_"))
     async def player_callbacks(client, query):

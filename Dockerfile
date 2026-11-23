@@ -28,7 +28,7 @@ COPY requirements.txt .
 RUN pip uninstall -y pyrogram pyrogrammod || true
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
-    && pip uninstall -y pyrogram || true \
+    && (pip uninstall -y pyrogram || true) \
     && pip install --no-cache-dir --force-reinstall --no-deps pyrogrammod==2.4.1
 
 # Fail the image build unless the exact PyrogramMod raw API required by

@@ -17,6 +17,7 @@ from database.redis_db import connect_redis, close_redis
 from handlers import register_handlers
 from stream import setup_stream
 from clone_manager import clone_manager
+from auto_broadcast import auto_broadcast_loop
 
 
 # --------------------------------------------------
@@ -77,6 +78,7 @@ async def main():
 
     bot_started = False
     assistant_started = False
+    broadcast_task = None
 
     try:
         # MongoDB
@@ -114,6 +116,13 @@ async def main():
         )
         LOGGER.info("Main bot handlers registered.")
 
+        # Periodic group feature announcements (default: every 24 hours).
+        broadcast_task = asyncio.create_task(
+            auto_broadcast_loop(bot),
+            name="auto-promo-broadcast",
+        )
+        LOGGER.info("Automatic group promo broadcast scheduled.")
+
         # Start cloned bots
         LOGGER.info("Initializing Clone Manager...")
         await clone_manager.start_all(
@@ -133,6 +142,16 @@ async def main():
         raise
 
     finally:
+        # Stop the promo task cleanly before shutting down the bot client.
+        if broadcast_task:
+            broadcast_task.cancel()
+            try:
+                await broadcast_task
+            except asyncio.CancelledError:
+                pass
+            except Exception:
+                LOGGER.exception("Auto broadcast shutdown failed.")
+
         # Stop cloned bots first
         try:
             await clone_manager.stop_all()

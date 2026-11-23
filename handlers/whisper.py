@@ -6,7 +6,7 @@ from pyrogram.types import (
     InlineKeyboardButton,
     CallbackQuery,
 )
-from pyrogram.errors import PeerIdInvalid, UserIsBlocked, UserDeactivated
+from pyrogram.errors import RPCError
 
 whisper_db = {}
 
@@ -23,7 +23,7 @@ def register_whisper_handlers(app):
 
     @app.on_inline_query()
     async def whisper_inline(client, inline_query):
-        data = inline_query.query.strip()
+        data = (inline_query.query or "").strip()
         username = await get_bot_username()
 
         switch_btn = InlineKeyboardMarkup(
@@ -43,7 +43,7 @@ def register_whisper_handlers(app):
                     reply_markup=switch_btn,
                 )
             ]
-            return await inline_query.answer(results, cache_time=1)
+            return await inline_query.answer(results, cache_time=1, is_personal=True)
 
         parts = data.split(None, 1)
         if len(parts) < 2:
@@ -63,7 +63,7 @@ def register_whisper_handlers(app):
 
         try:
             user = await client.get_users(target)
-        except (PeerIdInvalid, IndexError, KeyError, ValueError):
+        except (RPCError, IndexError, KeyError, ValueError, TypeError):
             results = [
                 InlineQueryResultArticle(
                     title="❌ User not found",
@@ -148,7 +148,7 @@ def register_whisper_handlers(app):
                 show_alert=True,
             )
 
-        await query.answer(msg, show_alert=True)
+        await query.answer(msg, show_alert=True, cache_time=0)
 
         # One-time → message hata do
         if one_time and user_id == to_user_id:

@@ -27,11 +27,13 @@ COPY requirements.txt .
 # shared `pyrogram` import package and lacks the Telegram API methods PyTgCalls needs.
 RUN pip uninstall -y pyrogram pyrogrammod || true
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y pyrogram || true \
+    && pip install --no-cache-dir --force-reinstall --no-deps pyrogrammod==2.4.1
 
-# Fail the image build if Railway resolves the legacy Pyrogram package.
-# PyTgCalls 3.0.1 requires the newer PyrogramMod raw API (Layer 229).
-RUN python -c "import pyrogram; from pyrogram.raw.functions.phone import CreateConferenceCall; print('PyrogramMod:', pyrogram.__version__, '| CreateConferenceCall: OK')"
+# Fail the image build unless the exact PyrogramMod raw API required by
+# PyTgCalls is available in the final installed environment.
+RUN python -c "import pyrogram; print('Pyrogram package version:', pyrogram.__version__); from pyrogram.raw.functions.phone import CreateConferenceCall; print('CreateConferenceCall: OK')"
 
 COPY . .
 

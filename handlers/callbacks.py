@@ -386,6 +386,7 @@ def register_callback_handlers(app, stream):
             await query.answer("Track artwork is unavailable.", show_alert=True)
             return
 
+        await query.answer("Generating a new thumbnail design…")
         avatar_data = None
         if requester_id:
             try:
@@ -435,10 +436,10 @@ def register_callback_handlers(app, stream):
                 with suppress(Exception):
                     await message.delete()
             await refresh_player_keyboard(client, target_chat, stream)
-            await query.answer("Thumbnail design changed.")
         except Exception:
             LOGGER.exception("Thumbnail change failed in chat %s", target_chat)
-            await query.answer("Could not change thumbnail. Please try again.", show_alert=True)
+            with suppress(Exception):
+                await message.reply_text("Could not change the thumbnail. Please try again.")
 
     @app.on_callback_query(filters.regex(r"^ctrl_"))
     async def player_callbacks(client, query):

@@ -11,7 +11,7 @@ from pyrogram.types import (
     InputMediaPhoto,
 )
 
-from .logo_generator import generate_logo, STYLES
+from .logo_generator import generate_ai_logo, generate_logo, STYLES
 
 
 LOGGER = logging.getLogger(__name__)
@@ -32,17 +32,28 @@ def get_keyboard():
 
 
 def create_logo_file(name, style):
-    image = generate_logo(name, style)
     temp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     path = temp.name
     temp.close()
 
     try:
-        image.save(path, format="PNG", optimize=True)
-    finally:
-        image.close()
-
-    return path
+        if os.getenv("OPENAI_API_KEY", "").strip():
+            image_bytes = generate_ai_logo(name, style)
+            with open(path, "wb") as output:
+                output.write(image_bytes)
+        else:
+            image = generate_logo(name, style)
+            try:
+                image.save(path, format="PNG", optimize=True)
+            finally:
+                image.close()
+        return path
+    except Exception:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise
 
 
 def logo_caption(name, style):

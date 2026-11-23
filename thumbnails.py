@@ -396,7 +396,7 @@ async def get_thumb(
         d.text((WIDTH // 2, 360), title[:55], font=_font(34),
                fill="white", anchor="mm")
 
-    output = CACHE_DIR / f"govind_music_d{design_index + 1:02d}_{uuid.uuid4().hex}.png"
+    output = CACHE_DIR / f"govind_music_{uuid.uuid4().hex}.png"
     image.save(output, format="PNG", optimize=True)
     _cleanup_cache()
     LOGGER.info("Generated thumbnail: layout=%s palette=%s path=%s",
@@ -661,7 +661,7 @@ async def get_thumb(
         d.text((WIDTH//2, 360), title[:55], font=_font(34),
                fill="white", anchor="mm")
 
-    output = CACHE_DIR / f"govind_music_{uuid.uuid4().hex}.png"
+    output = CACHE_DIR / f"govind_music_d{design_index + 1:02d}_{uuid.uuid4().hex}.png"
     image.save(output, format="PNG", optimize=True)
     _cleanup_cache()
     LOGGER.info("Generated %s (preset %d/90, %s + %s): %s",

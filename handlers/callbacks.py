@@ -3,6 +3,7 @@ import asyncio
 import logging
 import time
 import re
+import random
 from contextlib import suppress
 from html import escape
 
@@ -398,6 +399,11 @@ def register_callback_handlers(app, stream):
             except Exception:
                 LOGGER.debug("Could not refresh requester avatar", exc_info=True)
 
+        previous = re.search(r"_d(\\d{2})_", str(track.get("thumbnail") or ""))
+        previous_index = int(previous.group(1)) - 1 if previous else None
+        choices = [index for index in range(90) if index != previous_index]
+        next_design = random.choice(choices)
+
         try:
             thumbnail = await get_thumb(
                 videoid=videoid,
@@ -407,6 +413,7 @@ def register_callback_handlers(app, stream):
                 bot_name="GOVIND MUSIC",
                 requested_by=track.get("requested_by_name", "Group member"),
                 requester_avatar=avatar_data,
+                design_index=next_design,
             )
             track["thumbnail"] = thumbnail
             await message.edit_media(

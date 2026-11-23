@@ -202,7 +202,7 @@ def _draw_motif(draw, motif, colors, seed):
             for x in range(-20, WIDTH + 30, 14):
                 y = 90 + band * 82 + math.sin(x / 82 + band * .8) * 30
                 points.append((x, y))
-            draw.line(points, fill=(*a if band % 2 else b, 100), width=4)
+            draw.line(points, fill=(a if band % 2 else b) + (100,), width=4)
     elif motif == "shards":
         for _ in range(34):
             x, y = rng.randrange(WIDTH), rng.randrange(HEIGHT)
@@ -213,7 +213,7 @@ def _draw_motif(draw, motif, colors, seed):
         for _ in range(190):
             x, y, r = rng.randrange(WIDTH), rng.randrange(HEIGHT), rng.randint(1, 4)
             draw.ellipse((x-r, y-r, x+r, y+r),
-                         fill=(*gold if r == 4 else b, rng.randint(70, 170)))
+                         fill=(gold if r == 4 else b) + (rng.randint(70, 170),))
     elif motif == "concentric":
         for r in range(90, 780, 42):
             draw.ellipse((WIDTH//2-r, HEIGHT//2-r, WIDTH//2+r, HEIGHT//2+r),

@@ -600,13 +600,6 @@ async def moderate_media(client, message):
     if should_skip or not extension:
         return
 
-    if await is_exempt_user(
-        client,
-        message.chat.id,
-        message.from_user.id,
-    ):
-        return
-
     media = (
         message.photo
         or message.sticker

@@ -73,7 +73,7 @@ def _font(size, bold=True):
 
 
 def _clean(value, fallback, limit=90):
-    value = re.sub(r"\\s+", " ", str(value or "")).strip()
+    value = re.sub(r"\s+", " ", str(value or "")).strip()
     return value[:limit] or fallback
 
 

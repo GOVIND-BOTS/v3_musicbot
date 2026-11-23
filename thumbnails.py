@@ -330,7 +330,7 @@ def _render(seed, composition, motif, colors, art, avatar,
 def _cleanup_cache():
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        files = sorted(CACHE_DIR.glob(OUTPUT_PREFIX + "*.png"),
+        files = sorted(CACHE_DIR.glob(OUTPUT_PREFIX + "*.jpg"),
                        key=lambda item: item.stat().st_mtime, reverse=True)
         for old in files[MAX_CACHE_FILES:]:
             try:

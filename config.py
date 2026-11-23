@@ -21,7 +21,7 @@ SUDO_USERS = {
     for item in os.getenv("SUDO_USERS", "").split(",")
     if item.strip()
 }
-OWNER_ID = int(os.getenv("OWNER_ID", "8250224070"))
+OWNER_ID = int(os.getenv("OWNER_ID", "8250224070"))\n# Immutable authentication identity: only this environment-configured account\n# may change the public owner button/profile from inside Telegram.\nMAIN_OWNER_ID = OWNER_ID\nPUBLIC_OWNER_USERNAME = os.getenv("PUBLIC_OWNER_USERNAME", "").strip().lstrip("@")
 if OWNER_ID:
     SUDO_USERS.add(OWNER_ID)
     WELCOME_IMAGE = os.getenv("WELCOME_IMAGE", "https://graph.org/file/b2caf282b340e3ef623b7-ea79039fe63e93f7ee.jpg").strip()

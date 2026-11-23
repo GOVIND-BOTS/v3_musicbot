@@ -389,7 +389,8 @@ def register_play_handlers(app, stream, assistant=None):
                     return
 
             track = add_requester(track, message.from_user)
-            track = await generate_track_thumbnail(track)
+            track["_owner_url"] = await get_owner_url()
+            track = await generate_track_thumbnail(track, client)
 
             # Preserve audio/video type when sending to the stream.
             result = await stream.play(

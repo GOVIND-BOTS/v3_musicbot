@@ -27,6 +27,21 @@ PALETTES = (
     {"name": "cyber-gold", "accent": (255, 165, 0), "second": (0, 160, 255), "gold": (255, 220, 40)},
     {"name": "midnight-violet", "accent": (125, 45, 255), "second": (30, 90, 255), "gold": (255, 205, 25)},
     {"name": "laser-cyan", "accent": (0, 220, 255), "second": (180, 30, 255), "gold": (255, 205, 0)},
+    {"name": "crimson-ice", "accent": (255, 35, 75), "second": (45, 210, 255), "gold": (255, 220, 120)},
+    {"name": "emerald-flare", "accent": (0, 255, 155), "second": (40, 120, 255), "gold": (255, 235, 120)},
+    {"name": "sunset-blaze", "accent": (255, 95, 35), "second": (255, 35, 155), "gold": (255, 225, 90)},
+    {"name": "arctic-luxe", "accent": (110, 235, 255), "second": (190, 150, 255), "gold": (255, 255, 255)},
+    {"name": "toxic-lime", "accent": (190, 255, 0), "second": (0, 220, 175), "gold": (255, 255, 170)},
+    {"name": "rose-chrome", "accent": (255, 90, 170), "second": (185, 190, 255), "gold": (255, 225, 235)},
+    {"name": "inferno", "accent": (255, 55, 15), "second": (255, 170, 0), "gold": (255, 240, 150)},
+    {"name": "ocean-depth", "accent": (0, 100, 210), "second": (0, 235, 220), "gold": (180, 245, 255)},
+    {"name": "cyber-lime", "accent": (165, 255, 30), "second": (40, 175, 255), "gold": (255, 255, 180)},
+    {"name": "ultraviolet", "accent": (145, 35, 255), "second": (255, 45, 205), "gold": (255, 215, 120)},
+    {"name": "monochrome-gold", "accent": (235, 235, 245), "second": (130, 145, 175), "gold": (255, 190, 55)},
+    {"name": "candy-pop", "accent": (255, 65, 180), "second": (80, 225, 255), "gold": (255, 245, 120)},
+    {"name": "jade-purple", "accent": (0, 220, 165), "second": (155, 75, 255), "gold": (255, 220, 110)},
+    {"name": "blue-flame", "accent": (35, 135, 255), "second": (0, 245, 255), "gold": (255, 190, 75)},
+    {"name": "ruby-noir", "accent": (220, 20, 65), "second": (110, 25, 145), "gold": (255, 205, 100)},
 )
 
 FONT_FILES = {
@@ -509,10 +524,48 @@ def _draw_motif(draw, motif, accent, second, seed):
             draw.ellipse((x-4, y-4, x+4, y+4), fill=b)
 
 
+REFERENCE_TEMPLATES = (
+    "IMG_20261121_075236.png",
+    "IMG_20261121_075256.png",
+    "IMG_20261121_075314.png",
+    "template_red.png",
+)
+
+
+def _reference_canvas(palette, seed):
+    """Use the four user-uploaded artwork references as real visual bases."""
+    rng = random.Random(seed ^ 0x35A91)
+    candidates = [Path("assets") / name for name in REFERENCE_TEMPLATES]
+    rng.shuffle(candidates)
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            with Image.open(path) as source:
+                base = ImageOps.fit(source.convert("RGB"), (WIDTH, HEIGHT),
+                                    method=Image.Resampling.LANCZOS).convert("RGBA")
+            # Keep the uploaded artwork visible while making a clean text-safe stage.
+            tint = Image.new("RGBA", (WIDTH, HEIGHT), (*palette["accent"], 34))
+            base = Image.alpha_composite(base, tint)
+            shade = Image.new("RGBA", (WIDTH, HEIGHT), (3, 4, 18, 112))
+            base = Image.alpha_composite(base, shade)
+            # Subtle cinematic vignette; this is a real reference image, not a generated gradient.
+            vignette = Image.new("L", (WIDTH, HEIGHT), 0)
+            vd = ImageDraw.Draw(vignette)
+            vd.ellipse((-180, -230, WIDTH + 180, HEIGHT + 230), fill=165)
+            vignette = ImageOps.invert(vignette).filter(ImageFilter.GaussianBlur(95))
+            dark = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
+            dark.putalpha(vignette.point(lambda value: int(value * 0.48)))
+            return Image.alpha_composite(base, dark)
+        except Exception:
+            LOGGER.warning("Could not load thumbnail reference %s", path, exc_info=True)
+    return _background(palette, seed)
+
+
 def _render_premium(seed, composition, motif, palette, art, avatar,
                     title, duration, channel, requester, bot_name):
     rng = random.Random(seed)
-    image = _background(palette, seed)
+    image = _reference_canvas(palette, seed)
     overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
     _draw_motif(d, motif, palette["accent"], palette["second"], seed)

@@ -109,7 +109,7 @@ async def generate_track_thumbnail(track, client=None):
                 or "Group member"
             )
         else:
-            requester = str(user)
+            requester = track.get("requested_by_name") or str(user)
 
         thumbnail = await get_thumb(
             videoid=video_id,
@@ -118,6 +118,7 @@ async def generate_track_thumbnail(track, client=None):
             channel=track.get("channel", "YouTube"),
             bot_name="GOVIND MUSIC",
             requested_by=requester,
+            requester_avatar=avatar_data,
         )
 
         if thumbnail:
@@ -200,6 +201,7 @@ async def send_player_card(client, chat_id, track, stream):
         chat_id,
         elapsed=0,
         duration=track.get("duration", 0),
+        owner_url=track.get("_owner_url"),
     )
 
     thumbnail = track.get("thumbnail")

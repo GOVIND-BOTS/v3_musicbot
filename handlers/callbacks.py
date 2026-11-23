@@ -392,7 +392,7 @@ def register_callback_handlers(app, stream):
                 photos = await client.get_user_profile_photos(int(requester_id), limit=1)
                 if photos and photos.photos and photos.photos[0]:
                     downloaded = await client.download_media(
-                        photos.photos[0][0].file_id, in_memory=True
+                        photos.photos[0][-1].file_id, in_memory=True
                     )
                     if downloaded:
                         avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
@@ -416,13 +416,24 @@ def register_callback_handlers(app, stream):
                 design_index=next_design,
             )
             track["thumbnail"] = thumbnail
-            await message.edit_media(
-                InputMediaPhoto(
-                    media=thumbnail,
+            if getattr(message, "photo", None):
+                await message.edit_media(
+                    InputMediaPhoto(
+                        media=thumbnail,
+                        caption=now_playing_caption(track),
+                        parse_mode=ParseMode.HTML,
+                    )
+                )
+            else:
+                replacement = await client.send_photo(
+                    target_chat,
+                    photo=thumbnail,
                     caption=now_playing_caption(track),
                     parse_mode=ParseMode.HTML,
                 )
-            )
+                stream.player_messages[target_chat] = replacement
+                with suppress(Exception):
+                    await message.delete()
             await refresh_player_keyboard(client, target_chat, stream)
             await query.answer("Thumbnail design changed.")
         except Exception:

@@ -1,109 +1,163 @@
 import asyncio
-import random
+import html
+import logging
+
 from pyrogram import filters
-from pyrogram.enums import ChatType, ChatMemberStatus
-from pyrogram.errors import UserNotParticipant
+from pyrogram.enums import ChatMemberStatus, ChatType
+from pyrogram.errors import FloodWait
 
-spam_chats = []
+LOGGER = logging.getLogger(__name__)
 
-EMOJI = [
-    "🦋🦋🦋🦋🦋", "🧚🌸🧋🍬🫖", "🥀🌷🌹🌺💐", "🌸🌿💮🌱🌵",
-    "❤️💚💙💜🖤", "💓💕💞💗💖", "🌸💐🌺🌹🦋", "🍎🍓🍒🍑🌶️",
-]
+# One active tagging operation per group.
+SPAM_CHATS = {}
+TAG_BATCH_SIZE = 5
+TAG_DELAY_SECONDS = 7
 
-TAGMES = [
-    "**Hey Baby Kaha Ho 🥱**",
-    "**Oye So Gye Kya Online Aao 😊**",
-    "**Vc Chalo Baten Karte Hain 😃**",
-    "**Khana Kha Liye Ji..?? 🥲**",
-    "**Ghar Me Sab Kaise Hain Ji 🥺**",
-    "**Pta Hai Bohot Miss Kar Rhi Thi Aapko 🤭**",
-    "**Oye Hal Chal Kesa Hai..?? 🤨**",
-    "**Hello Ji Namaste 😛**",
-    "**Hello Baby Kkrh..? 🤔**",
-    "**Aur Batao Kaise Ho Baby 😇**",
-    "**Mere Se Dosthi Krogen..?? 🤔**",
-    "**Sone Chal Gye Kya 🙄**",
-    "**Ek Song Play Kro Na Plss 😕**",
-    "**Aap Kaha Se Ho..?? 🙃**",
-    "**Nice To Meet Uh ☺**",
-    "**Hello 🙊**",
-    "**Bol Na Kuch Yrr 🥲**",
-    "**I Love You 🙈**",
-    "**Do You Love Me..? 👀**",
-    "**Khush Raha Karo ✌️**",
-]
+
+def _is_group(message):
+    return message.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP)
+
+
+async def _is_admin(client, chat_id, user_id):
+    if not user_id:
+        return False
+    try:
+        member = await client.get_chat_member(chat_id, user_id)
+        return member.status in (
+            ChatMemberStatus.OWNER,
+            ChatMemberStatus.ADMINISTRATOR,
+        )
+    except Exception:
+        LOGGER.exception("Tag command admin check failed in %s", chat_id)
+        return False
 
 
 def register_tagall_handlers(app):
-    @app.on_message(filters.command(["tagall", "all", "tagmember"], prefixes=["/", "@", "#"]))
-    async def mentionall(client, message):
+    async def run_tagging(client, message, custom_text):
+        chat_id = message.chat.id
+        stop_event = asyncio.Event()
+        SPAM_CHATS[chat_id] = stop_event
+
+        sent_count = 0
+        batch = []
+
+        try:
+            async for member in client.get_chat_members(chat_id):
+                if stop_event.is_set():
+                    break
+
+                user = member.user
+                if not user or user.is_bot or user.is_deleted:
+                    continue
+
+                name = html.escape(user.first_name or "User")
+                batch.append(f'<a href="tg://user?id={user.id}">{name}</a>')
+
+                if len(batch) >= TAG_BATCH_SIZE:
+                    if stop_event.is_set():
+                        break
+                    body = "\n".join(batch)
+                    prefix = f"{html.escape(custom_text)}\n\n" if custom_text else ""
+                    await client.send_message(
+                        chat_id,
+                        f"{prefix}{body}",
+                        parse_mode="html",
+                        disable_web_page_preview=True,
+                    )
+                    sent_count += len(batch)
+                    batch.clear()
+                    await asyncio.sleep(TAG_DELAY_SECONDS)
+
+            # Send the remaining 1–4 members too.
+            if batch and not stop_event.is_set():
+                prefix = f"{html.escape(custom_text)}\n\n" if custom_text else ""
+                await client.send_message(
+                    chat_id,
+                    f"{prefix}{'\n'.join(batch)}",
+                    parse_mode="html",
+                    disable_web_page_preview=True,
+                )
+                sent_count += len(batch)
+
+            if stop_event.is_set():
+                await message.reply_text(
+                    f"Tagging stopped. Total tagged: {sent_count}"
+                )
+            else:
+                await message.reply_text(
+                    f"Tagging completed. Total tagged: {sent_count}"
+                )
+
+        except FloodWait as exc:
+            LOGGER.warning("Tagging hit FloodWait in %s: %s seconds", chat_id, exc.value)
+            await message.reply_text(
+                f"Telegram rate limit reached. Tagging stopped; please try again after {exc.value} seconds."
+            )
+        except Exception:
+            LOGGER.exception("Tagging failed in chat %s", chat_id)
+            try:
+                await message.reply_text(
+                    "Tagging could not be completed. Please check that the bot can view group members and send messages."
+                )
+            except Exception:
+                pass
+        finally:
+            if SPAM_CHATS.get(chat_id) is stop_event:
+                SPAM_CHATS.pop(chat_id, None)
+
+    @app.on_message(
+        filters.command(
+            ["utag", "uall", "tagall", "all", "tagmember"],
+            prefixes=["/", "@", ".", "#"],
+        )
+        & filters.group
+    )
+    async def tag_all_users(client, message):
         chat_id = message.chat.id
 
-        if message.chat.type == ChatType.PRIVATE:
-            return await message.reply("Yeh command sirf groups mein kaam karta hai!")
+        if not _is_group(message):
+            return await message.reply_text("This command works in groups only.")
 
-        # Admin check
-        is_admin = False
-        try:
-            participant = await client.get_chat_member(chat_id, message.from_user.id)
-            if participant.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
-                is_admin = True
-        except UserNotParticipant:
-            pass
+        if not message.from_user or not await _is_admin(
+            client, chat_id, message.from_user.id
+        ):
+            return await message.reply_text("Only group admins can use this command.")
 
-        if not is_admin:
-            return await message.reply("Sirf admin is command ko use kar sakte hain.")
+        if chat_id in SPAM_CHATS:
+            return await message.reply_text(
+                "A tagging process is already active in this group. Use /stoputag to stop it."
+            )
 
-        if chat_id in spam_chats:
-            return await message.reply("Pehle current process stop karo (`/cancel`).")
+        parts = (message.text or "").split(maxsplit=1)
+        custom_text = parts[1].strip() if len(parts) > 1 else ""
 
-        spam_chats.append(chat_id)
-        usrnum = 0
-        usrtxt = ""
+        if message.command and message.command[0].lower() in ("utag", "uall") and not custom_text:
+            return await message.reply_text(
+                "Please add a message to tag with. Example: /utag Hi everyone!"
+            )
 
-        async for usr in client.get_chat_members(chat_id):
-            if chat_id not in spam_chats:
-                break
-            if usr.user.is_bot:
-                continue
+        await message.reply_text(
+            "Tagging started. Members will be mentioned in batches of 5 with a 7-second pause. Use /stoputag to stop."
+        )
+        await run_tagging(client, message, custom_text)
 
-            usrnum += 1
-            usrtxt += f"[{usr.user.first_name}](tg://user?id={usr.user.id}) "
+    @app.on_message(
+        filters.command(
+            ["stoputag", "stopuall", "offutag", "offuall", "utagoff", "ualloff", "cancel"],
+            prefixes=["/", "@", ".", "#"],
+        )
+        & filters.group
+    )
+    async def stop_tagging(client, message):
+        chat_id = message.chat.id
+        if not message.from_user or not await _is_admin(
+            client, chat_id, message.from_user.id
+        ):
+            return await message.reply_text("Only group admins can stop tagging.")
 
-            if usrnum == 1:  # 1 members per message (spam kam)
-                txt = f"{usrtxt}\n{random.choice(TAGMES)}"
-                try:
-                    await client.send_message(chat_id, txt)
-                except Exception:
-                    pass
-                await asyncio.sleep(3)
-                usrnum = 0
-                usrtxt = ""
+        stop_event = SPAM_CHATS.get(chat_id)
+        if not stop_event:
+            return await message.reply_text("No tagging process is active.")
 
-        try:
-            spam_chats.remove(chat_id)
-        except Exception:
-            pass
-
-    @app.on_message(filters.command(["cancel", "stop"]))
-    async def cancel_spam(client, message):
-        if message.chat.id not in spam_chats:
-            return await message.reply("Koi active mention process nahi hai.")
-
-        is_admin = False
-        try:
-            participant = await client.get_chat_member(message.chat.id, message.from_user.id)
-            if participant.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER):
-                is_admin = True
-        except Exception:
-            pass
-
-        if not is_admin:
-            return await message.reply("Sirf admin stop kar sakte hain.")
-
-        try:
-            spam_chats.remove(message.chat.id)
-        except Exception:
-            pass
-        await message.reply("Mention process stopped.")
+        stop_event.set()
+        await message.reply_text("Please wait, stopping the tagging process...")

@@ -470,7 +470,7 @@ def _avatar_image(data):
 
 def _draw_motif(draw, motif, accent, second, seed):
     rng = random.Random(seed)
-    a, b = (*accent, 110), (*second, 95)
+    a, b = (*accent, 48), (*second, 42)
     if motif == "circuit":
         for x in range(35, WIDTH, 105):
             y = rng.randint(90, HEIGHT - 90)
@@ -544,19 +544,9 @@ def _reference_canvas(palette, seed):
             with Image.open(path) as source:
                 base = ImageOps.fit(source.convert("RGB"), (WIDTH, HEIGHT),
                                     method=Image.Resampling.LANCZOS).convert("RGBA")
-            # Keep the uploaded artwork visible while making a clean text-safe stage.
-            tint = Image.new("RGBA", (WIDTH, HEIGHT), (*palette["accent"], 34))
-            base = Image.alpha_composite(base, tint)
-            shade = Image.new("RGBA", (WIDTH, HEIGHT), (3, 4, 18, 112))
-            base = Image.alpha_composite(base, shade)
-            # Subtle cinematic vignette; this is a real reference image, not a generated gradient.
-            vignette = Image.new("L", (WIDTH, HEIGHT), 0)
-            vd = ImageDraw.Draw(vignette)
-            vd.ellipse((-180, -230, WIDTH + 180, HEIGHT + 230), fill=165)
-            vignette = ImageOps.invert(vignette).filter(ImageFilter.GaussianBlur(95))
-            dark = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
-            dark.putalpha(vignette.point(lambda value: int(value * 0.48)))
-            return Image.alpha_composite(base, dark)
+            # Preserve the uploaded template at full brightness and original colour.
+            # No tint, dark wash, blur, or vignette: the reference artwork stays clear.
+            return base
         except Exception:
             LOGGER.warning("Could not load thumbnail reference %s", path, exc_info=True)
     return _background(palette, seed)
@@ -584,8 +574,8 @@ def _render_premium(seed, composition, motif, palette, art, avatar,
         "asymmetric": (500, 75, 1230, 650),
     }
     panel = panels[composition]
-    d.rounded_rectangle(panel, radius=42, fill=(5, 5, 22, 176),
-                        outline=(*palette["accent"], 210), width=4)
+    d.rounded_rectangle(panel, radius=42, fill=(5, 5, 22, 42),
+                        outline=(*palette["accent"], 235), width=5)
 
     # Ten intentionally different cover placements and sizes.
     cover_boxes = {
@@ -608,7 +598,7 @@ def _render_premium(seed, composition, motif, palette, art, avatar,
     halo = Image.new("RGBA", (diameter + 100, diameter + 100), (0, 0, 0, 0))
     hd = ImageDraw.Draw(halo)
     hd.ellipse((10, 10, diameter + 90, diameter + 90),
-               fill=(*palette["second"], 100))
+               fill=(*palette["second"], 55))
     halo = halo.filter(ImageFilter.GaussianBlur(30))
     image.alpha_composite(halo, (cx - 50, cy - 50))
     image.alpha_composite(overlay)

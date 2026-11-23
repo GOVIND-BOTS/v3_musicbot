@@ -554,121 +554,95 @@ def _reference_canvas(palette, seed):
 
 def _render_premium(seed, composition, motif, palette, art, avatar,
                     title, duration, channel, requester, bot_name):
-    rng = random.Random(seed)
-    image = _reference_canvas(palette, seed)
+    """Keep the YouTube artwork and requester avatar in fixed, unmistakable circles."""
+    image = _reference_canvas(palette, seed).convert("RGBA")
     overlay = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
     _draw_motif(d, motif, palette["accent"], palette["second"], seed)
 
-    # A composition-specific stage panel.
-    panels = {
-        "left_orbit": (430, 120, 1220, 610),
-        "right_orbit": (60, 120, 850, 610),
-        "center_poster": (170, 85, 1110, 640),
-        "split_diagonal": (55, 105, 1225, 620),
-        "top_stage": (55, 350, 1225, 650),
-        "bottom_stage": (55, 65, 1225, 360),
-        "corner_focus": (330, 145, 1210, 610),
-        "double_panel": (430, 110, 1220, 625),
-        "wide_halo": (95, 90, 1185, 630),
-        "asymmetric": (500, 75, 1230, 650),
-    }
-    panel = panels[composition]
-    d.rounded_rectangle(panel, radius=42, fill=(5, 5, 22, 42),
-                        outline=(*palette["accent"], 235), width=5)
-
-    # Ten intentionally different cover placements and sizes.
-    cover_boxes = {
-        "left_orbit": (70, 175, 390),
-        "right_orbit": (820, 175, 390),
-        "center_poster": (470, 90, 340),
-        "split_diagonal": (835, 175, 330),
-        "top_stage": (465, 35, 350),
-        "bottom_stage": (465, 335, 350),
-        "corner_focus": (75, 95, 300),
-        "double_panel": (70, 190, 320),
-        "wide_halo": (470, 175, 340),
-        "asymmetric": (95, 325, 285),
-    }
-    cx, cy, diameter = cover_boxes[composition]
-    cover = _circle_crop(art or Image.new("RGB", (500, 500), (18, 12, 42)),
-                         diameter, border=10, border_color=palette["accent"])
-
-    # Diffused halo behind the circular artwork.
-    halo = Image.new("RGBA", (diameter + 100, diameter + 100), (0, 0, 0, 0))
-    hd = ImageDraw.Draw(halo)
-    hd.ellipse((10, 10, diameter + 90, diameter + 90),
-               fill=(*palette["second"], 55))
-    halo = halo.filter(ImageFilter.GaussianBlur(30))
-    image.alpha_composite(halo, (cx - 50, cy - 50))
+    # A restrained panel keeps the artwork visible instead of covering it.
+    panel_box = (535, 145, 1225, 585)
+    d.rounded_rectangle(
+        panel_box, radius=38, fill=(5, 5, 22, 205),
+        outline=(*palette["accent"], 245), width=5
+    )
     image.alpha_composite(overlay)
-    image.alpha_composite(cover, (cx, cy))
 
-    # Requester avatar: small transparent circular PNG with a double ring.
-    if avatar is not None:
-        avatar_size = 118
-        avatar_circle = _circle_crop(avatar, avatar_size, border=7,
-                                     border_color=palette["gold"])
-        ax = min(WIDTH - avatar_size - 36, cx + diameter - 72)
-        ay = min(HEIGHT - avatar_size - 36, cy + diameter - 72)
-        shadow = Image.new("RGBA", (avatar_size + 26, avatar_size + 26), (0,0,0,0))
-        ImageDraw.Draw(shadow).ellipse((3,3,avatar_size+23,avatar_size+23),
-                                       fill=(*palette["gold"], 100))
-        shadow = shadow.filter(ImageFilter.GaussianBlur(12))
-        image.alpha_composite(shadow, (ax-13, ay-13))
-        image.alpha_composite(avatar_circle, (ax, ay))
+    # Large circle: actual YouTube video thumbnail.
+    video_size = 410
+    vx, vy = 75, 155
+    if art is None:
+        art = Image.new("RGB", (video_size, video_size), (15, 12, 35))
+        ad = ImageDraw.Draw(art)
+        _headphones(ad, 130, 115, 1.0, palette["second"])
+        LOGGER.warning("YouTube artwork unavailable; using visible fallback art")
+    video_circle = _circle_crop(
+        art, video_size, border=12, border_color=palette["accent"]
+    )
+
+    halo = Image.new("RGBA", (video_size + 100, video_size + 100), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(halo)
+    hd.ellipse(
+        (8, 8, video_size + 92, video_size + 92),
+        fill=(*palette["second"], 85)
+    )
+    halo = halo.filter(ImageFilter.GaussianBlur(28))
+    image.alpha_composite(halo, (vx - 50, vy - 50))
+    image.alpha_composite(video_circle, (vx, vy))
+
+    # Small overlapping circle: the person who requested the song.
+    avatar_size = 142
+    ax, ay = 365, 445
+    if avatar is None:
+        LOGGER.warning("Requester avatar unavailable; displaying initials fallback")
+        avatar_circle = Image.new("RGBA", (avatar_size, avatar_size), (0, 0, 0, 0))
+        avd = ImageDraw.Draw(avatar_circle)
+        avd.ellipse(
+            (5, 5, avatar_size - 5, avatar_size - 5),
+            fill=(18, 12, 42, 255), outline=(*palette["gold"], 255), width=8
+        )
+        initials = (requester or "U").strip()[:1].upper()
+        avd.text((avatar_size // 2, avatar_size // 2), initials,
+                 font=_font(58), fill="white", anchor="mm")
     else:
-        ax, ay = WIDTH - 150, HEIGHT - 160
-        badge = Image.new("RGBA", (118,118), (0,0,0,0))
-        bd = ImageDraw.Draw(badge)
-        bd.ellipse((5,5,112,112), fill=(12,10,35,255),
-                   outline=(*palette["gold"],255), width=6)
-        bd.text((59,59), "♪", font=_font(62), fill="white", anchor="mm")
-        image.alpha_composite(badge, (ax, ay))
+        avatar_circle = _circle_crop(
+            avatar, avatar_size, border=9, border_color=palette["gold"]
+        )
+
+    shadow = Image.new("RGBA", (avatar_size + 32, avatar_size + 32), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).ellipse(
+        (4, 4, avatar_size + 28, avatar_size + 28),
+        fill=(*palette["gold"], 130)
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(12))
+    image.alpha_composite(shadow, (ax - 16, ay - 16))
+    image.alpha_composite(avatar_circle, (ax, ay))
 
     d = ImageDraw.Draw(image)
     _brand_top(d, palette)
-    d.text((cx + diameter + 35 if cx + diameter + 35 < 720 else 55,
-            150 if composition not in ("top_stage", "bottom_stage") else 405),
-           "NOW PLAYING", font=_font(23), fill=palette["second"])
-
-    # Typography placement varies with the composition.
-    if composition == "left_orbit":
-        tx, ty, tw = 540, 235, 650
-    elif composition in ("corner_focus", "asymmetric"):
-        tx, ty, tw = 450, 235, 720
-    elif composition in ("right_orbit", "split_diagonal"):
-        tx, ty, tw = 70, 245, 700
-    elif composition in ("top_stage", "bottom_stage"):
-        tx, ty, tw = 80, (475 if composition == "top_stage" else 145), 1100
-    elif composition == "center_poster":
-        tx, ty, tw = 95, 510, 1090
-    elif composition == "double_panel":
-        tx, ty, tw = 455, 265, 700
-    elif composition == "wide_halo":
-        tx, ty, tw = 880, 270, 290
-    else:
-        tx, ty, tw = 455, 250, 720
-
-    font, fitted = _fit(d, title, tw, 47, 25)
-    d.text((tx, ty), fitted, font=font, fill="white",
+    d.text((585, 195), "NOW PLAYING", font=_font(25), fill=palette["second"])
+    font, fitted = _fit(d, title, 585, 45, 25)
+    d.text((585, 265), fitted, font=font, fill="white",
            stroke_width=2, stroke_fill=(8, 4, 24))
-    d.text((tx, ty+66), f"{channel[:48]}  •  {duration}",
-           font=_font(21, False), fill=(195, 210, 255))
-    d.text((tx, ty+105), f"REQUESTED BY  {requester[:42]}",
-           font=_font(18), fill=palette["gold"])
+    d.text((585, 355), f"{channel[:42]}  •  {duration}",
+           font=_font(21, False), fill=(205, 220, 255))
+    d.text((585, 410), "REQUESTED BY",
+           font=_font(17), fill=palette["gold"])
+    requester_font, requester_text = _fit(d, requester, 570, 24, 18)
+    d.text((585, 445), requester_text, font=requester_font, fill="white")
     _brand_bottom(d, bot_name, palette)
 
-    # Distinct frame language per motif, independent of palette.
+    # Distinct frame treatment remains independent of the chosen colour palette.
     if motif in ("concentric", "radial_rays"):
-        d.ellipse((20, 20, WIDTH-20, HEIGHT-20), outline=(*palette["gold"], 180), width=3)
+        d.ellipse((22, 22, WIDTH - 22, HEIGHT - 22),
+                  outline=(*palette["gold"], 190), width=4)
     elif motif in ("shards", "polygon_mesh"):
-        d.polygon([(0,0),(WIDTH,0),(WIDTH,38),(0,180)], outline=(*palette["second"],180))
+        d.polygon([(0, 0), (WIDTH, 0), (WIDTH, 38), (0, 180)],
+                  outline=(*palette["second"], 210))
     elif motif == "circuit":
-        d.rounded_rectangle((18, 18, WIDTH-18, HEIGHT-18), radius=18,
-                            outline=(*palette["second"], 180), width=3)
+        d.rounded_rectangle((18, 18, WIDTH - 18, HEIGHT - 18), radius=18,
+                            outline=(*palette["second"], 190), width=3)
     return image.convert("RGB")
-
 
 async def get_thumb(
     videoid, title, duration="Unknown", views=0, channel="YouTube",
@@ -689,8 +663,13 @@ async def get_thumb(
     design_name, composition, motif = DESIGN_PRESETS[design_index]
     seed = random.SystemRandom().randrange(0, 2**31)
     palette = random.choice(PALETTES)
-    art = _load_art(await _download_youtube_thumb(videoid))
+    art_data = await _download_youtube_thumb(videoid)
+    art = _load_art(art_data)
     avatar = _avatar_image(requester_avatar)
+    LOGGER.info(
+        "Thumbnail source status: video_id=%s video_art=%s requester_avatar=%s",
+        videoid, bool(art), bool(avatar)
+    )
 
     try:
         image = _render_premium(

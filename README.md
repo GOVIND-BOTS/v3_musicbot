@@ -419,3 +419,18 @@ The editor can combine 2–10 photos/videos into one MP4. Start a session, send 
 Use `original_audio=mute` to mute the clips while keeping the background music. Music volume accepts 0–2 (0.25 is a quieter background mix). Supported quality: 360p, 480p, 720p, or 1080p. The final output is limited to 1–120 seconds and a 49 MB safe Telegram upload size. If the render is too large, retry with `quality=480p` or shorter clips.
 
 Use `/timeline_cancel` to discard a session and its temporary files. Sessions are kept in memory/temp storage for up to two hours and are lost if the bot restarts before export.
+
+
+## 👑 Premium Thumbnail & Owner Controls
+
+- 90 thumbnail presets built from 10 different compositions and 9 distinct visual treatments (not colour-only variations).
+- Large circular song artwork with glow/ring framing.
+- Requester's Telegram profile photo is cropped into a small transparent circular PNG overlay.
+- Every now-playing panel includes **Change Thumbnail** and **Owner** buttons.
+- Thumbnail refresh always chooses a different preset from the current one.
+- `/owner` shows the current public owner profile.
+- `/setowner @username`, `/setowner 123456789`, and `/setowner default` manage the public owner button.
+
+### Secure owner configuration
+
+Set `OWNER_ID` in the hosting environment to the immutable main-owner Telegram ID. Only this exact account can use `/setowner`; SUDO users and group admins cannot change the public owner target. The public target is stored in MongoDB and can be a username or numeric Telegram ID. Optional `PUBLIC_OWNER_USERNAME` sets the initial public button username.

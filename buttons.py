@@ -4,6 +4,7 @@ from html import escape
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from player_ui import stylize, format_duration, progress_button_text
+from config import MAIN_OWNER_ID
 
 
 def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
@@ -59,6 +60,7 @@ def stream_buttons(
     duration=0,
     loop_mode="off",
     shuffle=False,
+    owner_url=None,
 ):
     loop_label = "ON" if str(loop_mode).lower() not in ("off", "none", "false", "0") else "OFF"
     shuffle_label = "ON" if shuffle else "OFF"
@@ -114,6 +116,16 @@ def stream_buttons(
             InlineKeyboardButton(
                 stylize("✖ CLOSE"),
                 callback_data="ctrl_close",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                stylize("🖼 CHANGE THUMBNAIL"),
+                callback_data=f"thumb_change|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                stylize("👑 OWNER"),
+                url=owner_url or f"tg://user?id={MAIN_OWNER_ID}",
             ),
         ],
     ])
@@ -226,6 +238,8 @@ HELP_COMMANDS = {
     "timeline_cancel": ("✖ Cancel Timeline", "Editor", "/timeline_cancel", "Cancel and clear the active timeline project.", "An active timeline project.", "/timeline_cancel"),
     "edithelp": ("❔ Editor Help", "Editor", "/edithelp", "Show supported editor operations, quality options and workflow.", "Anyone.", "/edithelp"),
     "logo": ("✨ Logo Maker", "Creative", "/logo [style] <text>", "Generate a logo. Use /logo list to view styles; supported styles include neon, gold and gaming.", "Private chat or group.", "/logo neon Govind"),
+    "owner": ("👑 Public Owner", "Owner", "/owner", "Show the profile linked by the owner button on the playing panel.", "Anyone.", "/owner"),
+    "setowner": ("⚙️ Set Public Owner", "Owner", "/setowner @username|user_id|default", "Change the public owner button target or restore the secure main owner.", "Immutable MAIN_OWNER_ID only; SUDO users cannot change it.", "/setowner @username"),
     "eval": ("🧪 Safe Eval", "Owner", "/eval <python expression>", "Run the restricted safe test evaluator. Alias: /test.", "Bot owner only; this is not unrestricted Python execution.", "/eval print('Hello')"),
     "test": ("🧪 Test", "Owner", "/test <expression>", "Alias of the restricted safe evaluator.", "Bot owner only.", "/test 2 + 2"),
     "whisper": ("🔒 Whisper", "Inline", "@botusername username message", "Send a private whisper using Telegram inline mode. Supports one-time whisper.", "Enable inline mode with @BotFather; use the bot in any chat.", "@botusername @username Secret message"),

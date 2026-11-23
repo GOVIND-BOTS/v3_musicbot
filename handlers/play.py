@@ -12,6 +12,7 @@ from .callbacks import start_progress_updater
 from config import OWNER_ID, SUDO_USERS
 from database.mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
+from owner_manager import get_owner_url
 from thumbnails import get_thumb
 from youtube import (
     is_youtube_url,
@@ -91,7 +92,7 @@ def get_video_id(track):
     return None
 
 
-async def generate_track_thumbnail(track):
+async def generate_track_thumbnail(track, client=None):
     try:
         video_id = get_video_id(track)
 
@@ -100,6 +101,18 @@ async def generate_track_thumbnail(track):
             return track
 
         user = track.get("requested_by") or {}
+        track["videoid"] = video_id
+        avatar_data = None
+        if client and isinstance(user, int):
+            try:
+                photos = await client.get_user_profile_photos(user, limit=1)
+                if photos and photos.photos and photos.photos[0]:
+                    photo = photos.photos[0][-1]
+                    downloaded = await client.download_media(photo.file_id, in_memory=True)
+                    if downloaded:
+                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
+            except Exception:
+                LOGGER.debug("Requester profile photo unavailable", exc_info=True)
 
         if isinstance(user, dict):
             requester = (
@@ -108,7 +121,7 @@ async def generate_track_thumbnail(track):
                 or "Group member"
             )
         else:
-            requester = str(user)
+            requester = track.get("requested_by_name") or str(user)
 
         thumbnail = await get_thumb(
             videoid=video_id,
@@ -117,6 +130,7 @@ async def generate_track_thumbnail(track):
             channel=track.get("channel", "YouTube"),
             bot_name="GOVIND MUSIC",
             requested_by=requester,
+            requester_avatar=avatar_data,
         )
 
         if thumbnail:
@@ -199,6 +213,7 @@ async def send_player_card(client, chat_id, track, stream):
         chat_id,
         elapsed=0,
         duration=track.get("duration", 0),
+        owner_url=track.get("_owner_url"),
     )
 
     thumbnail = track.get("thumbnail")
@@ -374,7 +389,8 @@ def register_play_handlers(app, stream, assistant=None):
                     return
 
             track = add_requester(track, message.from_user)
-            track = await generate_track_thumbnail(track)
+            track["_owner_url"] = await get_owner_url()
+            track = await generate_track_thumbnail(track, client)
 
             # Preserve audio/video type when sending to the stream.
             result = await stream.play(

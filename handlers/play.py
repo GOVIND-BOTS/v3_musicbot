@@ -92,7 +92,57 @@ def get_video_id(track):
     return None
 
 
-async def generate_track_thumbnail(track, client=None):
+async def _get_requester_avatar(user_id, *clients):
+    """Download the largest available Telegram profile photo from either client."""
+    if not user_id:
+        return None
+
+    for photo_client in clients:
+        if not photo_client:
+            continue
+        try:
+            photos = await photo_client.get_user_profile_photos(
+                int(user_id), limit=1
+            )
+            if not photos or not photos.photos:
+                continue
+
+            sizes = photos.photos[0]
+            if not sizes:
+                continue
+            photo = max(sizes, key=lambda item: getattr(item, "file_size", 0) or 0)
+
+            data = await photo_client.download_media(
+                photo.file_id, in_memory=True
+            )
+            if data is None:
+                continue
+            if hasattr(data, "getvalue"):
+                raw = data.getvalue()
+            elif hasattr(data, "read"):
+                data.seek(0)
+                raw = data.read()
+            elif isinstance(data, (bytes, bytearray)):
+                raw = bytes(data)
+            else:
+                LOGGER.warning("Unexpected requester photo download result: %s",
+                               type(data).__name__)
+                continue
+
+            if raw:
+                LOGGER.info("Requester profile photo downloaded for user %s", user_id)
+                return raw
+        except Exception:
+            LOGGER.debug(
+                "Could not fetch requester profile photo using %s",
+                type(photo_client).__name__,
+                exc_info=True,
+            )
+    LOGGER.warning("No accessible profile photo found for requester %s", user_id)
+    return None
+
+
+async def generate_track_thumbnail(track, client=None, assistant=None):
     try:
         video_id = get_video_id(track)
 
@@ -100,28 +150,20 @@ async def generate_track_thumbnail(track, client=None):
             LOGGER.warning("YouTube video ID not found for thumbnail.")
             return track
 
-        user = track.get("requested_by") or {}
-        track["videoid"] = video_id
-        avatar_data = None
-        if client and isinstance(user, int):
-            try:
-                photos = await client.get_user_profile_photos(user, limit=1)
-                if photos and photos.photos and photos.photos[0]:
-                    photo = photos.photos[0][-1]
-                    downloaded = await client.download_media(photo.file_id, in_memory=True)
-                    if downloaded:
-                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
-            except Exception:
-                LOGGER.debug("Requester profile photo unavailable", exc_info=True)
+        user_id = track.get("requested_by")
+        if isinstance(user_id, dict):
+            user_id = user_id.get("id")
 
-        if isinstance(user, dict):
-            requester = (
-                user.get("first_name")
-                or user.get("username")
-                or "Group member"
-            )
-        else:
-            requester = track.get("requested_by_name") or str(user)
+        track["videoid"] = video_id
+        avatar_data = await _get_requester_avatar(
+            user_id, client, assistant
+        )
+
+        requester = (
+            track.get("requested_by_name")
+            or track.get("requested_by_username")
+            or "Group member"
+        )
 
         thumbnail = await get_thumb(
             videoid=video_id,
@@ -135,13 +177,15 @@ async def generate_track_thumbnail(track, client=None):
 
         if thumbnail:
             track["thumbnail"] = thumbnail
-            LOGGER.info("Custom thumbnail generated: %s", thumbnail)
+            LOGGER.info(
+                "Custom thumbnail generated: video_id=%s avatar_loaded=%s path=%s",
+                video_id, bool(avatar_data), thumbnail
+            )
 
     except Exception:
         LOGGER.exception("Track thumbnail generation failed.")
 
     return track
-
 
 async def is_chat_admin(client, chat_id, user_id):
     if user_id in get_owner_ids():
@@ -390,7 +434,7 @@ def register_play_handlers(app, stream, assistant=None):
 
             track = add_requester(track, message.from_user)
             track["_owner_url"] = await get_owner_url()
-            track = await generate_track_thumbnail(track, client)
+            track = await generate_track_thumbnail(track, client, assistant)
 
             # Preserve audio/video type when sending to the stream.
             result = await stream.play(

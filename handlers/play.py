@@ -107,7 +107,7 @@ async def generate_track_thumbnail(track, client=None):
             try:
                 photos = await client.get_user_profile_photos(user, limit=1)
                 if photos and photos.photos and photos.photos[0]:
-                    photo = photos.photos[0][0]
+                    photo = photos.photos[0][-1]
                     downloaded = await client.download_media(photo.file_id, in_memory=True)
                     if downloaded:
                         avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)

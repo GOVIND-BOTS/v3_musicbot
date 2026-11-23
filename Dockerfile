@@ -29,6 +29,10 @@ RUN pip uninstall -y pyrogram pyrogrammod || true
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
+# Fail the image build if Railway resolves the legacy Pyrogram package.
+# PyTgCalls 3.0.1 requires the newer PyrogramMod raw API (Layer 229).
+RUN python -c "import pyrogram; from pyrogram.raw.functions.phone import CreateConferenceCall; print('PyrogramMod:', pyrogram.__version__, '| CreateConferenceCall: OK')"
+
 COPY . .
 
 CMD ["python", "bot.py"]

@@ -12,6 +12,7 @@ from .callbacks import start_progress_updater
 from config import OWNER_ID, SUDO_USERS
 from database.mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
+from owner_manager import get_owner_url
 from thumbnails import get_thumb
 from youtube import (
     is_youtube_url,
@@ -91,7 +92,7 @@ def get_video_id(track):
     return None
 
 
-async def generate_track_thumbnail(track):
+async def generate_track_thumbnail(track, client=None):
     try:
         video_id = get_video_id(track)
 
@@ -99,7 +100,7 @@ async def generate_track_thumbnail(track):
             LOGGER.warning("YouTube video ID not found for thumbnail.")
             return track
 
-        user = track.get("requested_by") or {}
+        user = track.get("requested_by") or {}\n        track["videoid"] = video_id\n        avatar_data = None\n        if client and isinstance(user, int):\n            try:\n                photos = await client.get_user_profile_photos(user, limit=1)\n                if photos and photos.photos and photos.photos[0]:\n                    photo = photos.photos[0][0]\n                    downloaded = await client.download_media(photo.file_id, in_memory=True)\n                    if downloaded:\n                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)\n            except Exception:\n                LOGGER.debug("Requester profile photo unavailable", exc_info=True)
 
         if isinstance(user, dict):
             requester = (

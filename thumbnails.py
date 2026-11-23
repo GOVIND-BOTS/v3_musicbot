@@ -590,7 +590,9 @@ def _render_premium(seed, composition, motif, palette, art, avatar,
            "NOW PLAYING", font=_font(23), fill=palette["second"])
 
     # Typography placement varies with the composition.
-    if composition in ("left_orbit", "corner_focus", "asymmetric"):
+    if composition == "left_orbit":
+        tx, ty, tw = 540, 235, 650
+    elif composition in ("corner_focus", "asymmetric"):
         tx, ty, tw = 450, 235, 720
     elif composition in ("right_orbit", "split_diagonal"):
         tx, ty, tw = 70, 245, 700
@@ -601,7 +603,7 @@ def _render_premium(seed, composition, motif, palette, art, avatar,
     elif composition == "double_panel":
         tx, ty, tw = 455, 265, 700
     elif composition == "wide_halo":
-        tx, ty, tw = 850, 270, 330
+        tx, ty, tw = 880, 270, 290
     else:
         tx, ty, tw = 455, 250, 720
 

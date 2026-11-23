@@ -19,13 +19,15 @@ from .bio_guard import register_bio_guard_handlers
 from .editor import register_editor_handlers
 from .video_downloader import register_video_downloader_handlers
 from .owner_control import register_owner_control_handlers
+from .bin_lookup import register_bin_handlers
+
+
 def register_handlers(
     app,
     stream,
     assistant,
     include_clone=True,
 ):
-
     register_start_handlers(app)
     register_owner_control_handlers(app)
 
@@ -41,6 +43,7 @@ def register_handlers(
     register_tagall_handlers(app)
     register_translate_handlers(app)
     register_whisper_handlers(app)
+    register_bin_handlers(app)
 
     register_student_protection(app)
     register_bio_guard_handlers(app, assistant)
@@ -48,7 +51,6 @@ def register_handlers(
     if include_clone:
         register_clone_handlers(app)
 
-    
     register_logo_handlers(app)
     register_anti_abuse_handlers(app)
     register_eval(app)

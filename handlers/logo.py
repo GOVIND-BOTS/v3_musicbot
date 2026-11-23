@@ -11,7 +11,7 @@ from pyrogram.types import (
     InputMediaPhoto,
 )
 
-from .logo_generator import generate_ai_logo, generate_logo, STYLES
+from .logo_generator import generate_logo, STYLES
 
 
 LOGGER = logging.getLogger(__name__)
@@ -37,16 +37,13 @@ def create_logo_file(name, style):
     temp.close()
 
     try:
-        if os.getenv("OPENAI_API_KEY", "").strip():
-            image_bytes = generate_ai_logo(name, style)
-            with open(path, "wb") as output:
-                output.write(image_bytes)
-        else:
-            image = generate_logo(name, style)
-            try:
-                image.save(path, format="PNG", optimize=True)
-            finally:
-                image.close()
+        # Always use the built-in Pillow generator. This is fully local,
+        # costs nothing, and does not depend on OpenAI credits or API keys.
+        image = generate_logo(name, style)
+        try:
+            image.save(path, format="PNG", optimize=True)
+        finally:
+            image.close()
         return path
     except Exception:
         try:

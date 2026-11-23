@@ -44,6 +44,12 @@ def register_bin_handlers(app):
                 parse_mode=ParseMode.HTML,
             )
 
+        # Remove the user's BIN prefix message after validating it.
+        try:
+            await message.delete()
+        except Exception:
+            pass
+
         try:
             status = await message.reply_text(
                 "<b>🔎 BIN details check ho rahi hain...</b>",

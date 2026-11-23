@@ -4,6 +4,7 @@ from html import escape
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from player_ui import stylize, format_duration, progress_button_text
+from config import MAIN_OWNER_ID
 
 
 def start_buttons(owner_id: int, support: str, channel: str, bot_username: str):
@@ -114,6 +115,16 @@ def stream_buttons(
             InlineKeyboardButton(
                 stylize("✖ CLOSE"),
                 callback_data="ctrl_close",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                stylize("🖼 CHANGE THUMBNAIL"),
+                callback_data=f"thumb_change|{chat_id}",
+            ),
+            InlineKeyboardButton(
+                stylize("👑 OWNER"),
+                url=owner_url or f"tg://user?id={MAIN_OWNER_ID}",
             ),
         ],
     ])

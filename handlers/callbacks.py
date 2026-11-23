@@ -385,7 +385,6 @@ def register_callback_handlers(app, stream):
             await query.answer("Track artwork is unavailable.", show_alert=True)
             return
 
-        await query.answer("Creating a new design…")
         avatar_data = None
         if requester_id:
             try:

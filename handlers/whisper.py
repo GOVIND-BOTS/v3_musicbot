@@ -57,7 +57,7 @@ def register_whisper_handlers(app):
                     reply_markup=switch_btn,
                 )
             ]
-            return await inline_query.answer(results, cache_time=1)
+            return await inline_query.answer(results, cache_time=1, is_personal=True)
 
         target, msg = parts[0], parts[1]
 

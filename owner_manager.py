@@ -7,7 +7,10 @@ from database.mongodb import settings_collection
 
 async def get_public_owner():
     """Return the public owner profile; the secure main owner stays in env."""
-    record = await settings_collection.find_one({"_id": "public_owner"}) or {}
+    try:
+        record = await settings_collection.find_one({"_id": "public_owner"}) or {}
+    except Exception:
+        record = {}
     username = (record.get("username") or os.getenv("PUBLIC_OWNER_USERNAME", "")).strip().lstrip("@")
     user_id = record.get("user_id") or MAIN_OWNER_ID
     try:

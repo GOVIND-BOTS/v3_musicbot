@@ -1,5 +1,5 @@
-pyrogrammod>=2.1.2
-py-tgcalls>=2.2.11
+pyrogrammod==2.4.1
+py-tgcalls[pyrogram]==3.0.1
 
 motor
 pymongo

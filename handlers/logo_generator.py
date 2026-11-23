@@ -1,6 +1,10 @@
+import base64
+import json
 import math
 import os
 import random
+import urllib.error
+import urllib.request
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -302,3 +306,110 @@ def generate_logo(name, style="neon"):
 
     # Keep the generated PNG lightweight for Telegram.
     return image.convert("RGB")
+
+
+AI_STYLE_PROMPTS = {
+    "neon": "dark luxury neon lettering, purple and cyan luminous edges",
+    "gold": "premium 24-karat gold foil calligraphy, elegant warm ivory or black background",
+    "3d": "high-end dimensional chrome and glass 3D lettering, dramatic studio reflections",
+    "gaming": "esports gaming emblem, metallic lettering, electric blue and violet energy",
+    "anime": "delicate pastel anime-inspired name art, graceful butterfly and floral accents",
+    "fire": "molten orange-red metallic lettering with elegant flame accents",
+    "ice": "crystal ice lettering with frosted silver-blue highlights",
+    "royal": "ornate royal gold calligraphy with a finely detailed crown",
+    "cyberpunk": "futuristic magenta and cyan chrome typography",
+    "gradient": "smooth iridescent gradient calligraphy with glossy highlights",
+    "chrome": "polished reflective silver chrome 3D lettering",
+    "shadow": "minimal black ink calligraphy on clean white paper",
+    "emerald": "emerald green gemstone lettering with refined gold accents",
+    "ruby": "ruby red jewel lettering with subtle heart ornament",
+    "sapphire": "sapphire blue gemstone calligraphy with silver accents",
+    "toxic": "acid lime green futuristic lettering with restrained glow",
+    "matrix": "minimal emerald digital lettering with subtle matrix particles",
+    "sunset": "warm sunset gradient calligraphy in coral, amber and rose gold",
+    "minimal": "minimal elegant black signature calligraphy on pure white background",
+    "vintage": "classic black and antique gold engraved calligraphy",
+    "signature": "luxury handwritten black signature with long elegant swashes",
+    "feather": "elegant black calligraphy intertwined with a realistic detailed peacock feather",
+    "butterfly": "fine elegant calligraphy with a realistic turquoise butterfly",
+    "love": "romantic red calligraphy with delicate hearts and floral details",
+    "angel": "elegant calligraphy with fine feathered angel wings",
+    "luxury": "champagne gold embossed calligraphy on warm ivory with premium jewelry-like details",
+}
+
+
+def generate_ai_logo(name, style="signature"):
+    """Generate a Pinterest-inspired name-art image through the OpenAI Images API.
+
+    The API key is read only from OPENAI_API_KEY; it is never stored in source.
+    Returns decoded PNG bytes.
+    """
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    style = str(style).lower().strip()
+    style_description = AI_STYLE_PROMPTS.get(
+        style, "luxury artistic calligraphy with refined decorative elements"
+    )
+    model = os.getenv("OPENAI_IMAGE_MODEL", "gpt-image-2.6-flare").strip()
+    quality = os.getenv("OPENAI_IMAGE_QUALITY", "medium").strip().lower()
+    if quality not in {"low", "medium", "high", "xhigh", "max"}:
+        quality = "medium"
+
+    prompt = f"""
+Create a premium Pinterest-style PERSONAL NAME ART LOGO. The exact name to
+render is: "{name}".
+
+STYLE DIRECTION: {style_description}
+
+Composition: square 1:1 canvas, centered elegant handwritten calligraphy or
+luxury script lettering, beautiful natural letter connections and long
+ornamental swashes. Integrate the decorative object naturally with the
+lettering rather than placing a generic icon above it. Depending on the style,
+use realistic finely detailed peacock feather, crown, butterfly, angel wings,
+heart, leaves or delicate floral ornaments. Sophisticated professional
+typography artwork, crisp edges, balanced negative space, refined lighting,
+subtle dimensional embossing or metallic foil only where suitable.
+
+Keep the background clean white, soft ivory, or a tasteful dark premium tone
+that complements the selected style. Make the name large, readable, correctly
+spelled, and the clear main subject. No mockup, no phone, no frame, no watermark,
+no extra words, no slogans, no random letters, no signature other than the
+exact requested name. Produce a finished standalone logo artwork, not a poster.
+"""
+
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "size": "1024x1024",
+        "quality": quality,
+        "n": 1,
+        "output_format": "png",
+    }
+    request = urllib.request.Request(
+        "https://api.openai.com/v1/images/generations",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode("utf-8", errors="replace")[:700]
+        raise RuntimeError(f"OpenAI image API HTTP {error.code}: {detail}") from error
+    except urllib.error.URLError as error:
+        raise RuntimeError(f"OpenAI image API connection failed: {error.reason}") from error
+
+    items = result.get("data") or []
+    encoded = items[0].get("b64_json") if items else None
+    if not encoded:
+        raise RuntimeError("OpenAI image API returned no image data")
+    try:
+        return base64.b64decode(encoded, validate=True)
+    except Exception as error:
+        raise RuntimeError("OpenAI image API returned invalid image data") from error

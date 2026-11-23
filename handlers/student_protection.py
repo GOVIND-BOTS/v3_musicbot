@@ -405,7 +405,7 @@ async def ban_user(client, chat_id: int, user_id: int):
 # MODERATION ACTION
 # --------------------------------------------------
 
-async def process_violation(client, message, reason: str):
+async def process_violation(client, message, reason: str, *, check_exempt=True):
     if not message.from_user:
         return
 
@@ -415,7 +415,7 @@ async def process_violation(client, message, reason: str):
     if message.from_user.is_bot:
         return
 
-    if await is_exempt_user(
+    if check_exempt and await is_exempt_user(
         client,
         chat_id,
         user_id,
@@ -533,9 +533,9 @@ def get_media_info(message):
     if message.sticker:
         sticker = message.sticker
 
-        # TGS is an animated Lottie format.
-        # It needs a separate renderer.
+        # TGS is a vector animation and NudeNet cannot inspect raw Lottie JSON.
         if sticker.is_animated:
+            LOGGER.warning("Skipping animated TGS sticker: no Lottie frame renderer is configured.")
             return ".tgs", False, True
 
         if sticker.is_video:
@@ -664,11 +664,42 @@ async def moderate_media(client, message):
                 )
 
             if flagged:
-                await process_violation(
-                    client,
-                    message,
-                    "Inappropriate media detected",
-                )
+                # Explicit-media rule applies to admins too. Remove the
+                # content, but do not warn/mute/ban an administrator.
+                try:
+                    member = await client.get_chat_member(
+                        message.chat.id,
+                        message.from_user.id,
+                    )
+                    is_admin = member.status in (
+                        ChatMemberStatus.OWNER,
+                        ChatMemberStatus.ADMINISTRATOR,
+                    )
+                except Exception:
+                    LOGGER.exception(
+                        "Could not verify admin status for flagged media; "
+                        "leaving message untouched to avoid false punishment."
+                    )
+                    return
+
+                if is_admin:
+                    if await delete_violation(message):
+                        try:
+                            await client.send_message(
+                                message.chat.id,
+                                "⚠️ <b>Pornographic media removed</b>\\n"
+                                f"👤 Admin: {message.from_user.mention}\\n"
+                                "Explicit stickers/GIFs are not allowed, including in admin messages.",
+                            )
+                        except Exception:
+                            LOGGER.exception("Could not send admin media notice.")
+                else:
+                    await process_violation(
+                        client,
+                        message,
+                        "Pornographic / explicit media detected",
+                        check_exempt=False,
+                    )
 
     except Exception:
         # Fail open: never punish a member if the

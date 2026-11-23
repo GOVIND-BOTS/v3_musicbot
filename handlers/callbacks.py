@@ -399,7 +399,7 @@ def register_callback_handlers(app, stream):
             except Exception:
                 LOGGER.debug("Could not refresh requester avatar", exc_info=True)
 
-        previous = re.search(r"_d(\\d{2})_", str(track.get("thumbnail") or ""))
+        previous = re.search(r"_d(\d{2})_", str(track.get("thumbnail") or ""))
         previous_index = int(previous.group(1)) - 1 if previous else None
         choices = [index for index in range(90) if index != previous_index]
         next_design = random.choice(choices)

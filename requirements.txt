@@ -1,5 +1,5 @@
-pyrogrammod @ https://github.com/PyrogramMod/PyrogramMod/archive/refs/heads/main.zip
-py-tgcalls[pyrogram]==3.0.1
+pyrogrammod==2.4.1
+py-tgcalls==3.0.1
 
 motor
 pymongo

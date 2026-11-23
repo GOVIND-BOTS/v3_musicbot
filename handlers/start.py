@@ -302,6 +302,17 @@ def register_start_handlers(app):
         except Exception:
             LOGGER.exception("Group start failed.")
 
+    @app.on_message(filters.group & filters.new_chat_members)
+    async def track_new_group(client, message):
+        """Remember groups as soon as this bot is added, even before /start."""
+        try:
+            me = await client.get_me()
+            if any(member.id == me.id for member in (message.new_chat_members or [])):
+                await add_chat(message.chat.id)
+                LOGGER.info("Registered group for scheduled announcements: %s", message.chat.id)
+        except Exception:
+            LOGGER.exception("Could not register newly joined group.")
+
     @app.on_message(filters.command("help"))
     async def help_command(client, message):
         await send_help(message)

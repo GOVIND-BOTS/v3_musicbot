@@ -15,7 +15,7 @@ from music import music_queue
 from buttons import queue_buttons, stream_buttons
 from database.mongodb import get_chat_settings
 from player_ui import format_duration, stylize, now_playing_caption
-from thumbnails import get_thumb
+from thumbnails import get_thumb, save_requester_avatar
 from owner_manager import get_owner_url
 
 LOGGER = logging.getLogger(__name__)
@@ -393,26 +393,36 @@ def register_callback_handlers(app, stream):
             return
 
         await query.answer("Creating thumbnail…")
-        avatar_data = None
-        if requester_id:
+        # Reuse the exact requester DP captured when the track was queued.
+        # If missing, ask Telegram for the user's current profile photo.
+        avatar_data = track.get("_requester_avatar_path")
+        if not avatar_data and requester_id:
             try:
-                photos = await client.get_user_profile_photos(int(requester_id), limit=1)
-                if photos and photos.photos and photos.photos[0]:
-                    photo = max(
-                        photos.photos[0],
-                        key=lambda item: getattr(item, "file_size", 0) or 0,
-                    )
-                    downloaded = await client.download_media(photo.file_id, in_memory=True)
+                profile = await client.get_users(int(requester_id))
+                profile_photo = getattr(profile, "photo", None)
+                file_id = getattr(profile_photo, "big_file_id", None)
+                if file_id:
+                    downloaded = await client.download_media(file_id, in_memory=True)
                     if downloaded:
                         if hasattr(downloaded, "getvalue"):
-                            avatar_data = downloaded.getvalue()
+                            avatar_raw = downloaded.getvalue()
                         elif hasattr(downloaded, "read"):
                             downloaded.seek(0)
-                            avatar_data = downloaded.read()
+                            avatar_raw = downloaded.read()
                         elif isinstance(downloaded, (bytes, bytearray)):
-                            avatar_data = bytes(downloaded)
+                            avatar_raw = bytes(downloaded)
+                        else:
+                            avatar_raw = None
+                        avatar_data = save_requester_avatar(avatar_raw, requester_id)
+                        if avatar_data:
+                            track["_requester_avatar_path"] = avatar_data
             except Exception:
-                LOGGER.warning("Could not refresh requester avatar %s", requester_id, exc_info=True)
+                LOGGER.warning(
+                    "Could not fetch requester DP from Telegram for %s",
+                    requester_id,
+                    exc_info=True,
+                )
+
 
         try:
             thumbnail = await get_thumb(

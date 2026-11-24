@@ -36,7 +36,7 @@ def register_string_session_handlers(app):
             reply_markup=menu()
         )
 
-    @app.on_callback_query(filters.regex(r"^gensess\\|"))
+    @app.on_callback_query(filters.regex(r"^gensess\|"))
     async def choose(_, query):
         if query.from_user.id != MAIN_OWNER_ID or query.message.chat.type != "private":
             return await query.answer("Main owner only.", show_alert=True)

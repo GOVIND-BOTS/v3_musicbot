@@ -48,19 +48,19 @@ def _download_video(url: str, folder: str):
     with yt_dlp.YoutubeDL(options) as ydl:
         info = ydl.extract_info(url, download=True)
         if not info:
-            raise RuntimeError("Is link se video information nahi mili.")
+            raise RuntimeError("Could not retrieve video information from this link.")
         if info.get("_type") == "playlist":
-            raise RuntimeError("Playlist download disabled hai. Ek video ka link bhejein.")
+            raise RuntimeError("Playlist downloads are disabled. Please send a single video link.")
         files = [p for p in Path(folder).glob("*") if p.is_file() and p.suffix.lower() not in {".part", ".ytdl", ".json", ".jpg", ".webp", ".png"}]
         if not files:
             prepared = Path(ydl.prepare_filename(info))
             if prepared.exists():
                 files = [prepared]
         if not files:
-            raise RuntimeError("Download file create nahi hui.")
+            raise RuntimeError("The download file could not be created.")
         video = max(files, key=lambda p: p.stat().st_size)
         if video.stat().st_size > MAX_FILE_SIZE:
-            raise RuntimeError("Video configured Telegram upload size limit se badi hai.")
+            raise RuntimeError("The video exceeds the configured Telegram upload size limit.")
         return str(video), info.get("title") or "Downloaded video"
 
 async def _process_link(message: Message, url: str):

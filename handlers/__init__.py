@@ -21,6 +21,7 @@ from .video_downloader import register_video_downloader_handlers
 from .owner_control import register_owner_control_handlers
 from .bin_lookup import register_bin_handlers
 from .couples import register_couples_handlers
+from .string_session import register_string_session_handlers
 
 
 def register_handlers(
@@ -30,6 +31,7 @@ def register_handlers(
     include_clone=True,
 ):
     register_start_handlers(app)
+    register_string_session_handlers(app)
     register_owner_control_handlers(app)
 
     register_play_handlers(app, stream, assistant)

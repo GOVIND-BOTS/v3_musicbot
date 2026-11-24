@@ -2,7 +2,7 @@ import logging
 from pyrogram import filters
 from pyrogram.errors import SessionPasswordNeeded
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from config import API_ID, API_HASH, MAIN_OWNER_ID
+from config import API_ID, API_HASH
 
 LOG = logging.getLogger(__name__)
 FLOW = {}
@@ -27,42 +27,47 @@ async def close_worker(state):
 def register_string_session_handlers(app):
     @app.on_message(filters.command("genstring") & filters.private)
     async def genstring(_, message):
-        if not message.from_user or message.from_user.id != MAIN_OWNER_ID:
-            return await message.reply_text("⛔ Main owner only.")
-        FLOW.pop(MAIN_OWNER_ID, None)
+        if not message.from_user:
+            return
+        uid = message.from_user.id
+        if uid in FLOW:
+            await close_worker(FLOW.pop(uid, None))
         await message.reply_text(
             "🔐 <b>String Session Generator</b>\nChoose the session type. "
-            "Only use accounts/bots you own. OTP/password and generated sessions are secrets.",
+            "Available to all users in private chat. Generate sessions only for accounts/bots you own. OTP/password and generated sessions are secrets; the result is sent only to your own chat.",
             reply_markup=menu()
         )
 
     @app.on_callback_query(filters.regex(r"^gensess\|"))
     async def choose(_, query):
-        if query.from_user.id != MAIN_OWNER_ID or query.message.chat.type != "private":
-            return await query.answer("Main owner only.", show_alert=True)
+        if query.message.chat.type != "private":
+            return await query.answer("Use this in private chat.", show_alert=True)
+        uid = query.from_user.id
         kind = query.data.split("|", 1)[1]
         await query.answer()
         if kind == "cancel":
-            state = FLOW.pop(MAIN_OWNER_ID, None)
+            state = FLOW.pop(uid, None)
             await close_worker(state)
             return await query.message.edit_text("❎ Cancelled.")
-        FLOW[MAIN_OWNER_ID] = {"kind": kind, "stage": "credential"}
-        prompt = "Send your own @BotFather bot token." if kind.endswith("_bot") else "Send your phone number with country code, e.g. +919876543210."
+        FLOW[uid] = {"kind": kind, "stage": "credential"}
+        prompt = "Send a bot token for a bot you own from @BotFather." if kind.endswith("_bot") else "Send your phone number with country code, e.g. +919876543210."
         await query.message.edit_text(prompt + "\n\n/cancel to stop.")
 
     @app.on_message(filters.private & filters.command("cancel"))
     async def cancel(_, message):
-        if not message.from_user or message.from_user.id != MAIN_OWNER_ID:
+        if not message.from_user:
             return
-        state = FLOW.pop(MAIN_OWNER_ID, None)
+        uid = message.from_user.id
+        state = FLOW.pop(uid, None)
         await close_worker(state)
         await message.reply_text("❎ Session generation cancelled.")
 
     @app.on_message(filters.private & filters.text & ~filters.command(["genstring", "cancel"]))
     async def input_step(client, message):
-        if not message.from_user or message.from_user.id != MAIN_OWNER_ID:
+        if not message.from_user:
             return
-        state = FLOW.get(MAIN_OWNER_ID)
+        uid = message.from_user.id
+        state = FLOW.get(uid)
         if not state:
             return
         value = (message.text or "").strip()
@@ -79,8 +84,8 @@ def register_string_session_handlers(app):
                 await worker.start()
                 session = await worker.export_session_string()
                 await worker.stop()
-                FLOW.pop(MAIN_OWNER_ID, None)
-                return await client.send_message(MAIN_OWNER_ID, "<b>Pyrogram bot session generated.</b>\n<code>" + session + "</code>", protect_content=True)
+                FLOW.pop(uid, None)
+                return await client.send_message(uid, "<b>Pyrogram bot session generated.</b>\n<code>" + session + "</code>", protect_content=True)
 
             if stage == "credential" and kind == "tele_bot":
                 from telethon import TelegramClient
@@ -89,8 +94,8 @@ def register_string_session_handlers(app):
                 await worker.start(bot_token=value)
                 session = worker.session.save()
                 await worker.disconnect()
-                FLOW.pop(MAIN_OWNER_ID, None)
-                return await client.send_message(MAIN_OWNER_ID, "<b>Telethon bot session generated.</b>\n<code>" + session + "</code>", protect_content=True)
+                FLOW.pop(uid, None)
+                return await client.send_message(uid, "<b>Telethon bot session generated.</b>\n<code>" + session + "</code>", protect_content=True)
 
             if stage == "credential":
                 state["phone"] = value
@@ -107,7 +112,7 @@ def register_string_session_handlers(app):
                     await worker.connect()
                     sent = await worker.send_code_request(value)
                     state.update(worker=worker, phone_hash=sent.phone_code_hash, stage="code")
-                return await client.send_message(MAIN_OWNER_ID, "📩 Telegram OTP send karo. Spaces ke bina.")
+                return await client.send_message(uid, "📩 Telegram OTP send karo. Spaces ke bina.")
 
             if stage == "code":
                 worker = state["worker"]
@@ -116,7 +121,7 @@ def register_string_session_handlers(app):
                         await worker.sign_in(state["phone"], state["phone_hash"], value.replace(" ", ""))
                     except SessionPasswordNeeded:
                         state["stage"] = "password"
-                        return await client.send_message(MAIN_OWNER_ID, "🔒 2-Step Verification password bhejo.")
+                        return await client.send_message(uid, "🔒 2-Step Verification password bhejo.")
                     session = await worker.export_session_string()
                 else:
                     from telethon.errors import SessionPasswordNeededError
@@ -124,11 +129,11 @@ def register_string_session_handlers(app):
                         await worker.sign_in(state["phone"], value.replace(" ", ""), phone_code_hash=state["phone_hash"])
                     except SessionPasswordNeededError:
                         state["stage"] = "password"
-                        return await client.send_message(MAIN_OWNER_ID, "🔒 2-Step Verification password bhejo.")
+                        return await client.send_message(uid, "🔒 2-Step Verification password bhejo.")
                     session = worker.session.save()
                 await worker.disconnect()
-                FLOW.pop(MAIN_OWNER_ID, None)
-                return await client.send_message(MAIN_OWNER_ID, "<b>Session generated. Keep it secret:</b>\n<code>" + session + "</code>", protect_content=True)
+                FLOW.pop(uid, None)
+                return await client.send_message(uid, "<b>Session generated. Keep it secret:</b>\n<code>" + session + "</code>", protect_content=True)
 
             if stage == "password":
                 worker = state["worker"]
@@ -139,10 +144,10 @@ def register_string_session_handlers(app):
                     await worker.sign_in(password=value)
                     session = worker.session.save()
                 await worker.disconnect()
-                FLOW.pop(MAIN_OWNER_ID, None)
-                return await client.send_message(MAIN_OWNER_ID, "<b>Session generated. Keep it secret:</b>\n<code>" + session + "</code>", protect_content=True)
+                FLOW.pop(uid, None)
+                return await client.send_message(uid, "<b>Session generated. Keep it secret:</b>\n<code>" + session + "</code>", protect_content=True)
         except Exception as exc:
             LOG.warning("String session generation failed (%s)", type(exc).__name__)
             await close_worker(state)
-            FLOW.pop(MAIN_OWNER_ID, None)
-            await client.send_message(MAIN_OWNER_ID, "❌ Login/session generation failed. Credentials, OTP, 2FA or API settings check karke /genstring retry karo. Secret values logs mein nahi likhe gaye.")
+            FLOW.pop(uid, None)
+            await client.send_message(uid, "❌ Login/session generation failed. Credentials, OTP, 2FA or API settings check karke /genstring retry karo. Secret values logs mein nahi likhe gaye.")

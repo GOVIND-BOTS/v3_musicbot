@@ -73,6 +73,31 @@ def create_assistant():
 # MAIN
 # --------------------------------------------------
 
+async def start_main_bot_with_retry(max_attempts=5):
+    """Retry only Telegram's transient internal authorization failures."""
+    delays = (5, 10, 20, 30)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            await bot.start()
+            return
+        except Exception as exc:
+            error_text = str(exc).upper()
+            transient_telegram_500 = (
+                "RPC_CALL_FAIL" in error_text
+                or "INTERNAL_SERVER_ERROR_500" in type(exc).__module__.upper()
+            )
+            if not transient_telegram_500 or attempt >= max_attempts:
+                raise
+
+            delay = delays[min(attempt - 1, len(delays) - 1)]
+            LOGGER.warning(
+                "Telegram returned a temporary 500 during bot authorization "
+                "(attempt %s/%s). Retrying in %s seconds.",
+                attempt, max_attempts, delay,
+            )
+            await asyncio.sleep(delay)
+
+
 async def main():
     global assistant, music_stream
 
@@ -90,8 +115,10 @@ async def main():
         LOGGER.info("Connecting to Redis...")
         await connect_redis()
 
-        # Start main bot
-        await bot.start()
+        # Start main bot. Telegram may briefly fail auth.ImportBotAuthorization
+        # with RPC_CALL_FAIL; retry that server-side error without masking
+        # invalid tokens or other permanent configuration failures.
+        await start_main_bot_with_retry()
         bot_started = True
 
         me = await bot.get_me()

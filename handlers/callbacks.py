@@ -463,13 +463,13 @@ def register_callback_handlers(app, stream):
             track["thumbnail"] = thumbnail
             stream.player_messages[target_chat] = updated_message
             await refresh_player_keyboard(client, target_chat, stream)
-            await query.answer("Thumbnail updated successfully.")
         except Exception as error:
             LOGGER.exception("Thumbnail change failed in chat %s", target_chat)
             with suppress(Exception):
-                await query.answer(
-                    f"Could not change thumbnail: {str(error)[:150]}",
-                    show_alert=True,
+                await client.send_message(
+                    target_chat,
+                    f"Could not change thumbnail: <code>{escape(str(error)[:250])}</code>",
+                    parse_mode=ParseMode.HTML,
                 )
 
     @app.on_callback_query(filters.regex(r"^ctrl_"))

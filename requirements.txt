@@ -1,4 +1,5 @@
 pyrogrammod==2.4.1
+Telethon>=1.36.0
 py-tgcalls==3.0.1
 
 motor

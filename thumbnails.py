@@ -25,7 +25,7 @@ TEMPLATE_PATH = Path("assets/IMG_20261121_075236.png")
 # Coordinates are for the supplied 16:9 neon template at 1280x720.
 # Keep the neon borders visible by placing the photos slightly inside them.
 VIDEO_BOX = (431, 119, 849, 537)       # left, top, right, bottom
-AVATAR_BOX = (773, 418, 919, 564)      # small overlapping circle
+AVATAR_BOX = (773, 418, 919, 564)      # fixed 146x146 requester circle
 
 
 def _font(size=42):
@@ -45,6 +45,8 @@ def _open_image(raw):
     if not raw:
         return None
     try:
+        if isinstance(raw, (str, Path)) and Path(raw).is_file():
+            return Image.open(raw).convert("RGBA")
         return Image.open(BytesIO(raw)).convert("RGBA")
     except Exception:
         LOGGER.warning("Invalid thumbnail image input", exc_info=True)

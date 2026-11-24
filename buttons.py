@@ -185,7 +185,7 @@ def queue_buttons(
 # --------------------------------------------------
 
 HELP_COMMANDS = {
-    "genstring": ("🔐 String Session Generator", "Owner Tools", "/genstring", "Generate Pyrogram or Telethon user/bot string sessions in a private guided login flow. OTP and 2FA messages are deleted after processing; generated sessions are secret.", "Available to all users in private chat. Use only accounts/bots you own; the session is sent only to your own chat and must never be shared.", "/genstring"),
+    "genstring": ("🔐 String Session Generator", "Owner Tools", "/genstring", "Generate Pyrogram or Telegram (Telethon) user/bot string sessions in a private guided login flow. OTP and 2FA messages are deleted after processing; generated sessions are secret.", "Available to all users in private chat. Use only accounts/bots you own; the session is sent only to your own chat and must never be shared.", "/genstring"),
     "start": ("🚀 Start", "General", "/start", "Open the bot welcome panel and main navigation.", "Private chat or group.", "/start"),
     "help": ("🆘 Help", "General", "/help", "Open the interactive command directory. Every command has its own help button.", "Anyone.", "/help"),
     "play": ("🎵 Play", "Music", "/play <song name or link>", "Search and stream audio in the group's voice chat.", "Group; bot and assistant must have voice-chat access.", "/play Arijit Singh"),

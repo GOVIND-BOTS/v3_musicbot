@@ -1,5 +1,6 @@
 import logging
 from pyrogram import filters
+from pyrogram.enums import ChatType
 from pyrogram.errors import SessionPasswordNeeded
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import API_ID, API_HASH
@@ -9,10 +10,15 @@ FLOW = {}
 
 def menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("Pyrogram User", callback_data="gensess|pyro_user"),
-         InlineKeyboardButton("Telethon User", callback_data="gensess|tele_user")],
-        [InlineKeyboardButton("Pyrogram Bot", callback_data="gensess|pyro_bot"),
-         InlineKeyboardButton("Telethon Bot", callback_data="gensess|tele_bot")],
+        [InlineKeyboardButton("Pyrogram", callback_data="gensess|pyro"),
+         InlineKeyboardButton("Telegram", callback_data="gensess|tele")],
+        [InlineKeyboardButton("Cancel", callback_data="gensess|cancel")]
+    ])
+
+def account_menu(kind):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("User Account", callback_data=f"gensess|{kind}_user"),
+         InlineKeyboardButton("Bot Account", callback_data=f"gensess|{kind}_bot")],
         [InlineKeyboardButton("Cancel", callback_data="gensess|cancel")]
     ])
 
@@ -38,10 +44,10 @@ def register_string_session_handlers(app):
             reply_markup=menu()
         )
 
-    @app.on_callback_query(filters.regex(r"^gensess\|"))
+    @app.on_callback_query(filters.regex(r"^gensess\\|"))
     async def choose(_, query):
-        if query.message.chat.type != "private":
-            return await query.answer("Use this in private chat.", show_alert=True)
+        if not query.message or query.message.chat.type != ChatType.PRIVATE:
+            return await query.answer("Please open /genstring in this private chat.", show_alert=True)
         uid = query.from_user.id
         kind = query.data.split("|", 1)[1]
         await query.answer()
@@ -49,9 +55,18 @@ def register_string_session_handlers(app):
             state = FLOW.pop(uid, None)
             await close_worker(state)
             return await query.message.edit_text("❎ Cancelled.")
+        if kind in ("pyro", "tele"):
+            FLOW[uid] = {"library": kind, "stage": "account_type"}
+            label = "Pyrogram" if kind == "pyro" else "Telegram"
+            return await query.message.edit_text(
+                f"Choose {label} account type:",
+                reply_markup=account_menu(kind)
+            )
+        if kind not in ("pyro_user", "pyro_bot", "tele_user", "tele_bot"):
+            return await query.answer("Invalid option.", show_alert=True)
         FLOW[uid] = {"kind": kind, "stage": "credential"}
         prompt = "Send a bot token for a bot you own from @BotFather." if kind.endswith("_bot") else "Send your phone number with country code, e.g. +919876543210."
-        await query.message.edit_text(prompt + "\n\n/cancel to stop.")
+        await query.message.edit_text(prompt + "\\n\\n/cancel to stop.")
 
     @app.on_message(filters.private & filters.command("cancel"))
     async def cancel(_, message):

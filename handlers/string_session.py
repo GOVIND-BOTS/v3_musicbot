@@ -127,7 +127,7 @@ def register_string_session_handlers(app):
                     await worker.connect()
                     sent = await worker.send_code_request(value)
                     state.update(worker=worker, phone_hash=sent.phone_code_hash, stage="code")
-                return await client.send_message(uid, "📩 Telegram OTP send karo. Spaces ke bina.")
+                return await client.send_message(uid, "📩 Enter the Telegram login code you received. Do not include spaces.")
 
             if stage == "code":
                 worker = state["worker"]
@@ -136,7 +136,7 @@ def register_string_session_handlers(app):
                         await worker.sign_in(state["phone"], state["phone_hash"], value.replace(" ", ""))
                     except SessionPasswordNeeded:
                         state["stage"] = "password"
-                        return await client.send_message(uid, "🔒 2-Step Verification password bhejo.")
+                        return await client.send_message(uid, "🔒 Enter your Two-Step Verification password.")
                     session = await worker.export_session_string()
                 else:
                     from telethon.errors import SessionPasswordNeededError
@@ -144,7 +144,7 @@ def register_string_session_handlers(app):
                         await worker.sign_in(state["phone"], value.replace(" ", ""), phone_code_hash=state["phone_hash"])
                     except SessionPasswordNeededError:
                         state["stage"] = "password"
-                        return await client.send_message(uid, "🔒 2-Step Verification password bhejo.")
+                        return await client.send_message(uid, "🔒 Enter your Two-Step Verification password.")
                     session = worker.session.save()
                 await worker.disconnect()
                 FLOW.pop(uid, None)
@@ -165,4 +165,4 @@ def register_string_session_handlers(app):
             LOG.warning("String session generation failed (%s)", type(exc).__name__)
             await close_worker(state)
             FLOW.pop(uid, None)
-            await client.send_message(uid, "❌ Login/session generation failed. Credentials, OTP, 2FA or API settings check karke /genstring retry karo. Secret values logs mein nahi likhe gaye.")
+            await client.send_message(uid, "❌ Login or session generation failed. Check your credentials, login code, Two-Step Verification password, and API settings, then try /genstring again. Secret values are not written to the logs.")

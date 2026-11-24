@@ -13,7 +13,7 @@ from config import OWNER_ID, SUDO_USERS
 from database.mongodb import get_chat_settings
 from player_ui import add_requester, now_playing_caption
 from owner_manager import get_owner_url
-from thumbnails import get_thumb
+from thumbnails import get_thumb, save_requester_avatar
 from youtube import (
     is_youtube_url,
     search_youtube,
@@ -158,6 +158,9 @@ async def generate_track_thumbnail(track, client=None, assistant=None):
         avatar_data = await _get_requester_avatar(
             user_id, client, assistant
         )
+        avatar_path = save_requester_avatar(avatar_data, user_id)
+        if avatar_path:
+            track["_requester_avatar_path"] = avatar_path
 
         requester = (
             track.get("requested_by_name")

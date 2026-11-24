@@ -135,6 +135,23 @@ def _render(video_art, requester_avatar):
     return image.convert("RGB")
 
 
+def save_requester_avatar(raw, user_id):
+    """Persist the requester DP once so thumbnail refresh uses the same image."""
+    if not raw or not user_id:
+        return None
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        target = CACHE_DIR / f"requester_{int(user_id)}.jpg"
+        avatar = _open_image(raw)
+        if avatar is None:
+            return None
+        avatar.convert("RGB").save(target, format="JPEG", quality=92, optimize=True)
+        return str(target)
+    except Exception:
+        LOGGER.warning("Could not cache requester avatar", exc_info=True)
+        return None
+
+
 async def get_thumb(
     videoid, title, duration="Unknown", views=0, channel="YouTube",
     bot_name="GOVIND MUSIC", requested_by="Group member",

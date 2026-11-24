@@ -44,7 +44,7 @@ def register_string_session_handlers(app):
             reply_markup=menu()
         )
 
-    @app.on_callback_query(filters.regex(r"^gensess\\|"))
+    @app.on_callback_query(filters.regex(r"^gensess\|"))
     async def choose(_, query):
         if not query.message or query.message.chat.type != ChatType.PRIVATE:
             return await query.answer("Please open /genstring in this private chat.", show_alert=True)

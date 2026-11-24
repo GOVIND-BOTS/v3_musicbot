@@ -12,25 +12,25 @@ LOGGER = logging.getLogger(__name__)
 
 
 shayari_list = [
-    "💖 *Mohabbat bhi ajeeb cheez hai…*\nKisi ko mile toh dard deta hai,\nKisi ko mile toh ilaj ban jata hai…",
+    "💖 *Love is a strange thing…*\\nFor some, it brings pain,\\nFor others, it becomes a cure…",
 
-    "💔 *Dil ki baat kehne ki ijaazat nahi hai,*\nIs mohabbat me itni shiddat nahi hai…",
+    "💔 *I have no permission to speak my heart,*\\nYet this love has no lack of intensity…",
 
-    "🌙 *Chandni raaton me yaadon ka silsila rukta nahi,*\nJo door hote hain, zaroori nahi ke bhulaya jaye…",
+    "🌙 *The memories never fade on moonlit nights,*\\nDistance does not mean someone must be forgotten…",
 
-    "❤️ *Mujhse ek waada karo, hamesha saath rahoge,*\nDukh aaye toh saath bitaoge, khushi aaye toh muskuraoge…",
+    "❤️ *Promise me that you will always stay by my side,*\\nShare my sorrows and smile with me in happiness…",
 
-    "😢 *Aansu bhi lete hain imtihaan, mohabbat ke raaste par…*\nKisi ko takleef dete hain, kisi ke zakhm bhar dete hain…",
+    "😢 *Love puts every heart through a test…*\\nSome wounds cause pain, while others help heal…",
 
-    "🥀 *Mohabbat sirf kehne se nahi hoti,*\nUsko nibhana padta hai, apni jaan se bhi zyada…",
+    "🥀 *Love is more than just words,*\\nIt takes devotion beyond measure to keep it alive…",
 
-    "💞 *Tere bina adhura hoon,*\nJaise chaand bina roshni, jaise samundar bina lehar…",
+    "💞 *Without you, I feel incomplete,*\\nLike the moon without light or the ocean without waves…",
 
-    "🔥 *Meri mohabbat ka ehsaas toh tab hoga,*\nJab tere dil ko bhi dard hoga…",
+    "🔥 *You will understand the depth of my love,*\\nWhen your own heart feels the same ache…",
 
-    "💙 *Pyar ki chhoti si kahani hai,*\nEk dil hai, ek jaan hai, aur bas teri yaadon ki nishani hai…",
+    "💙 *Ours is a little story of love,*\\nOne heart, one soul, and memories of you…",
 
-    "🌺 *Meri har saans teri mohabbat ki gawah hai,*\nAgar kabhi bhool jao toh dil se padh lena…"
+    "🌺 *Every breath of mine bears witness to my love for you,*\\nIf you ever forget, read it with your heart…"
 ]
 
 
@@ -63,7 +63,7 @@ def register_shayari_handlers(app):
         caption = (
             "✨ *Shayari Time!* ✨\n\n"
             f"{shayari}\n\n"
-            "💫 *Dil se mehsoos karo!*"
+            "💫 *Feel it with your heart!*"
         )
 
         try:
@@ -114,5 +114,5 @@ def register_shayari_handlers(app):
         )
 
         await callback_query.answer(
-            "❤️ New Shayari!"
+            "❤️ Here is a new shayari!"
         )

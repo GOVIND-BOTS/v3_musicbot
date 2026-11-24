@@ -132,10 +132,10 @@ def register_whisper_handlers(app):
         one_time = len(data) > 3 and data[3] == "one"
         user_id = query.from_user.id
 
-        # Sirf sender, receiver (aur optionally owner) open kar sakte hain
+        # Only the sender, receiver, and optionally the owner can open this whisper.
         if user_id not in (from_user_id, to_user_id):
             return await query.answer(
-                "❌ Ye whisper aapke liye nahi hai!",
+                "❌ This whisper is not for you!",
                 show_alert=True,
             )
 
@@ -144,7 +144,7 @@ def register_whisper_handlers(app):
 
         if not msg:
             return await query.answer(
-                "⚠️ Whisper delete ho chuka hai ya expire ho gaya.",
+                "⚠️ This whisper has been deleted or has expired.",
                 show_alert=True,
             )
 
@@ -155,7 +155,7 @@ def register_whisper_handlers(app):
             whisper_db.pop(key, None)
             try:
                 await query.edit_message_text(
-                    "🔥 **One-Time Whisper** read ho chuka hai."
+                    "🔥 **One-Time Whisper** has already been read."
                 )
             except Exception:
                 pass

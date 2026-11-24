@@ -22,6 +22,7 @@ from .owner_control import register_owner_control_handlers
 from .bin_lookup import register_bin_handlers
 from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
+from .loveraid import register_loveraid_handlers
 
 
 def register_handlers(
@@ -48,6 +49,7 @@ def register_handlers(
     register_whisper_handlers(app)
     register_bin_handlers(app)
     register_couples_handlers(app)
+    register_loveraid_handlers(app)
 
     register_student_protection(app)
     register_bio_guard_handlers(app, assistant)

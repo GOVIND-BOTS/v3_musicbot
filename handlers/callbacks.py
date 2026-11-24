@@ -358,6 +358,7 @@ def register_callback_handlers(app, stream):
         if not message or not user:
             await query.answer("Invalid player message.", show_alert=True)
             return
+
         try:
             target_chat = int((query.data or "").split("|", 1)[1])
         except (IndexError, ValueError):
@@ -370,40 +371,48 @@ def register_callback_handlers(app, stream):
         state = _PROGRESS_STATE.get(target_chat)
         track = state.get("track") if state else None
         if not track:
-            await query.answer("No active track found.", show_alert=True)
+            await query.answer("No active track found. Start a song first.", show_alert=True)
             return
+
         requester_id = track.get("requested_by")
+        if isinstance(requester_id, dict):
+            requester_id = requester_id.get("id")
         if user.id != requester_id and not await is_authorized(client, target_chat, user.id):
             await query.answer("Only the requester or a group admin can change this thumbnail.", show_alert=True)
             return
 
         videoid = track.get("videoid")
         if not videoid:
-            match = re.search(r"(?:v=|youtu\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,20})",
-                              str(track.get("webpage_url") or track.get("url") or ""))
+            match = re.search(
+                r"(?:v=|youtu\.be/|shorts/|embed/)([A-Za-z0-9_-]{6,20})",
+                str(track.get("webpage_url") or track.get("original_url") or track.get("url") or ""),
+            )
             videoid = match.group(1) if match else None
         if not videoid:
-            await query.answer("Track artwork is unavailable.", show_alert=True)
+            await query.answer("Track artwork is unavailable for this track.", show_alert=True)
             return
 
-        await query.answer("Generating a new thumbnail design…")
+        await query.answer("Creating thumbnail…")
         avatar_data = None
         if requester_id:
             try:
                 photos = await client.get_user_profile_photos(int(requester_id), limit=1)
                 if photos and photos.photos and photos.photos[0]:
-                    downloaded = await client.download_media(
-                        photos.photos[0][-1].file_id, in_memory=True
+                    photo = max(
+                        photos.photos[0],
+                        key=lambda item: getattr(item, "file_size", 0) or 0,
                     )
+                    downloaded = await client.download_media(photo.file_id, in_memory=True)
                     if downloaded:
-                        avatar_data = downloaded.getvalue() if hasattr(downloaded, "getvalue") else bytes(downloaded)
+                        if hasattr(downloaded, "getvalue"):
+                            avatar_data = downloaded.getvalue()
+                        elif hasattr(downloaded, "read"):
+                            downloaded.seek(0)
+                            avatar_data = downloaded.read()
+                        elif isinstance(downloaded, (bytes, bytearray)):
+                            avatar_data = bytes(downloaded)
             except Exception:
-                LOGGER.debug("Could not refresh requester avatar", exc_info=True)
-
-        previous = re.search(r"_d(\d{2})_", str(track.get("thumbnail") or ""))
-        previous_index = int(previous.group(1)) - 1 if previous else None
-        choices = [index for index in range(90) if index != previous_index]
-        next_design = random.choice(choices)
+                LOGGER.warning("Could not refresh requester avatar %s", requester_id, exc_info=True)
 
         try:
             thumbnail = await get_thumb(
@@ -414,32 +423,54 @@ def register_callback_handlers(app, stream):
                 bot_name="GOVIND MUSIC",
                 requested_by=track.get("requested_by_name", "Group member"),
                 requester_avatar=avatar_data,
-                design_index=next_design,
             )
-            track["thumbnail"] = thumbnail
+            if not thumbnail:
+                raise RuntimeError("Thumbnail renderer returned an empty result")
+
+            caption = now_playing_caption(track)
+            keyboard = message.reply_markup
+            updated_message = None
+
             if getattr(message, "photo", None):
-                await message.edit_media(
-                    InputMediaPhoto(
-                        media=thumbnail,
-                        caption=now_playing_caption(track),
-                        parse_mode=ParseMode.HTML,
+                try:
+                    await message.edit_media(
+                        InputMediaPhoto(
+                            media=thumbnail,
+                            caption=caption,
+                            parse_mode=ParseMode.HTML,
+                        ),
+                        reply_markup=keyboard,
                     )
-                )
-            else:
-                replacement = await client.send_photo(
+                    updated_message = message
+                except Exception:
+                    LOGGER.warning(
+                        "Player photo edit failed; trying a replacement message in %s",
+                        target_chat,
+                        exc_info=True,
+                    )
+
+            if updated_message is None:
+                updated_message = await client.send_photo(
                     target_chat,
                     photo=thumbnail,
-                    caption=now_playing_caption(track),
+                    caption=caption,
+                    reply_markup=keyboard,
                     parse_mode=ParseMode.HTML,
                 )
-                stream.player_messages[target_chat] = replacement
                 with suppress(Exception):
                     await message.delete()
+
+            track["thumbnail"] = thumbnail
+            stream.player_messages[target_chat] = updated_message
             await refresh_player_keyboard(client, target_chat, stream)
-        except Exception:
+            await query.answer("Thumbnail updated successfully.")
+        except Exception as error:
             LOGGER.exception("Thumbnail change failed in chat %s", target_chat)
             with suppress(Exception):
-                await message.reply_text("Could not change the thumbnail. Please try again.")
+                await query.answer(
+                    f"Could not change thumbnail: {str(error)[:150]}",
+                    show_alert=True,
+                )
 
     @app.on_callback_query(filters.regex(r"^ctrl_"))
     async def player_callbacks(client, query):

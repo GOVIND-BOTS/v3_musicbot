@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 _PROGRESS_TASKS = {}
 _PROGRESS_STATE = {}
+_MORE_OPEN = set()
 
 
 def _get_elapsed(chat_id):
@@ -122,6 +123,7 @@ async def refresh_player_keyboard(client, chat_id, stream):
             loop_mode=loop_mode,
             shuffle=shuffle_enabled,
             owner_url=state.get("track", {}).get("_owner_url"),
+            more_open=chat_id in _MORE_OPEN,
         )
 
         await message.edit_reply_markup(reply_markup=keyboard)
@@ -553,6 +555,25 @@ def register_callback_handlers(app, stream):
                         "Only admins and authorized users can control music."
                     ),
                     show_alert=True,
+                )
+                return
+
+            if action == "ctrl_more":
+                if len(parts) < 3 or parts[2] not in ("0", "1"):
+                    await query.answer(
+                        stylize("Invalid menu action."),
+                        show_alert=True,
+                    )
+                    return
+
+                if parts[2] == "1":
+                    _MORE_OPEN.add(chat_id)
+                else:
+                    _MORE_OPEN.discard(chat_id)
+
+                await refresh_player_keyboard(client, chat_id, stream)
+                await query.answer(
+                    stylize("More controls opened." if parts[2] == "1" else "Extra controls hidden.")
                 )
                 return
 

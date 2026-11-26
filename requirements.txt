@@ -11,6 +11,8 @@ aiofiles
 aiohttp
 Pillow>=10.0.0
 numpy
+psutil
+speedtest-cli
 
 yt-dlp[default] @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 yt-dlp-getpot-wpc

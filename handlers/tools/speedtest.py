@@ -5,6 +5,7 @@ from pyrogram import filters
 from pyrogram.enums import ParseMode
 
 from config import SUDO_USERS
+from .status_cards import get_status_image
 
 
 def _run_speedtest():
@@ -37,7 +38,7 @@ def register_speedtest_handlers(app):
 
         try:
             result = await asyncio.to_thread(_run_speedtest)
-            text = (
+            caption = (
                 "⚡ <b>V3 MUSIC — SPEEDTEST RESULT</b>\n"
                 "━━━━━━━━━━━━━━━━━━\n"
                 f"⬇️ <b>Download:</b> <code>{result['download']:.2f} Mbps</code>\n"
@@ -47,7 +48,15 @@ def register_speedtest_handlers(app):
                 f"🌐 <b>ISP:</b> {escape(str(result['isp']))}\n"
                 f"📍 <b>Server:</b> {escape(str(result['server']))}, {escape(str(result['country']))}"
             )
-            await progress.edit_text(text, parse_mode=ParseMode.HTML)
+            try:
+                await message.reply_photo(
+                    photo=get_status_image("speedtest"),
+                    caption=caption,
+                    parse_mode=ParseMode.HTML,
+                )
+                await progress.delete()
+            except Exception:
+                await progress.edit_text(caption, parse_mode=ParseMode.HTML)
         except Exception as exc:
             await progress.edit_text(
                 "❌ <b>Speedtest failed.</b>\n"

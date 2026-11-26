@@ -63,7 +63,7 @@ def _read_export(file_bytes):
 
         follower_files = [
             name for name in archive.namelist()
-            if re.search(r"(?:^|/)followers_\\d+\\.json$", name, re.IGNORECASE)
+            if re.search(r"(?:^|/)followers_\d+\.json$", name, re.IGNORECASE)
             and not name.startswith("__MACOSX/")
         ]
         following_name = _find_json_member(archive, "following.json")

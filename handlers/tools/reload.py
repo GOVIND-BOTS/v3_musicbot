@@ -10,7 +10,7 @@ _LAST_RELOAD = {}
 
 
 def register_reload_handlers(app):
-    @app.on_message(filters.command(["reload", "refresh"]) & filters.group)
+    @app.on_message(filters.command(["reload", "refresh", "admincache"]) & filters.group)
     async def reload_group(client, message):
         user = message.from_user
         if not user:

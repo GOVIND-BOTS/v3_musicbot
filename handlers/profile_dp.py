@@ -4,11 +4,13 @@ Place the two matching JPEG files in the repository's assets/ directory:
     assets/bebo_dp.jpg
     assets/v3music_dp.jpg
 """
+import io
 import json
 import logging
 from pathlib import Path
 
 import aiohttp
+from PIL import Image, ImageOps
 from pyrogram import filters
 
 from config import BOT_TOKEN
@@ -23,9 +25,37 @@ PROFILE_PHOTOS = {
     "v3music": ASSET_DIR / "v3music_dp.jpg",
 }
 
+# Telegram may reject small source images with PHOTO_CROP_SIZE_SMALL.
+# Normalize both uploaded avatars to a sufficiently large square JPEG.
+TELEGRAM_AVATAR_SIZE = (640, 640)
+
+
+def _prepare_profile_photo(path):
+    """Return a Telegram-ready square JPEG in memory."""
+    with Image.open(path) as source:
+        image = ImageOps.exif_transpose(source)
+        if image.mode in ("RGBA", "LA") or "transparency" in image.info:
+            rgba = image.convert("RGBA")
+            background = Image.new("RGBA", rgba.size, (0, 0, 0, 255))
+            background.alpha_composite(rgba)
+            image = background.convert("RGB")
+        else:
+            image = image.convert("RGB")
+
+        image = ImageOps.fit(
+            image,
+            TELEGRAM_AVATAR_SIZE,
+            method=Image.Resampling.LANCZOS,
+            centering=(0.5, 0.5),
+        )
+        output = io.BytesIO()
+        image.save(output, format="JPEG", quality=95, optimize=True)
+        output.seek(0)
+        return output
+
 
 async def _set_bot_photo(brand):
-    """Upload the selected, pre-designed JPEG using Telegram's Bot API."""
+    """Upload the selected, normalized JPEG using Telegram's Bot API."""
     path = PROFILE_PHOTOS[brand]
     if not path.is_file():
         raise FileNotFoundError(
@@ -33,24 +63,25 @@ async def _set_bot_photo(brand):
             "Add the matching image to the repository's assets/ folder."
         )
 
+    photo = _prepare_profile_photo(path)
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/setMyProfilePhoto"
     payload = {"type": "static", "photo": "attach://avatar"}
     timeout = aiohttp.ClientTimeout(total=45)
 
-    with path.open("rb") as photo:
-        form = aiohttp.FormData()
-        form.add_field(
-            "photo", json.dumps(payload), content_type="application/json"
-        )
-        form.add_field(
-            "avatar",
-            photo,
-            filename=path.name,
-            content_type="image/jpeg",
-        )
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(url, data=form) as response:
-                result = await response.json(content_type=None)
+    form = aiohttp.FormData()
+    form.add_field(
+        "photo", json.dumps(payload), content_type="application/json"
+    )
+    form.add_field(
+        "avatar",
+        photo,
+        filename=f"{brand}_profile.jpg",
+        content_type="image/jpeg",
+    )
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(url, data=form) as response:
+            result = await response.json(content_type=None)
 
     if not isinstance(result, dict) or not result.get("ok"):
         reason = (

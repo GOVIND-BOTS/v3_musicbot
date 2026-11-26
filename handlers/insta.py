@@ -69,7 +69,7 @@ def register_insta_handlers(app):
         user_id = message.from_user.id if message.from_user else None
         if not user_id:
             return
-        _WAITING_FOR_EXPORT.add(user_id)
+        _WAITING_FOR_EXPORT.add((message.chat.id, user_id))
         await message.reply_text(
             "📊 **V3MUSIC Instagram Export Analyzer**\n\n"
             "Account owner apni Instagram information ka JSON format export ZIP download karke yahan upload karein.\n\n"
@@ -81,7 +81,7 @@ def register_insta_handlers(app):
     @app.on_message(filters.document)
     async def insta_export_document(_, message):
         user_id = message.from_user.id if message.from_user else None
-        if not user_id or user_id not in _WAITING_FOR_EXPORT:
+        if not user_id or (message.chat.id, user_id) not in _WAITING_FOR_EXPORT:
             return
         document = message.document
         if not document.file_name or not document.file_name.lower().endswith(".zip"):
@@ -96,7 +96,7 @@ def register_insta_handlers(app):
             downloaded = await message.download(in_memory=True)
             file_bytes = downloaded.getvalue() if hasattr(downloaded, "getvalue") else downloaded.read()
             followers, following = _read_export(file_bytes)
-            _WAITING_FOR_EXPORT.discard(user_id)
+            _WAITING_FOR_EXPORT.discard((message.chat.id, user_id))
             mutuals = followers & following
             not_following_back = following - followers
             followers_not_followed = followers - following

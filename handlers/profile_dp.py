@@ -85,10 +85,10 @@ def register_profile_dp_handlers(app):
                 f"❌ Could not update {label} profile photo: {exc}"
             )
 
-    @app.on_message(filters.regex(r"(?i)^/?bebo(?:@\\w+)?$"))
+    @app.on_message(filters.regex(r"(?i)^/?bebo(?:@\w+)?$"))
     async def set_bebo_dp(client, message):
         await change_photo(message, "bebo")
 
-    @app.on_message(filters.regex(r"(?i)^/?(?:v3|v3music)(?:@\\w+)?$"))
+    @app.on_message(filters.regex(r"(?i)^/?(?:v3|v3music)(?:@\w+)?$"))
     async def set_v3music_dp(client, message):
         await change_photo(message, "v3music")

@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import aiohttp
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import aiohttp
 from pyrogram import filters
 
 from config import BOT_TOKEN
@@ -15,75 +15,15 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets"
 
 
-def _font(size, bold=True):
-    name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
-    for path in (f"/usr/share/fonts/truetype/dejavu/{name}", str(ASSET_DIR / "font.ttf")):
-        try:
-            return ImageFont.truetype(path, size)
-        except OSError:
-            pass
-    return ImageFont.load_default()
-
-
 def _make_avatar(brand):
-    """Create the selected 640x640 neon avatar locally on first use."""
-    is_bebo = brand == "bebo"
-    accent = (235, 35, 255) if is_bebo else (0, 190, 255)
-    secondary = (255, 105, 210) if is_bebo else (65, 115, 255)
-    image = Image.new("RGB", (640, 640), (4, 6, 18))
-    pixels = image.load()
-    for y in range(640):
-        for x in range(640):
-            glow = max(0, 1 - (((x-320)**2 + (y-320)**2)**0.5)/470)
-            pixels[x, y] = (4 + int(accent[0]*glow*.10),
-                            6 + int(accent[1]*glow*.10),
-                            18 + int(accent[2]*glow*.18))
-    haze = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    ImageDraw.Draw(haze).ellipse((55, 55, 585, 585), fill=(*accent, 85))
-    image = Image.alpha_composite(image.convert("RGBA"), haze.filter(ImageFilter.GaussianBlur(52)))
-    d = ImageDraw.Draw(image)
-
-    # Neon frame, crown and headphone-wearing robot mascot.
-    d.ellipse((43, 43, 597, 597), outline=(*accent, 255), width=9)
-    d.ellipse((61, 61, 579, 579), outline=(*secondary, 180), width=3)
-    d.polygon([(250, 150), (267, 95), (310, 132), (340, 82),
-               (370, 132), (413, 95), (430, 150)], fill=(255, 194, 60, 255))
-    d.rounded_rectangle((250, 145, 430, 174), radius=8,
-                        fill=(255, 190, 55, 255), outline=(255, 235, 170, 255), width=3)
-    d.arc((155, 155, 485, 485), 185, 355, fill=(*accent, 255), width=22)
-    d.rounded_rectangle((145, 275, 205, 405), radius=22,
-                        fill=(12, 18, 38, 255), outline=(*accent, 255), width=8)
-    d.rounded_rectangle((435, 275, 495, 405), radius=22,
-                        fill=(12, 18, 38, 255), outline=(*accent, 255), width=8)
-    d.rounded_rectangle((205, 210, 435, 425), radius=70,
-                        fill=(7, 13, 29, 255), outline=(190, 225, 255, 255), width=7)
-    if is_bebo:
-        d.arc((250, 270, 300, 325), 195, 345, fill=(*secondary, 255), width=10)
-        d.arc((340, 270, 390, 325), 195, 345, fill=(*secondary, 255), width=10)
-        d.arc((278, 315, 362, 380), 15, 165, fill=(255, 220, 245, 255), width=8)
-        d.ellipse((228, 340, 250, 356), fill=(255, 90, 170, 190))
-        d.ellipse((390, 340, 412, 356), fill=(255, 90, 170, 190))
-    else:
-        d.line((250, 292, 300, 292), fill=(*accent, 255), width=14)
-        d.line((340, 292, 390, 292), fill=(*accent, 255), width=14)
-        d.line([(260, 355), (280, 333), (300, 365), (320, 340),
-                (340, 362), (360, 333), (385, 355)],
-               fill=(210, 245, 255, 255), width=7, joint="curve")
-
-    d.text((95, 205), "♪", font=_font(48), fill=(*accent, 255))
-    d.text((485, 205), "♫", font=_font(48), fill=(*secondary, 255))
-    title = "Bebo" if is_bebo else "V3MUSIC"
-    font = _font(68 if is_bebo else 57)
-    box = d.textbbox((0, 0), title, font=font, stroke_width=2)
-    d.text(((640-(box[2]-box[0]))/2, 440), title, font=font,
-           fill=(250, 252, 255, 255), stroke_width=2, stroke_fill=(*accent, 255))
-    subfont = _font(25)
-    sub = "MUSIC BOT"
-    box = d.textbbox((0, 0), sub, font=subfont)
-    d.text(((640-(box[2]-box[0]))/2, 525), sub, font=subfont, fill=(*secondary, 255))
+    """Return the separately uploaded, high-quality brand DP."""
+    if brand not in {"bebo", "v3music"}:
+        raise ValueError("Unknown profile photo.")
     path = ASSET_DIR / f"{brand}_dp.jpg"
-    ASSET_DIR.mkdir(parents=True, exist_ok=True)
-    image.convert("RGB").save(path, "JPEG", quality=94, optimize=True)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Missing {path.name}. Upload it to the repository assets/ folder."
+        )
     return path
 
 

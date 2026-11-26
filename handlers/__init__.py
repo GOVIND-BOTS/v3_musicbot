@@ -24,6 +24,7 @@ from .bin_lookup import register_bin_handlers
 from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
 from .loveraid import register_loveraid_handlers
+from .insta import register_insta_handlers
 
 from .tools.ping import register_ping_handlers
 from .tools.reload import register_reload_handlers
@@ -59,6 +60,7 @@ def register_handlers(app, stream, assistant, include_clone=True):
     register_bin_handlers(app)
     register_couples_handlers(app)
     register_loveraid_handlers(app)
+    register_insta_handlers(app)
 
     register_student_protection(app)
     register_bio_guard_handlers(app, assistant)

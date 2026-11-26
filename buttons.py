@@ -61,13 +61,14 @@ def stream_buttons(
     loop_mode="off",
     shuffle=False,
     owner_url=None,
+    more_open=False,
 ):
     loop_label = "ON" if str(loop_mode).lower() not in ("off", "none", "false", "0") else "OFF"
     shuffle_label = "ON" if shuffle else "OFF"
-
     progress_text = progress_button_text(elapsed, duration)
 
-    return InlineKeyboardMarkup([
+    # Keep the frequently used playback controls visible at all times.
+    rows = [
         [
             InlineKeyboardButton(
                 progress_text,
@@ -98,37 +99,56 @@ def stream_buttons(
                 callback_data=f"ctrl_stop|{chat_id}",
             ),
         ],
-        [
+    ]
+
+    if more_open:
+        rows.extend([
+            [
+                InlineKeyboardButton(
+                    stylize(f"🔁 LOOP: {loop_label}"),
+                    callback_data=f"ctrl_loop|{chat_id}",
+                ),
+                InlineKeyboardButton(
+                    stylize(f"🔀 SHUFFLE: {shuffle_label}"),
+                    callback_data=f"ctrl_shuffle|{chat_id}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    stylize("🎶 QUEUE"),
+                    callback_data=f"ctrl_queue|{chat_id}",
+                ),
+                InlineKeyboardButton(
+                    stylize("✖ CLOSE"),
+                    callback_data="ctrl_close",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    stylize("🖼 CHANGE THUMBNAIL"),
+                    callback_data=f"thumb_change|{chat_id}",
+                ),
+                InlineKeyboardButton(
+                    stylize("👑 OWNER"),
+                    url=owner_url or f"tg://user?id={MAIN_OWNER_ID}",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    stylize("➖ LESS"),
+                    callback_data=f"ctrl_more|{chat_id}|0",
+                ),
+            ],
+        ])
+    else:
+        rows.append([
             InlineKeyboardButton(
-                stylize(f"🔁 LOOP: {loop_label}"),
-                callback_data=f"ctrl_loop|{chat_id}",
+                stylize("➕ MORE"),
+                callback_data=f"ctrl_more|{chat_id}|1",
             ),
-            InlineKeyboardButton(
-                stylize(f"🔀 SHUFFLE: {shuffle_label}"),
-                callback_data=f"ctrl_shuffle|{chat_id}",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                stylize("🎶 QUEUE"),
-                callback_data=f"ctrl_queue|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                stylize("✖ CLOSE"),
-                callback_data="ctrl_close",
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                stylize("🖼 CHANGE THUMBNAIL"),
-                callback_data=f"thumb_change|{chat_id}",
-            ),
-            InlineKeyboardButton(
-                stylize("👑 OWNER"),
-                url=owner_url or f"tg://user?id={MAIN_OWNER_ID}",
-            ),
-        ],
-    ])
+        ])
+
+    return InlineKeyboardMarkup(rows)
 
 
 def queue_buttons(

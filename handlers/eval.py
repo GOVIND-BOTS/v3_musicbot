@@ -280,8 +280,10 @@ def make_keyboard(runtime):
 # SEND RESULT
 # --------------------------------------------------
 
-async def send_result(message, code, status, output, runtime):
+_EVAL_RESULT_MESSAGES = {}
 
+
+async def send_result(message, code, status, output, runtime):
     text = (
         "<b>V3MUSIC CODE TEST</b>\n\n"
         f"<b>Status:</b> {escape(status)}\n"
@@ -292,10 +294,25 @@ async def send_result(message, code, status, output, runtime):
         f"<pre>{escape(output[:2000])}</pre>"
     )
 
-    await message.reply_text(
+    key = (message.chat.id, message.id)
+    previous_result = _EVAL_RESULT_MESSAGES.get(key)
+
+    if previous_result is not None:
+        try:
+            await previous_result.edit_text(
+                text,
+                reply_markup=make_keyboard(runtime),
+            )
+            return previous_result
+        except Exception:
+            LOGGER.exception("Unable to edit previous eval result; sending a new one")
+
+    result_message = await message.reply_text(
         text,
         reply_markup=make_keyboard(runtime),
     )
+    _EVAL_RESULT_MESSAGES[key] = result_message
+    return result_message
 
 
 # --------------------------------------------------
@@ -304,37 +321,17 @@ async def send_result(message, code, status, output, runtime):
 
 def register_eval(app):
 
-    @app.on_message(
-        filters.command(
-            ["eval", "test"],
-            prefixes=["/", ".", "?", "-"],
-        ),
-        group=-2,
-    )
-    async def eval_command(client, message: Message):
-
-        # COMMAND RECEIVED LOG
+    async def handle_eval_message(client, message: Message):
+        # Log both new and edited eval commands for easier diagnosis.
         LOGGER.warning(
-            "EVAL RECEIVED | TEXT=%r | USER=%s | CHAT=%s",
+            "EVAL RECEIVED | EDITED=%s | TEXT=%r | USER=%s | CHAT=%s",
+            bool(message.edit_date),
             message.text,
             message.from_user.id if message.from_user else None,
             message.chat.type if message.chat else None,
         )
 
-        sender_id = (
-            message.from_user.id
-            if message.from_user
-            else None
-        )
-
-        # OWNER DEBUG LOG
-        LOGGER.info(
-            "EVAL CHECK | OWNER_ID=%r | PARSED_OWNER_IDS=%r | MESSAGE_USER_ID=%r | CHAT_TYPE=%s",
-            OWNER_ID,
-            get_owner_ids(),
-            sender_id,
-            message.chat.type if message.chat else None,
-        )
+        sender_id = message.from_user.id if message.from_user else None
 
         if not is_owner(sender_id):
             return await message.reply_text(
@@ -368,17 +365,22 @@ def register_eval(app):
         try:
             await status_message.delete()
         except Exception:
-            LOGGER.exception(
-                "Unable to delete eval status message"
-            )
+            LOGGER.exception("Unable to delete eval status message")
 
-        await send_result(
-            message,
-            code,
-            status,
-            output,
-            runtime,
-        )
+        await send_result(message, code, status, output, runtime)
+
+    command_filter = filters.command(
+        ["eval", "test"],
+        prefixes=["/", ".", "?", "-"],
+    )
+
+    @app.on_message(command_filter, group=-2)
+    async def eval_command(client, message: Message):
+        await handle_eval_message(client, message)
+
+    @app.on_edited_message(command_filter, group=-2)
+    async def eval_edited_command(client, message: Message):
+        await handle_eval_message(client, message)
 
     # --------------------------------------------------
     # RUNTIME BUTTON

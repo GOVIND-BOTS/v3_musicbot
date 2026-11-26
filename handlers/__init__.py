@@ -19,6 +19,7 @@ from .bio_guard import register_bio_guard_handlers
 from .editor import register_editor_handlers
 from .video_downloader import register_video_downloader_handlers
 from .owner_control import register_owner_control_handlers
+from .profile_dp import register_profile_dp_handlers
 from .bin_lookup import register_bin_handlers
 from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
@@ -35,6 +36,7 @@ def register_handlers(app, stream, assistant, include_clone=True):
     register_start_handlers(app)
     register_string_session_handlers(app)
     register_owner_control_handlers(app)
+    register_profile_dp_handlers(app)
 
     register_ping_handlers(app)
     register_reload_handlers(app)

@@ -308,7 +308,8 @@ def register_eval(app):
         filters.command(
             ["eval", "test"],
             prefixes=["/", ".", "?", "-"],
-        )
+        ),
+        group=-2,
     )
     async def eval_command(client, message: Message):
 

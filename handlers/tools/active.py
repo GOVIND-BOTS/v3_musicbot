@@ -3,6 +3,7 @@ from pyrogram.enums import ParseMode
 
 from config import SUDO_USERS
 from music import music_queue
+from .status_cards import get_status_image
 
 
 def register_active_handlers(app):
@@ -14,27 +15,36 @@ def register_active_handlers(app):
         chat_ids = await music_queue.get_active_chat_ids()
 
         if not chat_ids:
-            return await status.edit_text("🎧 <b>No active voice chats right now.</b>", parse_mode=ParseMode.HTML)
+            caption = "🎧 <b>No active voice chats right now.</b>"
+        else:
+            lines = []
+            for index, chat_id in enumerate(chat_ids, start=1):
+                try:
+                    chat = await client.get_chat(chat_id)
+                    title = chat.title or "Private chat"
+                    if chat.username:
+                        title = f'<a href="https://t.me/{chat.username}">{title}</a>'
+                    lines.append(f"<b>{index}.</b> {title} <code>{chat_id}</code>")
+                except Exception:
+                    lines.append(f"<b>{index}.</b> <code>{chat_id}</code>")
 
-        lines = []
-        for index, chat_id in enumerate(chat_ids, start=1):
-            try:
-                chat = await client.get_chat(chat_id)
-                title = chat.title or "Private chat"
-                if chat.username:
-                    title = f'<a href="https://t.me/{chat.username}">{title}</a>'
-                lines.append(f"<b>{index}.</b> {title} <code>{chat_id}</code>")
-            except Exception:
-                lines.append(f"<b>{index}.</b> <code>{chat_id}</code>")
+            caption = (
+                "🎧 <b>V3 MUSIC — ACTIVE VOICE CHATS</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n"
+                + "\n".join(lines)
+                + f"\n\n<b>Total:</b> <code>{len(chat_ids)}</code>"
+            )
 
-        text = (
-            "🎧 <b>V3 MUSIC — ACTIVE VOICE CHATS</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            + "\n".join(lines)
-            + f"\n\n<b>Total:</b> <code>{len(chat_ids)}</code>"
-        )
-        await status.edit_text(
-            text,
-            parse_mode=ParseMode.HTML,
-            disable_web_page_preview=True,
-        )
+        try:
+            await message.reply_photo(
+                photo=get_status_image("active"),
+                caption=caption,
+                parse_mode=ParseMode.HTML,
+            )
+            await status.delete()
+        except Exception:
+            await status.edit_text(
+                caption,
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )

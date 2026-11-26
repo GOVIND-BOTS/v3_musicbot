@@ -5,6 +5,7 @@ from pyrogram import filters
 from pyrogram.enums import ParseMode
 
 from player_ui import stylize
+from .status_cards import get_status_image
 
 STARTED_AT = time.monotonic()
 
@@ -39,7 +40,7 @@ def register_ping_handlers(app):
             ram_total = memory.total / (1024 ** 3)
             uptime = readable_uptime(time.monotonic() - STARTED_AT)
 
-            text = (
+            caption = (
                 "🍃 <b>V3 MUSIC SYSTEM STATUS</b>\n"
                 "━━━━━━━━━━━━━━━━━━\n"
                 f"⚡ <b>Ping:</b> <code>{latency:.2f} ms</code>\n"
@@ -49,9 +50,18 @@ def register_ping_handlers(app):
                 "━━━━━━━━━━━━━━━━━━\n"
                 f"🎧 <b>Service:</b> {stylize('Online')}"
             )
-            await reply.edit_text(text, parse_mode=ParseMode.HTML)
         except Exception:
-            await reply.edit_text(
-                f"✅ <b>V3 Music is online</b>\n⚡ Ping: <code>{latency:.2f} ms</code>",
+            caption = (
+                "✅ <b>V3 Music is online</b>\n"
+                f"⚡ Ping: <code>{latency:.2f} ms</code>"
+            )
+
+        try:
+            await message.reply_photo(
+                photo=get_status_image("ping"),
+                caption=caption,
                 parse_mode=ParseMode.HTML,
             )
+            await reply.delete()
+        except Exception:
+            await reply.edit_text(caption, parse_mode=ParseMode.HTML)

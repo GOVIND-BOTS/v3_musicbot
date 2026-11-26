@@ -24,16 +24,23 @@ from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
 from .loveraid import register_loveraid_handlers
 
+from .tools.ping import register_ping_handlers
+from .tools.reload import register_reload_handlers
+from .tools.speedtest import register_speedtest_handlers
+from .tools.active import register_active_handlers
+from .tools.status import register_status_handlers
 
-def register_handlers(
-    app,
-    stream,
-    assistant,
-    include_clone=True,
-):
+
+def register_handlers(app, stream, assistant, include_clone=True):
     register_start_handlers(app)
     register_string_session_handlers(app)
     register_owner_control_handlers(app)
+
+    register_ping_handlers(app)
+    register_reload_handlers(app)
+    register_speedtest_handlers(app)
+    register_active_handlers(app)
+    register_status_handlers(app)
 
     register_play_handlers(app, stream, assistant)
     register_callback_handlers(app, stream)

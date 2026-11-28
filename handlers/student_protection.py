@@ -139,83 +139,49 @@ def detect_image_sync(image_path: str) -> bool:
 
 def detect_video_sync(video_path: str) -> bool:
     """
-    Sample a limited number of video frames.
-    Each sampled frame is checked independently.
+    Sample frames across the full GIF/video-sticker duration.
+    Even short GIFs are sampled at multiple points when possible.
     """
-
     capture = cv2.VideoCapture(video_path)
 
     if not capture.isOpened():
-        LOGGER.warning("Could not open media file for frame analysis.")
+        LOGGER.warning("Could not open sticker animation for frame analysis.")
         return False
 
     try:
-        total_frames = int(
-            capture.get(cv2.CAP_PROP_FRAME_COUNT)
-        )
-
-        fps = capture.get(cv2.CAP_PROP_FPS)
-
+        total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         if total_frames <= 0:
             return False
 
-        if not fps or fps <= 0:
-            fps = 25
-
-        duration_ms = (total_frames / fps) * 1000
-
-        detector = get_detector()
+        sample_count = min(MAX_VIDEO_FRAMES, total_frames)
+        if sample_count == 1:
+            frame_numbers = [0]
+        else:
+            frame_numbers = sorted({
+                round(index * (total_frames - 1) / (sample_count - 1))
+                for index in range(sample_count)
+            })
 
         with tempfile.TemporaryDirectory() as frame_dir:
-            frame_number = 0
-            position_ms = 0
-
-            while (
-                position_ms < duration_ms
-                and frame_number < MAX_VIDEO_FRAMES
-            ):
-                capture.set(
-                    cv2.CAP_PROP_POS_MSEC,
-                    position_ms,
-                )
-
+            for sample_index, frame_number in enumerate(frame_numbers):
+                capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
                 success, frame = capture.read()
 
                 if not success:
-                    break
+                    continue
 
                 frame_path = os.path.join(
                     frame_dir,
-                    f"frame_{frame_number}.jpg",
+                    f"animation_frame_{sample_index}.jpg",
                 )
+                if not cv2.imwrite(frame_path, frame):
+                    continue
 
-                saved = cv2.imwrite(
-                    frame_path,
-                    frame,
-                )
-
-                if saved:
-                    detections = detector.detect(
-                        frame_path,
-                        score_threshold=0.25,
+                if detect_image_sync(frame_path):
+                    LOGGER.info(
+                        "Explicit content detected in sampled animation frame."
                     )
-
-                    for item in detections:
-                        label = item.get("class", "")
-                        score = float(item.get("score", 0))
-
-                        if (
-                            label in EXPLICIT_LABELS
-                            and score >= MEDIA_CONFIDENCE
-                        ):
-                            LOGGER.info(
-                                "Restricted media category "
-                                "detected in sampled video frame."
-                            )
-                            return True
-
-                frame_number += 1
-                position_ms += VIDEO_FRAME_INTERVAL_MS
+                    return True
 
         return False
 

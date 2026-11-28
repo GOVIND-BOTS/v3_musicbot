@@ -18,22 +18,23 @@ MAX_FILE_SIZE = int(os.getenv("VIDEO_DOWNLOAD_MAX_MB", "1900")) * 1024 * 1024
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(2)
 ACTIVE_DOWNLOADS = set()
 
-# Only accept mainstream platforms with supported yt-dlp extractors.
-# This prevents arbitrary URLs (including unsupported invite/profile pages)
-# from being sent to yt-dlp's generic extractor.
-SUPPORTED_HOSTS = {
-    "instagram.com", "www.instagram.com", "instagr.am",
-    "youtube.com", "www.youtube.com", "m.youtube.com",
-    "music.youtube.com", "youtu.be",
-    "tiktok.com", "www.tiktok.com", "vm.tiktok.com", "vt.tiktok.com",
-    "facebook.com", "www.facebook.com", "m.facebook.com", "fb.watch",
-    "x.com", "www.x.com", "twitter.com", "www.twitter.com",
-    "vimeo.com", "www.vimeo.com", "player.vimeo.com",
-    "dailymotion.com", "www.dailymotion.com", "dai.ly",
-    "reddit.com", "www.reddit.com", "v.redd.it",
-    "twitch.tv", "www.twitch.tv", "clips.twitch.tv",
-    "soundcloud.com", "www.soundcloud.com",
-    "pinterest.com", "www.pinterest.com", "pin.it",
+# yt-dlp-supported video platforms. Root-domain matching also permits
+# legitimate platform subdomains such as m.youtube.com and v.redd.it.
+SUPPORTED_DOMAINS = {
+    "instagram.com", "instagr.am",
+    "youtube.com", "youtu.be", "youtube-nocookie.com",
+    "tiktok.com",
+    "facebook.com", "fb.watch",
+    "x.com", "twitter.com",
+    "vimeo.com",
+    "dailymotion.com", "dai.ly",
+    "reddit.com", "redd.it",
+    "twitch.tv",
+    "pinterest.com", "pin.it",
+}
+
+VIDEO_EXTENSIONS = {
+    ".mp4", ".m4v", ".mkv", ".webm", ".mov", ".avi", ".flv", ".3gp"
 }
 
 
@@ -45,13 +46,17 @@ def _parsed_url(url: str):
 
 
 def _safe_url(url: str) -> bool:
+    """Accept known video-platform domains; reject local/private IP addresses."""
     try:
         parsed = _parsed_url(url)
         if not parsed or parsed.username or parsed.password:
             return False
 
         host = parsed.hostname.lower().rstrip(".")
-        if host not in SUPPORTED_HOSTS:
+        if not any(
+            host == domain or host.endswith("." + domain)
+            for domain in SUPPORTED_DOMAINS
+        ):
             return False
 
         if host in {"localhost", "localhost.localdomain"} or host.endswith(".local"):
@@ -83,6 +88,7 @@ def _download_video(url: str, folder: str):
         "socket_timeout": 25,
         "retries": 2,
         "fragment_retries": 2,
+        "extractor_retries": 2,
         "concurrent_fragment_downloads": 4,
     }
 
@@ -90,22 +96,19 @@ def _download_video(url: str, folder: str):
         info = ydl.extract_info(url, download=True)
         if not info:
             raise RuntimeError("Video information could not be read from this link.")
-        if info.get("_type") == "playlist":
+        if info.get("_type") == "playlist" or info.get("entries"):
             raise RuntimeError("Playlist downloads are disabled. Please send one video link.")
 
         files = [
-            path for path in Path(folder).glob("*")
-            if path.is_file()
-            and path.suffix.lower() not in {
-                ".part", ".ytdl", ".json", ".jpg", ".webp", ".png"
-            }
+            path for path in Path(folder).iterdir()
+            if path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS
         ]
         if not files:
             prepared = Path(ydl.prepare_filename(info))
-            if prepared.exists():
+            if prepared.exists() and prepared.suffix.lower() in VIDEO_EXTENSIONS:
                 files = [prepared]
         if not files:
-            raise RuntimeError("The download file could not be created.")
+            raise RuntimeError("No video file was produced. This link may contain audio only.")
 
         video = max(files, key=lambda path: path.stat().st_size)
         if video.stat().st_size > MAX_FILE_SIZE:
@@ -117,15 +120,30 @@ def _download_video(url: str, folder: str):
 def _friendly_error(exc: Exception) -> str:
     message = str(exc).lower()
 
-    if "login" in message or "cookie" in message or "authentication" in message:
-        return "This post may require a signed-in account. Private or login-only posts are not supported."
+    if any(term in message for term in (
+        "sign in to confirm", "not a bot", "login", "cookie",
+        "authentication", "redirected to the login page",
+    )):
+        return (
+            "This platform is requiring sign-in or verification. "
+            "Only public videos accessible without login are supported."
+        )
+    if any(term in message for term in (
+        "rate-limit", "rate limit", "too many requests", "http error 429",
+    )):
+        return (
+            "The platform is temporarily limiting requests from this server. "
+            "Please try again later; platform limits are not bypassed."
+        )
     if "unsupported url" in message or "no suitable extractor" in message:
-        return "This link type is not supported. Send a direct video, Reel, or supported post link."
+        return "This link format is not supported. Send a direct video or public post link from a supported platform."
     if "private" in message or "not available" in message or "unavailable" in message:
         return "This video is private or unavailable."
     if "max-filesize" in message or "file is larger" in message:
-        return "The video is larger than the configured upload limit."
-    return "Could not download this video. Check that the post is public and the link is supported."
+        return "The video is larger than the configured Telegram upload size limit."
+    if "no video file was produced" in message:
+        return "This link did not provide a video. Audio-only links are not supported here."
+    return "Could not download this video. Check that the link is public and supported, then try again."
 
 
 async def _process_link(message: Message, url: str):
@@ -175,7 +193,7 @@ def register_video_downloader_handlers(app):
         parts = (message.text or "").split(maxsplit=1)
         if len(parts) < 2:
             return await message.reply_text(
-                "Usage: /vdownload https://www.instagram.com/reel/... "
+                "Usage: /vdownload https://www.instagram.com/reel/..."
             )
 
         match = URL_RE.search(parts[1])
@@ -185,7 +203,7 @@ def register_video_downloader_handlers(app):
         url = match.group(0).rstrip(".,!?)]}")
         if not _safe_url(url):
             return await message.reply_text(
-                "This link is not supported. Use a public video/Reel/post link "
+                "This link is not supported. Send a public video/post link "
                 "from a supported platform."
             )
 
@@ -204,7 +222,7 @@ def register_video_downloader_handlers(app):
             return
 
         url = match.group(0).rstrip(".,!?)]}")
-        # Ignore ordinary websites, Telegram invite/channel links, and unknown hosts.
+        # Ignore ordinary websites, Telegram links, and unknown hosts.
         if _safe_url(url):
             await _process_link(message, url)
 

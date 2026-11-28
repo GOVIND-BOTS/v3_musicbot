@@ -4,6 +4,8 @@ import random
 from contextlib import suppress
 from pathlib import Path
 
+import aiohttp
+
 from pyrogram import filters
 from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
@@ -55,6 +57,34 @@ def _remove_file(path):
             os.remove(path)
 
 
+async def _get_random_audio():
+    """Download/cache one of the original extensionless audio assets."""
+    _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    index = random.randint(1, 8)
+    destination = _AUDIO_DIR / f"AUDIO{index}"
+    if not destination.is_file() or destination.stat().st_size == 0:
+        url = (
+            "https://raw.githubusercontent.com/GOVIND-BOTS/"
+            f"VC-RAID-MUSIC/Xmarty/Flame/Audio/AUDIO{index}"
+        )
+        temporary = destination.with_name(destination.name + ".part")
+        timeout = aiohttp.ClientTimeout(total=90)
+        try:
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    response.raise_for_status()
+                    with open(temporary, "wb") as output:
+                        async for chunk in response.content.iter_chunked(64 * 1024):
+                            output.write(chunk)
+            if temporary.stat().st_size == 0:
+                raise RuntimeError("Downloaded audio file is empty")
+            os.replace(temporary, destination)
+        except Exception:
+            _remove_file(str(temporary))
+            raise
+    return str(destination)
+
+
 def register_vc_raid_handlers(app, stream, assistant):
     async def authorize(client, message):
         if not message.from_user or not _privileged(message.from_user.id):
@@ -88,16 +118,12 @@ def register_vc_raid_handlers(app, stream, assistant):
         local_path = None
         try:
             if use_random:
-                candidates = [
-                    _AUDIO_DIR / f"AUDIO{i}.{ext}"
-                    for i in range(1, 9)
-                    for ext in ("mp3", "ogg", "m4a", "wav")
-                    if (_AUDIO_DIR / f"AUDIO{i}.{ext}").is_file()
-                ]
-                if not candidates:
-                    await message.reply_text("❌ Audio files nahi mile. Flame/Audio/ mein AUDIO1–AUDIO8 files add karo, ya media par reply karke /vraid use karo.")
+                try:
+                    local_path = await _get_random_audio()
+                except Exception as exc:
+                    LOGGER.exception("Could not download VC raid audio")
+                    await message.reply_text(f"❌ VC raid audio download nahi hua: {str(exc)[:180]}")
                     return
-                local_path = str(random.choice(candidates))
                 media_type = "audio"
             else:
                 replied = message.reply_to_message

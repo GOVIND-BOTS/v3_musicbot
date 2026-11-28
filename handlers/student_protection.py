@@ -225,6 +225,45 @@ def detect_video_sync(video_path: str) -> bool:
         capture.release()
 
 
+def detect_tgs_sync(tgs_path: str) -> bool:
+    """
+    Render a bounded set of frames from Telegram's compressed TGS/Lottie
+    sticker format, then run the same explicit-content classifier on them.
+    """
+    from rlottie_python import LottieAnimation
+
+    with LottieAnimation.from_tgs(tgs_path) as animation:
+        total_frames = max(
+            1,
+            int(animation.lottie_animation_get_totalframe()),
+        )
+        sample_count = min(MAX_VIDEO_FRAMES, total_frames)
+
+        if sample_count == 1:
+            frame_numbers = [0]
+        else:
+            frame_numbers = sorted({
+                round(index * (total_frames - 1) / (sample_count - 1))
+                for index in range(sample_count)
+            })
+
+        with tempfile.TemporaryDirectory() as frame_dir:
+            for frame_number in frame_numbers:
+                frame = animation.render_pillow_frame(
+                    frame_num=frame_number,
+                )
+                frame_path = os.path.join(
+                    frame_dir,
+                    f"tgs_frame_{frame_number}.png",
+                )
+                frame.save(frame_path)
+
+                if detect_image_sync(frame_path):
+                    return True
+
+    return False
+
+
 # --------------------------------------------------
 # PRIVILEGED USERS
 # --------------------------------------------------
@@ -524,50 +563,21 @@ async def moderate_text(client, message):
 
 def get_media_info(message):
     """
-    Returns (extension, is_video, should_skip).
+    Returns (extension, media_kind, should_skip).
+    Only stickers and Telegram GIF/animation messages are moderated.
     """
-
-    if message.photo:
-        return ".jpg", False, False
-
     if message.sticker:
         sticker = message.sticker
-
-        # TGS is a vector animation and NudeNet cannot inspect raw Lottie JSON.
         if sticker.is_animated:
-            LOGGER.warning("Skipping animated TGS sticker: no Lottie frame renderer is configured.")
-            return ".tgs", False, True
-
+            return ".tgs", "tgs", False
         if sticker.is_video:
-            return ".webm", True, False
-
-        return ".webp", False, False
+            return ".webm", "video", False
+        return ".webp", "image", False
 
     if message.animation:
-        return ".mp4", True, False
+        return ".mp4", "video", False
 
-    if message.video:
-        return ".mp4", True, False
-
-    if message.document:
-        filename = message.document.file_name or ""
-        extension = Path(filename).suffix.lower()
-
-        supported_images = {
-            ".jpg", ".jpeg", ".png", ".webp",
-        }
-
-        supported_videos = {
-            ".gif", ".mp4", ".webm", ".mkv",
-        }
-
-        if extension in supported_images:
-            return extension, False, False
-
-        if extension in supported_videos:
-            return extension, True, False
-
-    return None, False, True
+    return None, None, True
 
 
 # --------------------------------------------------
@@ -575,47 +585,24 @@ def get_media_info(message):
 # --------------------------------------------------
 
 async def moderate_media(client, message):
-    if not message.from_user:
+    if not message.from_user or message.from_user.is_bot:
         return
 
-    if message.from_user.is_bot:
+    # Deliberately ignore ordinary photos, videos, documents and text.
+    # This protection feature is limited to stickers and Telegram GIFs.
+    if not (message.sticker or message.animation):
         return
 
-    # Captions are checked here so media messages
-    # are not processed twice by the text handler.
-    caption = message.caption or ""
-
-    if contains_abuse(caption):
-        await process_violation(
-            client,
-            message,
-            "Abusive media caption",
-        )
-        return
-
-    extension, is_video, should_skip = get_media_info(
-        message
-    )
-
+    extension, media_kind, should_skip = get_media_info(message)
     if should_skip or not extension:
         return
 
-    media = (
-        message.photo
-        or message.sticker
-        or message.animation
-        or message.video
-        or message.document
-    )
-
-    if not media:
-        return
-
+    media = message.sticker or message.animation
     file_size = getattr(media, "file_size", None)
 
     if file_size and file_size > MAX_MEDIA_SIZE:
         LOGGER.info(
-            "Skipping large media file in chat %s.",
+            "Skipping oversized sticker/animation in chat %s.",
             message.chat.id,
         )
         return
@@ -626,7 +613,6 @@ async def moderate_media(client, message):
                 temp_dir,
                 "incoming_media" + extension,
             )
-
             downloaded = await client.download_media(
                 message,
                 file_name=media_path,
@@ -634,18 +620,21 @@ async def moderate_media(client, message):
 
             if not downloaded or not os.path.isfile(downloaded):
                 LOGGER.warning(
-                    "Media download failed in chat %s.",
+                    "Sticker/animation download failed in chat %s.",
                     message.chat.id,
                 )
                 return
 
-            actual_size = os.path.getsize(downloaded)
-
-            if actual_size > MAX_MEDIA_SIZE:
-                LOGGER.info("Downloaded media exceeds size limit.")
+            if os.path.getsize(downloaded) > MAX_MEDIA_SIZE:
+                LOGGER.info("Downloaded sticker/animation exceeds size limit.")
                 return
 
-            if is_video:
+            if media_kind == "tgs":
+                flagged = await asyncio.to_thread(
+                    detect_tgs_sync,
+                    downloaded,
+                )
+            elif media_kind == "video":
                 flagged = await asyncio.to_thread(
                     detect_video_sync,
                     downloaded,
@@ -656,50 +645,50 @@ async def moderate_media(client, message):
                     downloaded,
                 )
 
-            if flagged:
-                # Explicit-media rule applies to admins too. Remove the
-                # content, but do not warn/mute/ban an administrator.
-                try:
-                    member = await client.get_chat_member(
-                        message.chat.id,
-                        message.from_user.id,
-                    )
-                    is_admin = member.status in (
-                        ChatMemberStatus.OWNER,
-                        ChatMemberStatus.ADMINISTRATOR,
-                    )
-                except Exception:
-                    LOGGER.exception(
-                        "Could not verify admin status for flagged media; "
-                        "leaving message untouched to avoid false punishment."
-                    )
-                    return
+            if not flagged:
+                return
 
-                if is_admin:
-                    if await delete_violation(message):
-                        try:
-                            await client.send_message(
-                                message.chat.id,
-                                "⚠️ <b>Pornographic media removed</b>\\n"
-                                f"👤 Admin: {message.from_user.mention}\\n"
-                                "Explicit stickers/GIFs are not allowed, including in admin messages.",
-                            )
-                        except Exception:
-                            LOGGER.exception("Could not send admin media notice.")
-                else:
-                    await process_violation(
-                        client,
-                        message,
-                        "Pornographic / explicit media detected",
-                        check_exempt=False,
-                    )
+            # Explicit stickers/GIFs are removed even when posted by an admin.
+            # Admins are not given warnings, muted, or banned.
+            try:
+                member = await client.get_chat_member(
+                    message.chat.id,
+                    message.from_user.id,
+                )
+                is_admin = member.status in (
+                    ChatMemberStatus.OWNER,
+                    ChatMemberStatus.ADMINISTRATOR,
+                )
+            except Exception:
+                LOGGER.exception(
+                    "Could not verify member status for flagged sticker; "
+                    "leaving the message untouched."
+                )
+                return
+
+            if is_admin:
+                if await delete_violation(message):
+                    try:
+                        await client.send_message(
+                            message.chat.id,
+                            "⚠️ <b>Explicit sticker/GIF removed.</b>\n"
+                            "Admin messages are not counted toward warnings.",
+                        )
+                    except Exception:
+                        LOGGER.exception("Could not send admin media notice.")
+                return
+
+            await process_violation(
+                client,
+                message,
+                "Explicit / pornographic sticker or GIF detected",
+            )
 
     except Exception:
-        # Fail open: never punish a member if the
-        # classifier or download process fails.
+        # Fail open: classifier or download errors never trigger punishment.
         LOGGER.exception(
-            "Media moderation failed in chat %s. "
-            "Message was not automatically punished.",
+            "Sticker/GIF moderation failed in chat %s. "
+            "The message was not automatically punished.",
             message.chat.id,
         )
 
@@ -821,56 +810,29 @@ async def reset_warnings_command(client, message):
 # --------------------------------------------------
 
 def register_handlers(app):
-    # Text-only messages
+    # Use a dedicated late group so unrelated handlers cannot shadow this one.
+    # Only stickers and GIF/animation messages are inspected.
     app.on_message(
-        filters.group
-        & filters.text
-        & ~filters.command(
-            ["rules", "warns", "resetwarns"]
-        )
-        ,
-        group=15,
-    )(moderate_text)
-
-    # Photos, stickers, GIFs, videos and supported documents
-    app.on_message(
-        filters.group
-        & (
-            filters.photo
-            | filters.sticker
-            | filters.animation
-            | filters.video
-            | filters.document
-        )
-        ,
-        group=15,
+        filters.group & (filters.sticker | filters.animation),
+        group=1000,
     )(moderate_media)
 
-    # Rules
     app.on_message(
-        filters.group
-        & filters.command("rules")
-        ,
+        filters.group & filters.command("rules"),
         group=-1,
     )(rules_command)
 
-    # Warning count
     app.on_message(
-        filters.group
-        & filters.command("warns")
-        ,
+        filters.group & filters.command("warns"),
         group=-1,
     )(warnings_command)
 
-    # Reset warnings
     app.on_message(
-        filters.group
-        & filters.command("resetwarns")
-        ,
+        filters.group & filters.command("resetwarns"),
         group=-1,
     )(reset_warnings_command)
 
     LOGGER.info(
-        "Student Protection System registered "
-        "(text + supported media)."
+        "Pornographic sticker/GIF protection registered "
+        "(static stickers, TGS, video stickers and animations)."
     )

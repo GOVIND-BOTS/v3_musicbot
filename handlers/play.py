@@ -307,6 +307,9 @@ async def resolve_track(query, media_type):
             return None
 
         track = dict(info)
+        # /vplay accepts audio-only links too; automatically fall back to audio mode.
+        if media_type == "video" and track.get("has_video") is False:
+            media_type = "audio"
 
     else:
         results = await search_youtube(query, limit=1)

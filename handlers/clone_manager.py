@@ -73,7 +73,6 @@ class CloneManager:
         )
 
         try:
-            # Handlers FIRST, then start
             register_handlers(
                 client,
                 self.stream,

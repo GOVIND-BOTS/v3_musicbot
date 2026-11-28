@@ -192,7 +192,6 @@ def session_summary(session):
 
 
 def register_editor_handlers(app):
-    # Explicitly enable editor commands in private chats and groups.
     editor_chats = filters.private | filters.group
 
     @app.on_message(editor_chats & filters.command(["edit", "photoedit", "videoedit"]))

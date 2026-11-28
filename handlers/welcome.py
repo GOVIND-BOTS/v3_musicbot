@@ -17,11 +17,9 @@ LOGGER = logging.getLogger(__name__)
 
 WELCOME_IMAGE = "assets/welcome.png"
 
-# ==================== BUTTON LINKS ====================
 BOT_OWNER_USERNAME = "govind_officialmp13"
 SUPPORT_GROUP = "https://t.me/GOVIND_BOTS"
 CHANNEL_LINK = "https://t.me/GOVIND_USERBOT_UPDATE"
-# ======================================================
 
 
 def get_font(size):
@@ -157,7 +155,6 @@ def register_welcome_handlers(app):
 
                 welcome_path = create_welcome_image(user_photo, user, chat)
 
-                # PyrogramMod exposes administrator listing through get_chat_members.
                 owner_btn = None
                 try:
                     async for admin in client.get_chat_members(

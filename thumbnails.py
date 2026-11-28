@@ -22,8 +22,6 @@ CACHE_DIR = Path("cache")
 OUTPUT_PREFIX = "v3thumb_"
 TEMPLATE_PATH = Path("assets/IMG_20261121_075236.png")
 
-# Coordinates are for the supplied 16:9 neon template at 1280x720.
-# Keep the neon borders visible by placing the photos slightly inside them.
 VIDEO_BOX = (431, 119, 849, 537)       # left, top, right, bottom
 AVATAR_BOX = (773, 418, 919, 564)      # fixed 146x146 requester circle
 
@@ -124,8 +122,6 @@ def _load_template():
 
 
 def _render(video_art, requester_avatar):
-    # Start from the finished artwork. Do NOT draw another panel, neon ring,
-    # second video circle, title panel, or duplicate branding over it.
     image = _load_template()
     video = _circle_crop(video_art, VIDEO_BOX)
     avatar = _circle_crop(requester_avatar, AVATAR_BOX, fallback_label="👤")
@@ -172,7 +168,6 @@ async def get_thumb(
         rendered = _render(video_art, avatar)
     except Exception:
         LOGGER.exception("Single-template thumbnail render failed")
-        # Keep a valid image result rather than falling back to the old layout.
         rendered = Image.new("RGB", (WIDTH, HEIGHT), (8, 8, 20))
 
     output = CACHE_DIR / f"{OUTPUT_PREFIX}{uuid.uuid4().hex}.jpg"

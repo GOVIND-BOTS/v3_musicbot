@@ -395,8 +395,6 @@ def register_callback_handlers(app, stream):
             return
 
         await query.answer("Creating thumbnail…")
-        # Reuse the exact requester DP captured when the track was queued.
-        # If missing, ask Telegram for the user's current profile photo.
         avatar_data = track.get("_requester_avatar_path")
         if not avatar_data and requester_id:
             try:

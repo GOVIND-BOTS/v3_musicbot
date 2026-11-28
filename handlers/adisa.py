@@ -4,7 +4,6 @@ from pyrogram.types import ChatPermissions, ChatPrivileges
 from pyrogram.enums import ChatType, ChatMemberStatus
 
 
-# Random replies jab command incomplete ho
 ADISA_TEXT = [
     "hey please don't disturb me.",
     "who are you?",
@@ -28,7 +27,6 @@ STRICT_TXT = [
     "i love him please don't restrict this user",
 ]
 
-# Keywords
 BAN = ["ban", "boom"]
 UNBAN = ["unban"]
 MUTE = ["mute", "silent", "shut"]
@@ -58,18 +56,15 @@ def register_adisa_handlers(app, sudoers=None):
         & filters.group
     )
     async def adisa_handler(client, message):
-        # Admin check
         if not await is_admin(client, message.chat.id, message.from_user.id):
             return await message.reply("Sirf admin is command ko use kar sakte hain.")
 
         reply = message.reply_to_message
         chat_id = message.chat.id
 
-        # Agar sirf "adisa" / "disa" likha hai
         if len(message.text.split()) < 2:
             return await message.reply(random.choice(ADISA_TEXT))
 
-        # Command ke baad ka text
         bruh = message.text.split(maxsplit=1)[1].lower()
         data = bruh.split()
 
@@ -79,7 +74,6 @@ def register_adisa_handlers(app, sudoers=None):
         user_id = reply.from_user.id
         user_mention = reply.from_user.mention
 
-        # ---------- BAN ----------
         for word in data:
             if word in BAN:
                 if user_id in sudoers:
@@ -91,7 +85,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Ban failed: {e}")
                 return
 
-        # ---------- UNBAN ----------
         for word in data:
             if word in UNBAN:
                 try:
@@ -101,7 +94,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Unban failed: {e}")
                 return
 
-        # ---------- KICK ----------
         for word in data:
             if word in KICK:
                 if user_id in sudoers:
@@ -114,7 +106,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Kick failed: {e}")
                 return
 
-        # ---------- MUTE ----------
         for word in data:
             if word in MUTE:
                 if user_id in sudoers:
@@ -130,7 +121,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Mute failed: {e}")
                 return
 
-        # ---------- UNMUTE ----------
         for word in data:
             if word in UNMUTE:
                 try:
@@ -151,7 +141,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Unmute failed: {e}")
                 return
 
-        # ---------- PROMOTE ----------
         for word in data:
             if word in PROMOTE:
                 try:
@@ -174,7 +163,6 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Promote failed: {e}")
                 return
 
-        # ---------- DEMOTE ----------
         for word in data:
             if word in DEMOTE:
                 try:
@@ -197,5 +185,4 @@ def register_adisa_handlers(app, sudoers=None):
                     await message.reply(f"Demote failed: {e}")
                 return
 
-        # Agar koi valid keyword nahi mila
         await message.reply(random.choice(ADISA_TEXT))

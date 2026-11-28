@@ -18,8 +18,6 @@ MAX_FILE_SIZE = int(os.getenv("VIDEO_DOWNLOAD_MAX_MB", "1900")) * 1024 * 1024
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(2)
 ACTIVE_DOWNLOADS = set()
 
-# yt-dlp-supported video platforms. Root-domain matching also permits
-# legitimate platform subdomains such as m.youtube.com and v.redd.it.
 SUPPORTED_DOMAINS = {
     "instagram.com", "instagr.am",
     "youtube.com", "youtu.be", "youtube-nocookie.com",
@@ -222,7 +220,6 @@ def register_video_downloader_handlers(app):
             return
 
         url = match.group(0).rstrip(".,!?)]}")
-        # Ignore ordinary websites, Telegram links, and unknown hosts.
         if _safe_url(url):
             await _process_link(message, url)
 

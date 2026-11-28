@@ -307,7 +307,6 @@ async def resolve_track(query, media_type):
             return None
 
         track = dict(info)
-        # /vplay accepts audio-only links too; automatically fall back to audio mode.
         if media_type == "video" and track.get("has_video") is False:
             media_type = "audio"
 
@@ -366,7 +365,6 @@ def register_play_handlers(app, stream, assistant=None):
 
         clean_mode = settings.get("clean_mode", False)
 
-        # All group members are allowed to request songs.
         if clean_mode:
             with suppress(Exception):
                 await message.delete()
@@ -443,14 +441,12 @@ def register_play_handlers(app, stream, assistant=None):
             track["_owner_url"] = await get_owner_url()
             track = await generate_track_thumbnail(track, client, assistant)
 
-            # Preserve audio/video type when sending to the stream.
             result = await stream.play(
                 chat_id,
                 track,
                 media_type=media_type,
             )
 
-            # Queued tracks must not create a new player card.
             if result == "queued":
                 if status:
                     await status.edit_text(

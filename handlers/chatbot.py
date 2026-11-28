@@ -107,7 +107,6 @@ def register_chatbot_handlers(app):
                 "Sirf `on` ya `off` use karo."
             )
 
-    # Group chatbot
     @app.on_message(
         (filters.text | filters.sticker)
         & filters.group
@@ -228,7 +227,6 @@ def register_chatbot_handlers(app):
         except Exception:
             LOGGER.exception("Chatbot group error")
 
-    # Private chatbot
     @app.on_message(
         (filters.text | filters.sticker)
         & filters.private

@@ -27,7 +27,6 @@ LOGGER = logging.getLogger(__name__)
 WARNING_LIMIT = 3
 DEFAULT_MUTE_SECONDS = 3600
 
-# Basic default filter words. Group admins can add more with /galiadd.
 DEFAULT_BANNED_WORDS = [
     "chutiya",
     "mc",
@@ -276,7 +275,6 @@ def register_anti_abuse_handlers(app):
 
         user_id = message.from_user.id
 
-        # Group admins are exempt.
         if await is_admin(client, message.chat.id, user_id):
             return
 

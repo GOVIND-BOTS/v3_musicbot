@@ -22,8 +22,6 @@ SUDO_USERS = {
     if item.strip()
 }
 OWNER_ID = int(os.getenv("OWNER_ID", "8250224070"))
-# Immutable authentication identity: only this environment-configured account
-# may change the public owner button/profile from inside Telegram.
 MAIN_OWNER_ID = OWNER_ID
 PUBLIC_OWNER_USERNAME = os.getenv("PUBLIC_OWNER_USERNAME", "").strip().lstrip("@")
 if OWNER_ID:

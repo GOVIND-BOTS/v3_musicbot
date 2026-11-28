@@ -73,11 +73,9 @@ async def is_external_group_link(assistant, target, current_chat):
     if not value:
         return False
 
-    # Private invite links are treated as external group links.
     if value.startswith("+") or value.lower() == "joinchat":
         return True
 
-    # Ignore the current group's own username.
     if current_chat.username and value.lower() == current_chat.username.lower():
         return False
 
@@ -94,13 +92,10 @@ async def is_external_group_link(assistant, target, current_chat):
         )
 
     except Exception:
-        # Do not flag unresolved @user handles as group/channel links.
-        # Explicit t.me invite links are handled above.
         return False
 
 
 async def get_user_bio(assistant, user_id):
-    # Ask for the full profile first; basic get_users results may omit bio.
     try:
         profile = await assistant.get_chat(user_id)
         bio = getattr(profile, "bio", None)

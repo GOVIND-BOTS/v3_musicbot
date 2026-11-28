@@ -2,9 +2,6 @@
 import html
 
 
-# ----------------------------------
-# FONT STYLING
-# ----------------------------------
 
 UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER = "abcdefghijklmnopqrstuvwxyz"
@@ -25,9 +22,6 @@ def stylize(text):
     return str(text).translate(FONT_MAP)
 
 
-# ----------------------------------
-# DURATION
-# ----------------------------------
 
 def format_duration(seconds):
     try:
@@ -46,9 +40,6 @@ def format_duration(seconds):
     return f"{minutes:02}:{seconds:02}"
 
 
-# ----------------------------------
-# PROGRESS
-# ----------------------------------
 
 def progress_bar(elapsed, duration, length=10):
     try:
@@ -75,9 +66,6 @@ def progress_button_text(elapsed, duration):
     return f"{elapsed_text} {bar} {duration_text}"
 
 
-# ----------------------------------
-# REQUESTER
-# ----------------------------------
 
 def add_requester(track, user):
     item = dict(track)
@@ -117,9 +105,6 @@ def requester_html(track):
     return name
 
 
-# ----------------------------------
-# NOW PLAYING CAPTION
-# ----------------------------------
 
 def now_playing_caption(
     track,
@@ -162,9 +147,6 @@ def now_playing_caption(
     )
 
 
-# ----------------------------------
-# QUEUE TRACK CAPTION
-# ----------------------------------
 
 def queue_track_caption(track, position=None):
     if not isinstance(track, dict):

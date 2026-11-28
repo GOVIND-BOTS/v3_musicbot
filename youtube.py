@@ -197,11 +197,8 @@ def _make_options(selected_format=None):
         }
     }
 
-    # PO Token / EJS support
     options["remote_components"] = ["ejs:github"]
 
-    # yt-dlp-getpot-wpc uses Chromium to mint fresh, video-bound PO Tokens.
-    # The Docker image installs Chromium at /usr/bin/chromium.
     options["extractor_args"]["youtube-wpc"] = {
         "browser_path": [os.getenv("YOUTUBE_BROWSER_PATH", "/usr/bin/chromium")],
     }
@@ -380,7 +377,6 @@ def _get_stream_url(url, media_type="audio"):
                     direct_url = candidates[0]["url"]
 
             if not direct_url:
-                # Last fallback - koi bhi available url
                 for f in formats:
                     if f.get("url"):
                         direct_url = f["url"]

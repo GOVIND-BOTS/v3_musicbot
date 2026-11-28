@@ -8,7 +8,6 @@ from pyrogram.errors import FloodWait
 
 LOGGER = logging.getLogger(__name__)
 
-# One active tagging operation per group.
 SPAM_CHATS = {}
 TAG_BATCH_SIZE = 5
 TAG_DELAY_SECONDS = 7
@@ -67,7 +66,6 @@ def register_tagall_handlers(app):
                     batch.clear()
                     await asyncio.sleep(TAG_DELAY_SECONDS)
 
-            # Send the remaining 1–4 members too.
             if batch and not stop_event.is_set():
                 prefix = f"{html.escape(custom_text)}\n\n" if custom_text else ""
                 body = "\n".join(batch)
@@ -114,7 +112,7 @@ def register_tagall_handlers(app):
     @app.on_message(
         filters.command(
             ["utag", "uall", "tagall", "all", "tagmember"],
-            prefixes=["/", "@", ".", "#"],
+            prefixes=["/", "@", "."],
         )
         & filters.group
     )
@@ -166,7 +164,7 @@ def register_tagall_handlers(app):
                 "ualloff",
                 "cancel",
             ],
-            prefixes=["/", "@", ".", "#"],
+            prefixes=["/", "@", "."],
         )
         & filters.group
     )

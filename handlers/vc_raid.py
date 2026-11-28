@@ -18,7 +18,6 @@ from config import OWNER_ID, SUDO_USERS
 
 LOGGER = logging.getLogger(__name__)
 
-# One active raid stream per target chat. Files are kept until /raidend.
 _ACTIVE = {}
 _AUDIO_DIR = Path(__file__).resolve().parent.parent / "Flame" / "Audio"
 _CUSTOM_AUDIO_DIR = _AUDIO_DIR / "Custom"
@@ -69,7 +68,6 @@ async def _get_random_audio():
         path for path in _CUSTOM_AUDIO_DIR.glob("*.mp3")
         if path.is_file() and path.stat().st_size > 0
     ]
-    # Include the eight original tracks in the same random pool as user-added tracks.
     choices = [("custom", path) for path in custom_tracks]
     choices.extend(("original", index) for index in range(1, 9))
     kind, selected = random.choice(choices)
@@ -253,7 +251,6 @@ def register_vc_raid_handlers(app, stream, assistant):
                 await stream.calls.leave_call(target.id)
                 _ACTIVE.pop(target.id, None)
                 active_path = active.get("path")
-                # Keep user-added playlist tracks after playback ends.
                 if active_path and Path(active_path).parent != _CUSTOM_AUDIO_DIR:
                     _remove_file(active_path)
                 reply = "⏹️ VC stream ended."

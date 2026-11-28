@@ -237,7 +237,6 @@ def register_string_session_handlers(app):
 
         value = (message.text or "").strip()
 
-        # Delete sensitive input messages where possible.
         try:
             await message.delete()
         except Exception:
@@ -248,9 +247,6 @@ def register_string_session_handlers(app):
 
         try:
 
-            # -----------------------------------------
-            # PYROGRAM BOT ACCOUNT
-            # -----------------------------------------
             if stage == "credential" and kind == "pyro_bot":
                 from pyrogram import Client
 
@@ -285,9 +281,6 @@ def register_string_session_handlers(app):
                     "✅ <b>Pyrogram bot session file sent successfully.</b>",
                 )
 
-            # -----------------------------------------
-            # TELETHON BOT ACCOUNT
-            # -----------------------------------------
             if stage == "credential" and kind == "tele_bot":
                 from telethon import TelegramClient
                 from telethon.sessions import StringSession
@@ -320,9 +313,6 @@ def register_string_session_handlers(app):
                     "✅ <b>Telethon bot session file sent successfully.</b>",
                 )
 
-            # -----------------------------------------
-            # USER ACCOUNT: SEND LOGIN CODE
-            # -----------------------------------------
             if stage == "credential":
 
                 state["phone"] = value
@@ -374,9 +364,6 @@ def register_string_session_handlers(app):
                     "Do not include spaces.",
                 )
 
-            # -----------------------------------------
-            # USER ACCOUNT: VERIFY LOGIN CODE
-            # -----------------------------------------
             if stage == "code":
 
                 worker = state["worker"]
@@ -419,7 +406,6 @@ def register_string_session_handlers(app):
 
                     session = worker.session.save()
 
-                # Important: Send before disconnecting the user account.
                 await send_user_session_to_saved_messages(
                     kind,
                     worker,
@@ -436,9 +422,6 @@ def register_string_session_handlers(app):
                     "<b>Saved Messages</b>.",
                 )
 
-            # -----------------------------------------
-            # USER ACCOUNT: TWO-STEP VERIFICATION
-            # -----------------------------------------
             if stage == "password":
 
                 worker = state["worker"]
@@ -451,8 +434,6 @@ def register_string_session_handlers(app):
                     await worker.sign_in(password=value)
                     session = worker.session.save()
 
-                # Keep the authenticated user client connected until
-                # its session file reaches its own Saved Messages.
                 await send_user_session_to_saved_messages(
                     kind,
                     worker,

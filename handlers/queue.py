@@ -40,7 +40,6 @@ def track_duration(track):
 
 def register_queue_handlers(app, stream):
 
-    # QUEUE COMMAND
     @app.on_message(filters.command("queue") & filters.group)
     async def queue_command(client, message):
         chat_id = message.chat.id
@@ -104,7 +103,6 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
-    # NOW PLAYING COMMAND
     @app.on_message(filters.command("now") & filters.group)
     async def now_command(client, message):
         current = await music_queue.get_current(message.chat.id)
@@ -125,7 +123,6 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
-    # LOOP COMMAND
     @app.on_message(filters.command("loop") & filters.group)
     async def loop_command(client, message):
         if not message.from_user or not await is_admin(
@@ -160,7 +157,6 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
-    # SHUFFLE COMMAND
     @app.on_message(filters.command("shuffle") & filters.group)
     async def shuffle_command(client, message):
         if not message.from_user or not await is_admin(
@@ -204,7 +200,6 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
-    # REMOVE COMMAND
     @app.on_message(filters.command("remove") & filters.group)
     async def remove_command(client, message):
         if not message.from_user or not await is_admin(
@@ -250,7 +245,6 @@ def register_queue_handlers(app, stream):
             parse_mode=ParseMode.HTML,
         )
 
-    # CLEAR UPCOMING QUEUE
     @app.on_message(filters.command("clearqueue") & filters.group)
     async def clear_queue_command(client, message):
         if not message.from_user or not await is_admin(

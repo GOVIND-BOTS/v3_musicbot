@@ -57,7 +57,6 @@ def _build_couples_card(first_avatar, second_avatar, output_path: str):
     image = Image.new("RGB", (width, height))
     pixels = image.load()
 
-    # Deep violet-to-rose gradient background.
     for y in range(height):
         for x in range(width):
             blend = (x / (width - 1) * 0.55) + (y / (height - 1) * 0.25)
@@ -70,7 +69,6 @@ def _build_couples_card(first_avatar, second_avatar, output_path: str):
 
     draw = ImageDraw.Draw(image, "RGBA")
 
-    # Soft decorative rings and corner glows.
     for radius, alpha in ((250, 18), (205, 22), (160, 28)):
         draw.ellipse((width // 2 - radius, 105 - radius,
                       width // 2 + radius, 105 + radius),
@@ -94,7 +92,6 @@ def _build_couples_card(first_avatar, second_avatar, output_path: str):
     second_x = width - 175 - avatar_size
     avatar_y = 205
 
-    # Avatar frames.
     for x in (first_x, second_x):
         draw.ellipse((x - 10, avatar_y - 10, x + avatar_size + 10,
                       avatar_y + avatar_size + 10),
@@ -112,7 +109,6 @@ def _build_couples_card(first_avatar, second_avatar, output_path: str):
     draw.text((width // 2, 475), "MADE FOR EACH OTHER",
               font=subtitle_font, fill=(255, 224, 238), anchor="mm")
 
-    # V3 MUSIC branding replaces the old BRANDED label.
     draw.rounded_rectangle((width // 2 - 130, 525, width // 2 + 130, 575),
                            radius=22, fill=(238, 55, 130))
     draw.text((width // 2, 550), "V3 MUSIC", font=brand_font,
@@ -163,7 +159,6 @@ def register_couples_handlers(app):
                 )
                 return
 
-            # Select two distinct members.
             import random
             first_user, second_user = random.sample(members, 2)
 

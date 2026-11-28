@@ -334,7 +334,6 @@ async def create_timeline(
         concat_file = os.path.join(workdir, "timeline.txt")
         with open(concat_file, "w", encoding="utf-8") as handle:
             for segment in segment_paths:
-                # Generated paths contain no quotes; this keeps concat demuxer input safe.
                 handle.write("file '" + segment.replace("\\", "/") + "'\n")
         joined = os.path.join(workdir, "joined.mp4")
         await run(

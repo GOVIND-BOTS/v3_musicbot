@@ -11,7 +11,6 @@ from config import MONGO_DB_URI
 
 LOGGER = logging.getLogger("v3_musicbot.database")
 
-# Atlas SRV URIs enable TLS automatically. Keep certificate verification enabled.
 mongo_client = AsyncIOMotorClient(
     MONGO_DB_URI,
     tls=True,

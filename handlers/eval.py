@@ -21,9 +21,6 @@ MAX_CODE = 8000
 MAX_OUTPUT = 12000
 
 
-# --------------------------------------------------
-# OWNER CONFIGURATION
-# --------------------------------------------------
 
 def get_owner_ids():
     try:
@@ -48,9 +45,6 @@ def is_owner(user_id):
     return user_id is not None and user_id in get_owner_ids()
 
 
-# --------------------------------------------------
-# SAFE TEST ENGINE
-# --------------------------------------------------
 
 BINARY_OPERATORS = {
     ast.Add: operator.add,
@@ -219,9 +213,6 @@ class SafeRunner:
         return "\n".join(self.output) or "Code executed successfully."
 
 
-# --------------------------------------------------
-# RUN TEST
-# --------------------------------------------------
 
 async def run_test(code):
     start = time.monotonic()
@@ -257,9 +248,6 @@ async def run_test(code):
         )
 
 
-# --------------------------------------------------
-# KEYBOARD
-# --------------------------------------------------
 
 def make_keyboard(runtime):
     return InlineKeyboardMarkup([
@@ -276,9 +264,6 @@ def make_keyboard(runtime):
     ])
 
 
-# --------------------------------------------------
-# SEND RESULT
-# --------------------------------------------------
 
 _EVAL_RESULT_MESSAGES = {}
 
@@ -315,14 +300,10 @@ async def send_result(message, code, status, output, runtime):
     return result_message
 
 
-# --------------------------------------------------
-# REGISTER HANDLERS
-# --------------------------------------------------
 
 def register_eval(app):
 
     async def handle_eval_message(client, message: Message):
-        # Log both new and edited eval commands for easier diagnosis.
         LOGGER.warning(
             "EVAL RECEIVED | EDITED=%s | TEXT=%r | USER=%s | CHAT=%s",
             bool(message.edit_date),
@@ -382,9 +363,6 @@ def register_eval(app):
     async def eval_edited_command(client, message: Message):
         await handle_eval_message(client, message)
 
-    # --------------------------------------------------
-    # RUNTIME BUTTON
-    # --------------------------------------------------
 
     @app.on_callback_query(
         filters.regex(r"^eval_runtime$")
@@ -402,9 +380,6 @@ def register_eval(app):
             show_alert=True,
         )
 
-    # --------------------------------------------------
-    # DELETE BUTTON
-    # --------------------------------------------------
 
     @app.on_callback_query(
         filters.regex(r"^eval_delete$")

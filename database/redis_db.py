@@ -19,7 +19,6 @@ async def connect_redis():
             decode_responses=True,
             socket_connect_timeout=5,
         )
-        # Test connection
         await redis.ping()
         LOGGER.info("Redis connected successfully.")
         return redis

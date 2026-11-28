@@ -30,7 +30,6 @@ def register_whisper_handlers(app):
             [[InlineKeyboardButton("💬 Start Whisper", switch_inline_query_current_chat="")]]
         )
 
-        # Empty query → help
         if not data:
             results = [
                 InlineQueryResultArticle(
@@ -132,7 +131,6 @@ def register_whisper_handlers(app):
         one_time = len(data) > 3 and data[3] == "one"
         user_id = query.from_user.id
 
-        # Only the sender, receiver, and optionally the owner can open this whisper.
         if user_id not in (from_user_id, to_user_id):
             return await query.answer(
                 "❌ This whisper is not for you!",
@@ -150,7 +148,6 @@ def register_whisper_handlers(app):
 
         await query.answer(msg, show_alert=True, cache_time=0)
 
-        # One-time → message hata do
         if one_time and user_id == to_user_id:
             whisper_db.pop(key, None)
             try:

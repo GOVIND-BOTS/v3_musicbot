@@ -25,8 +25,6 @@ PROFILE_PHOTOS = {
     "v3music": ASSET_DIR / "v3music_dp.jpg",
 }
 
-# Telegram may reject small source images with PHOTO_CROP_SIZE_SMALL.
-# Normalize both uploaded avatars to a sufficiently large square JPEG.
 TELEGRAM_AVATAR_SIZE = (640, 640)
 
 

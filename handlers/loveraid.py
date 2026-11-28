@@ -39,7 +39,6 @@ RAID_STR = [
     "Ummmmaaah meri jaan 😘😘😘",
 ]
 
-# Active targets are scoped to each chat: {chat_id: {target_user_id: activator_id}}
 _active = {}
 _last_sent = {}
 _COOLDOWN_SECONDS = 20
@@ -143,8 +142,6 @@ def register_loveraid_handlers(app):
         if now - _last_sent.get(key, 0) < _COOLDOWN_SECONDS:
             return
 
-        # Set cooldown before sending to prevent simultaneous updates from
-        # producing duplicate replies.
         _last_sent[key] = now
         try:
             await message.reply_text(

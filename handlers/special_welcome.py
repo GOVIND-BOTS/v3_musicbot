@@ -35,7 +35,6 @@ def is_new_member(member):
         ChatMemberStatus.OWNER,
     }
 
-    # Restricted users can also be present in a group.
     if new_status == ChatMemberStatus.RESTRICTED:
         if new_member.is_member:
             return old_status not in active_statuses and (

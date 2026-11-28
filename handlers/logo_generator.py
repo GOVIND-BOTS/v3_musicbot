@@ -11,7 +11,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 SIZE = 1024
 
-# (background, main colour, highlight colour)
 STYLES = {
     "neon": ("#080B1D", "#B84DFF", "#54F7FF"),
     "gold": ("#17110A", "#D99A24", "#FFF0A6"),
@@ -78,7 +77,6 @@ def mix_color(a, b, amount):
 
 
 def _curve(points, count=80):
-    # Catmull-Rom-like smooth interpolation through control points.
     result = []
     for i in range(len(points) - 1):
         p0 = points[max(0, i - 1)]
@@ -178,7 +176,6 @@ def make_background(style):
     image = Image.new("RGB", (SIZE, SIZE), base)
     draw = ImageDraw.Draw(image)
 
-    # Soft, premium radial glow.
     glow = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     gd.ellipse((220, 170, 804, 754), fill=(*accent, 45))
@@ -195,7 +192,6 @@ def make_background(style):
             r = random.randint(1, 3)
             draw.ellipse((x-r, y-r, x+r, y+r), fill=(*light, 170))
     else:
-        # Fine ornamental border for signature / luxury logo looks.
         draw.rounded_rectangle((34, 34, 990, 990), radius=42,
                                outline=(*light, 115), width=3)
         draw.rounded_rectangle((48, 48, 976, 976), radius=34,
@@ -226,7 +222,6 @@ def generate_logo(name, style="neon"):
     image = make_background(style).convert("RGBA")
     draw = ImageDraw.Draw(image)
 
-    # Decorative symbol is selected by style; name remains the main focus.
     motif_y = 235
     if style in ("gold", "royal", "luxury", "vintage"):
         _draw_crown(draw, 512, motif_y, 0.72, (*c1, 235))
@@ -252,7 +247,6 @@ def generate_logo(name, style="neon"):
     md = ImageDraw.Draw(mask)
     md.text((x, y), name, font=font, fill=255)
 
-    # Soft shadow and thick extrusion create a raised 3D lettering effect.
     shadow = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     shadow_mask = Image.new("L", (SIZE, SIZE), 0)
     shadow_mask.paste(mask, (9, 17))
@@ -268,7 +262,6 @@ def generate_logo(name, style="neon"):
         layer.putalpha(shifted.point(lambda p: int(p * 0.88)))
         image = Image.alpha_composite(image, layer)
 
-    # Metallic vertical gradient clipped to the lettering.
     gradient = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     gd = ImageDraw.Draw(gradient)
     stops = [mix_color(c1, (255,255,255), 0.62),
@@ -283,7 +276,6 @@ def generate_logo(name, style="neon"):
     gradient.putalpha(mask)
     image = Image.alpha_composite(image, gradient)
 
-    # Bright edge and subtle inner highlight.
     edge = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     ed = ImageDraw.Draw(edge)
     ed.text((x, y), name, font=font, fill=(0,0,0,0),
@@ -291,7 +283,6 @@ def generate_logo(name, style="neon"):
     image = Image.alpha_composite(image, edge)
 
     draw = ImageDraw.Draw(image)
-    # Small ornamental flourishes around the wordmark.
     flourish_y = min(720, y + th + 55)
     draw.line((190, flourish_y, 365, flourish_y), fill=(*c2, 210), width=3)
     draw.line((659, flourish_y, 834, flourish_y), fill=(*c2, 210), width=3)
@@ -304,7 +295,6 @@ def generate_logo(name, style="neon"):
     draw.text(((SIZE-(lb[2]-lb[0]))//2, 835), label,
               font=small, fill=(*c2, 235))
 
-    # Keep the generated PNG lightweight for Telegram.
     return image.convert("RGB")
 
 

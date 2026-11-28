@@ -67,7 +67,6 @@ def stream_buttons(
     shuffle_label = "ON" if shuffle else "OFF"
     progress_text = progress_button_text(elapsed, duration)
 
-    # Keep the frequently used playback controls visible at all times.
     rows = [
         [
             InlineKeyboardButton(
@@ -199,10 +198,6 @@ def queue_buttons(
     ])
 
 
-# --------------------------------------------------
-# CENTRAL COMMAND HELP SYSTEM
-# Each command has its own Help button and detail page.
-# --------------------------------------------------
 
 HELP_COMMANDS = {
     "genstring": ("🔐 String Session Generator", "Owner Tools", "/genstring", "Generate Pyrogram or Telegram (Telethon) user/bot string sessions in a private guided login flow. OTP and 2FA messages are deleted after processing; generated sessions are secret.", "Available to all users in private chat. Use only accounts/bots you own; the session is sent only to your own chat and must never be shared.", "/genstring"),

@@ -28,9 +28,6 @@ from database.mongodb import (
 LOGGER = logging.getLogger(__name__)
 
 
-# --------------------------------------------------
-# CONFIGURATION
-# --------------------------------------------------
 
 MAX_WARNINGS = 7
 MUTE_MINUTES = 10
@@ -39,11 +36,8 @@ MAX_MEDIA_SIZE = 20 * 1024 * 1024
 MAX_VIDEO_FRAMES = 8
 VIDEO_FRAME_INTERVAL_MS = 1000
 
-# Conservative confidence threshold.
 MEDIA_CONFIDENCE = 0.82
 
-# Only high-confidence exposed-content categories
-# are treated as violations.
 EXPLICIT_LABELS = {
     "FEMALE_BREAST_EXPOSED",
     "FEMALE_GENITALIA_EXPOSED",
@@ -85,9 +79,6 @@ RULES_TEXT = """
 """
 
 
-# --------------------------------------------------
-# DETECTOR
-# --------------------------------------------------
 
 _detector = None
 _detector_lock = threading.Lock()
@@ -114,8 +105,6 @@ def detect_image_sync(image_path: str) -> bool:
 
     detector = get_detector()
 
-    # NudeNet's detect() API accepts the image path only.
-    # Apply our confidence threshold below while processing detections.
     detections = detector.detect(image_path)
 
     for item in detections:
@@ -227,9 +216,6 @@ def detect_tgs_sync(tgs_path: str) -> bool:
     return False
 
 
-# --------------------------------------------------
-# PRIVILEGED USERS
-# --------------------------------------------------
 
 def get_privileged_users():
     users = set()
@@ -260,9 +246,6 @@ def get_privileged_users():
 PRIVILEGED_USERS = get_privileged_users()
 
 
-# --------------------------------------------------
-# TEXT NORMALIZATION
-# --------------------------------------------------
 
 def normalize_text(text: str) -> str:
     text = text.casefold()
@@ -297,9 +280,6 @@ def contains_abuse(text: str) -> bool:
     return False
 
 
-# --------------------------------------------------
-# ADMIN CHECK
-# --------------------------------------------------
 
 async def is_exempt_user(client, chat_id: int, user_id: int):
     if user_id in PRIVILEGED_USERS:
@@ -324,9 +304,6 @@ async def is_exempt_user(client, chat_id: int, user_id: int):
         return True
 
 
-# --------------------------------------------------
-# DELETE MESSAGE
-# --------------------------------------------------
 
 async def delete_violation(message):
     try:
@@ -338,9 +315,6 @@ async def delete_violation(message):
         return False
 
 
-# --------------------------------------------------
-# MUTE
-# --------------------------------------------------
 
 async def mute_user(client, chat_id: int, user_id: int):
     try:
@@ -382,9 +356,6 @@ async def mute_user(client, chat_id: int, user_id: int):
         return False
 
 
-# --------------------------------------------------
-# BAN
-# --------------------------------------------------
 
 async def ban_user(client, chat_id: int, user_id: int):
     try:
@@ -403,9 +374,6 @@ async def ban_user(client, chat_id: int, user_id: int):
         return False
 
 
-# --------------------------------------------------
-# MODERATION ACTION
-# --------------------------------------------------
 
 async def process_violation(client, message, reason: str, *, check_exempt=True):
     if not message.from_user:
@@ -502,9 +470,6 @@ async def process_violation(client, message, reason: str, *, check_exempt=True):
         )
 
 
-# --------------------------------------------------
-# TEXT MODERATION
-# --------------------------------------------------
 
 async def moderate_text(client, message):
     if not message.from_user:
@@ -520,9 +485,6 @@ async def moderate_text(client, message):
         )
 
 
-# --------------------------------------------------
-# MEDIA FILE HELPERS
-# --------------------------------------------------
 
 def get_media_info(message):
     """
@@ -549,16 +511,11 @@ def get_media_info(message):
     return None, None, True
 
 
-# --------------------------------------------------
-# MEDIA MODERATION
-# --------------------------------------------------
 
 async def moderate_media(client, message):
     if not message.from_user or message.from_user.is_bot:
         return
 
-    # Deliberately ignore ordinary photos, videos, documents and text.
-    # This protection feature is limited to stickers and Telegram GIFs.
     if not (
         message.sticker
         or message.animation
@@ -627,8 +584,6 @@ async def moderate_media(client, message):
             if not flagged:
                 return
 
-            # Explicit stickers/GIFs are removed even when posted by an admin.
-            # Admins are not given warnings, muted, or banned.
             try:
                 member = await client.get_chat_member(
                     message.chat.id,
@@ -664,7 +619,6 @@ async def moderate_media(client, message):
             )
 
     except Exception:
-        # Fail open: classifier or download errors never trigger punishment.
         LOGGER.exception(
             "Sticker/GIF moderation failed in chat %s. "
             "The message was not automatically punished.",
@@ -672,9 +626,6 @@ async def moderate_media(client, message):
         )
 
 
-# --------------------------------------------------
-# RULES COMMAND
-# --------------------------------------------------
 
 async def rules_command(client, message):
     await message.reply_text(
@@ -683,9 +634,6 @@ async def rules_command(client, message):
     )
 
 
-# --------------------------------------------------
-# WARNINGS COMMAND
-# --------------------------------------------------
 
 async def warnings_command(client, message):
     if not message.from_user:
@@ -734,9 +682,6 @@ async def warnings_command(client, message):
         )
 
 
-# --------------------------------------------------
-# RESET WARNINGS COMMAND
-# --------------------------------------------------
 
 async def reset_warnings_command(client, message):
     if not message.from_user:
@@ -784,13 +729,8 @@ async def reset_warnings_command(client, message):
         )
 
 
-# --------------------------------------------------
-# REGISTER HANDLERS
-# --------------------------------------------------
 
 def register_handlers(app):
-    # Use a dedicated late group so unrelated handlers cannot shadow this one.
-    # Only stickers and GIF/animation messages are inspected.
     app.on_message(
         filters.group & (
             filters.sticker

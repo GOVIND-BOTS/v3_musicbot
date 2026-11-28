@@ -37,8 +37,6 @@ def create_logo_file(name, style):
     temp.close()
 
     try:
-        # Always use the built-in Pillow generator. This is fully local,
-        # costs nothing, and does not depend on OpenAI credits or API keys.
         image = generate_logo(name, style)
         try:
             image.save(path, format="PNG", optimize=True)
@@ -64,9 +62,6 @@ def logo_caption(name, style):
 
 def register_logo_handlers(app):
 
-    # Keep this command in its own earlier handler group. Pyrogram runs only
-    # the first matching handler in a group; generic message handlers registered
-    # before this module could otherwise swallow /logo without replying.
     @app.on_message(filters.command("logo"), group=-1)
     async def logo_command(client, message):
         command = getattr(message, "command", None) or []

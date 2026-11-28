@@ -12,7 +12,6 @@ from database.mongodb import get_chats, remove_chat
 
 LOGGER = logging.getLogger("v3_musicbot.auto_broadcast")
 
-# Default: one promotional message per group every hour.
 INTERVAL_HOURS = max(1.0, float(os.getenv("AUTO_BROADCAST_INTERVAL_HOURS", "1")))
 INTERVAL_SECONDS = INTERVAL_HOURS * 60 * 60
 BANNER_PATH = Path(__file__).resolve().parent / "assets" / "v3music-banner..png"
@@ -92,7 +91,6 @@ async def _send_promo(client, chat_id, bot_username):
     caption = random.choice(PROMO_MESSAGES).format(name=BOT_NAME or "V3 MUSIC")
     keyboard = _keyboard(bot_username)
 
-    # Prefer configured start artwork; if it fails, use the repository banner.
     if START_IMAGE:
         try:
             await client.send_photo(

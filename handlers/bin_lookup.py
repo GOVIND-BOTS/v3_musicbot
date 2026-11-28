@@ -36,7 +36,6 @@ def register_bin_handlers(app):
             )
 
         bin_value = parts[1].strip()
-        # Accept BIN/IIN prefixes only. Never accept or process full card numbers.
         if not re.fullmatch(r"\d{6,8}", bin_value):
             return await message.reply_text(
                 "<b>❌ Invalid BIN</b>\n"
@@ -44,7 +43,6 @@ def register_bin_handlers(app):
                 parse_mode=ParseMode.HTML,
             )
 
-        # Remove the user's BIN prefix message after validating it.
         try:
             await message.delete()
         except Exception:

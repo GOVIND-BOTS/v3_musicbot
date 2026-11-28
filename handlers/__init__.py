@@ -26,7 +26,7 @@ from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
 from .loveraid import register_loveraid_handlers
 from .insta import register_insta_handlers
-from .phone import register_phone_handlers
+from .vc_raid import register_vc_raid_handlers
 
 from .tools.ping import register_ping_handlers
 from .tools.reload import register_reload_handlers
@@ -49,6 +49,7 @@ def register_handlers(app, stream, assistant, include_clone=True):
     register_status_handlers(app)
 
     register_play_handlers(app, stream, assistant)
+    register_vc_raid_handlers(app, stream, assistant)
     register_callback_handlers(app, stream)
     register_queue_handlers(app, stream)
     register_settings_handlers(app)

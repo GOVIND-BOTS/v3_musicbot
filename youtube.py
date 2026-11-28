@@ -171,6 +171,14 @@ def normalize_video(info):
         "thumbnail": _get_thumbnail(info),
         "webpage_url": webpage_url,
         "url": info.get("url") or "",
+        "has_video": any(
+            item.get("vcodec") and item.get("vcodec") != "none"
+            for item in (info.get("formats") or [])
+        ) or bool(info.get("vcodec") and info.get("vcodec") != "none"),
+        "has_audio": any(
+            item.get("acodec") and item.get("acodec") != "none"
+            for item in (info.get("formats") or [])
+        ) or bool(info.get("acodec") and info.get("acodec") != "none"),
     }
 
 

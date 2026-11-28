@@ -18,6 +18,7 @@ from .eval import register_eval
 from .bio_guard import register_bio_guard_handlers
 from .editor import register_editor_handlers
 from .video_downloader import register_video_downloader_handlers
+from .media_conversion import register_media_conversion_handlers
 from .owner_control import register_owner_control_handlers
 from .profile_dp import register_profile_dp_handlers
 from .bin_lookup import register_bin_handlers
@@ -75,3 +76,4 @@ def register_handlers(app, stream, assistant, include_clone=True):
     register_eval(app)
     register_editor_handlers(app)
     register_video_downloader_handlers(app)
+    register_media_conversion_handlers(app)

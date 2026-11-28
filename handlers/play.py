@@ -16,6 +16,7 @@ from owner_manager import get_owner_url
 from thumbnails import get_thumb, save_requester_avatar
 from youtube import (
     is_youtube_url,
+    is_media_url,
     search_youtube,
     get_video_info,
     get_stream_url,
@@ -299,7 +300,7 @@ async def send_player_card(client, chat_id, track, stream):
 
 
 async def resolve_track(query, media_type):
-    if is_youtube_url(query):
+    if is_media_url(query):
         info = await get_video_info(query)
 
         if not info:

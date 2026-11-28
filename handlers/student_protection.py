@@ -68,18 +68,16 @@ RULES_TEXT = """
 ━━━━━━━━━━━━━━━━━━
 
 1. Respect every group member.
-2. Abusive language is not allowed.
-3. Harassment and bullying are prohibited.
-4. Inappropriate stickers and media are not allowed.
-5. Do not disturb or target other students.
-6. Follow the group admins' instructions.
+2. Pornographic or explicitly sexual stickers and GIFs are not allowed.
+3. Do not disturb or target other students.
+4. Follow the group admins' instructions.
 
 ━━━━━━━━━━━━━━━━━━
 
 <b>⚠️ AUTOMATIC MODERATION</b>
 
-• Violating messages may be deleted.
-• Each violation adds one warning.
+• Explicit stickers and GIFs may be deleted.
+• Each confirmed violation adds one warning.
 • 1–6 warnings: 10-minute mute.
 • 7 warnings: Group ban.
 
@@ -564,18 +562,24 @@ async def moderate_text(client, message):
 def get_media_info(message):
     """
     Returns (extension, media_kind, should_skip).
-    Only stickers and Telegram GIF/animation messages are moderated.
+    Only stickers and GIF animations are moderated.
     """
     if message.sticker:
         sticker = message.sticker
-        if sticker.is_animated:
-            return ".tgs", "tgs", False
         if sticker.is_video:
             return ".webm", "video", False
+        if sticker.is_animated:
+            return ".tgs", "tgs", False
         return ".webp", "image", False
 
     if message.animation:
         return ".mp4", "video", False
+
+    if message.document:
+        mime_type = (message.document.mime_type or "").lower()
+        filename = (message.document.file_name or "").lower()
+        if mime_type == "image/gif" or filename.endswith(".gif"):
+            return ".gif", "video", False
 
     return None, None, True
 
@@ -590,14 +594,24 @@ async def moderate_media(client, message):
 
     # Deliberately ignore ordinary photos, videos, documents and text.
     # This protection feature is limited to stickers and Telegram GIFs.
-    if not (message.sticker or message.animation):
+    if not (
+        message.sticker
+        or message.animation
+        or (
+            message.document
+            and (
+                (message.document.mime_type or "").lower() == "image/gif"
+                or (message.document.file_name or "").lower().endswith(".gif")
+            )
+        )
+    ):
         return
 
     extension, media_kind, should_skip = get_media_info(message)
     if should_skip or not extension:
         return
 
-    media = message.sticker or message.animation
+    media = message.sticker or message.animation or message.document
     file_size = getattr(media, "file_size", None)
 
     if file_size and file_size > MAX_MEDIA_SIZE:

@@ -8,7 +8,7 @@ from pyrogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
-from pyrogram.enums import ChatMemberStatus
+from pyrogram.enums import ChatMemberStatus, ChatMembersFilter
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -61,7 +61,6 @@ def create_welcome_image(user_photo, user, chat):
 
     draw = ImageDraw.Draw(image)
 
-    # ==================== PROFILE PHOTO ====================
     if user_photo and os.path.isfile(user_photo):
         try:
             avatar = Image.open(user_photo).convert("RGB")
@@ -80,13 +79,10 @@ def create_welcome_image(user_photo, user, chat):
             center_x, center_y = pos(450, 445)
             x = center_x - diameter // 2
             y = center_y - diameter // 2
-
             image.paste(avatar, (x, y), mask)
-        except Exception as e:
-            LOGGER.warning(f"Failed to process user photo: {e}")
+        except Exception as exc:
+            LOGGER.warning("Failed to process user photo: %s", exc)
 
-    # ==================== STRONG COVER ====================
-    # Pure right side value area ko ek saath cover
     cover_x1, cover_y1 = pos(1050, 280)
     cover_x2, cover_y2 = pos(1490, 620)
     draw.rounded_rectangle(
@@ -95,7 +91,6 @@ def create_welcome_image(user_photo, user, chat):
         fill=(5, 3, 24, 255),
     )
 
-    # ==================== USER DETAILS ====================
     name = " ".join(p for p in (user.first_name, user.last_name) if p) or "Unknown"
     user_id = str(user.id)
     username = f"@{user.username}" if user.username else "Not set"
@@ -103,15 +98,14 @@ def create_welcome_image(user_photo, user, chat):
     joined = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%d %b %Y")
 
     values = [
-        (name,       305, (0, 210, 255, 255)),
-        (user_id,    370, (255, 45, 230, 255)),
-        (username,   435, (0, 255, 210, 255)),
+        (name, 305, (0, 210, 255, 255)),
+        (user_id, 370, (255, 45, 230, 255)),
+        (username, 435, (0, 255, 210, 255)),
         (group_name, 500, (255, 190, 30, 255)),
-        (joined,     565, (255, 65, 220, 255)),
+        (joined, 565, (255, 65, 220, 255)),
     ]
 
     draw = ImageDraw.Draw(image)
-
     for text, y, color in values:
         x, y_pos = pos(1090, y)
         font = fit_font(draw, text, max_width=int(360 * sx), size=int(26 * sx))
@@ -163,24 +157,26 @@ def register_welcome_handlers(app):
 
                 welcome_path = create_welcome_image(user_photo, user, chat)
 
-                # ========== GROUP OWNER AUTOMATIC DETECT ==========
+                # PyrogramMod exposes administrator listing through get_chat_members.
                 owner_btn = None
                 try:
-                    admins = await client.get_chat_administrators(chat.id)
-                    for admin in admins:
+                    async for admin in client.get_chat_members(
+                        chat.id,
+                        filter=ChatMembersFilter.ADMINISTRATORS,
+                    ):
                         if admin.status == ChatMemberStatus.OWNER:
                             owner_btn = InlineKeyboardButton(
                                 "👑 Group Owner",
-                                user_id=admin.user.id
+                                user_id=admin.user.id,
                             )
                             break
-                except Exception as e:
-                    LOGGER.warning(f"Could not fetch group owner: {e}")
+                except Exception as exc:
+                    LOGGER.warning("Could not fetch group owner: %s", exc)
 
                 if not owner_btn:
                     owner_btn = InlineKeyboardButton(
                         "👑 Group Owner",
-                        url=f"https://t.me/{chat.username}" if chat.username else "https://t.me/"
+                        url=f"https://t.me/{chat.username}" if chat.username else "https://t.me/",
                     )
 
                 buttons = [
@@ -188,39 +184,31 @@ def register_welcome_handlers(app):
                         owner_btn,
                         InlineKeyboardButton(
                             "👨‍💻 Bot Owner",
-                            url=f"https://t.me/{BOT_OWNER_USERNAME}"
+                            url=f"https://t.me/{BOT_OWNER_USERNAME}",
                         ),
                     ],
                     [
-                        InlineKeyboardButton(
-                            "🛠 Support Group",
-                            url=SUPPORT_GROUP
-                        ),
-                        InlineKeyboardButton(
-                            "📢 Channel",
-                            url=CHANNEL_LINK
-                        ),
+                        InlineKeyboardButton("🛠 Support Group", url=SUPPORT_GROUP),
+                        InlineKeyboardButton("📢 Channel", url=CHANNEL_LINK),
                     ],
                 ]
-
-                markup = InlineKeyboardMarkup(buttons)
 
                 await client.send_photo(
                     chat.id,
                     photo=welcome_path,
                     caption=f"**✨ Welcome** {user.mention} **to** **{chat.title}**!",
-                    reply_markup=markup,
+                    reply_markup=InlineKeyboardMarkup(buttons),
                 )
 
-            except Exception as e:
-                LOGGER.exception(f"Welcome message failed in {chat.id}")
+            except Exception:
+                LOGGER.exception("Welcome message failed in %s", chat.id)
                 try:
                     await client.send_message(
                         chat.id,
                         f"**✨ Welcome** {user.mention} **to** **{chat.title}**!",
                     )
                 except Exception:
-                    pass
+                    LOGGER.exception("Fallback welcome message failed in %s", chat.id)
 
             finally:
                 if user_photo and os.path.exists(user_photo):

@@ -114,10 +114,9 @@ def detect_image_sync(image_path: str) -> bool:
 
     detector = get_detector()
 
-    detections = detector.detect(
-        image_path,
-        score_threshold=0.25,
-    )
+    # NudeNet's detect() API accepts the image path only.
+    # Apply our confidence threshold below while processing detections.
+    detections = detector.detect(image_path)
 
     for item in detections:
         label = item.get("class", "")

@@ -160,7 +160,8 @@ def register_vc_raid_handlers(app, stream, assistant):
             await message.reply_text(f"🔊 VC stream started in {target.title} ({target.id}). Use /raidpause, /raidresume or /raidend.")
         except Exception as exc:
             LOGGER.exception("VC stream start failed for %s", getattr(target, "id", None))
-            _remove_file(local_path)
+            if local_path and Path(local_path).parent != _CUSTOM_AUDIO_DIR:
+                _remove_file(local_path)
             await message.reply_text(f"❌ VC stream start failed: {str(exc)[:250]}")
 
     @app.on_message(filters.command("vcadd") & (filters.group | filters.private))

@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import re
+import ipaddress
+from urllib.parse import urlparse
 from pathlib import Path
 
 import yt_dlp
@@ -78,6 +80,28 @@ LOGGER.info(
 
 def is_youtube_url(query):
     return bool(YOUTUBE_URL_PATTERN.search(query or ""))
+
+
+def is_media_url(query):
+    """Accept HTTP(S) media URLs while rejecting localhost/private IP targets."""
+    try:
+        parsed = urlparse((query or "").strip())
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return False
+        if parsed.username or parsed.password:
+            return False
+        host = parsed.hostname.lower().rstrip(".")
+        if host in {"localhost", "localhost.localdomain"} or host.endswith((".local", ".internal")):
+            return False
+        try:
+            address = ipaddress.ip_address(host)
+            if not address.is_global:
+                return False
+        except ValueError:
+            pass
+        return True
+    except Exception:
+        return False
 
 
 def format_duration(seconds):
@@ -227,8 +251,8 @@ async def search_youtube(query, limit=5):
 def _get_video_info(url):
     url = (url or "").strip()
 
-    if not is_youtube_url(url):
-        raise ValueError("Please send a valid YouTube URL.")
+    if not is_media_url(url):
+        raise ValueError("Please send a valid public HTTP(S) media URL.")
 
     try:
         with yt_dlp.YoutubeDL(_make_options()) as ydl:
@@ -261,8 +285,8 @@ async def get_video_info(url):
 def _get_stream_url(url, media_type="audio"):
     url = (url or "").strip()
 
-    if not is_youtube_url(url):
-        raise ValueError("Please send a valid YouTube URL.")
+    if not is_media_url(url):
+        raise ValueError("Please send a valid public HTTP(S) media URL.")
 
     media_type = (
         "video"

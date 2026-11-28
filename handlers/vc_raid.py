@@ -251,7 +251,10 @@ def register_vc_raid_handlers(app, stream, assistant):
             if action == "end":
                 await stream.calls.leave_call(target.id)
                 _ACTIVE.pop(target.id, None)
-                _remove_file(active.get("path"))
+                active_path = active.get("path")
+                # Keep user-added playlist tracks after playback ends.
+                if active_path and Path(active_path).parent != _CUSTOM_AUDIO_DIR:
+                    _remove_file(active_path)
                 reply = "⏹️ VC stream ended."
             elif action == "pause":
                 await stream.calls.pause(target.id)

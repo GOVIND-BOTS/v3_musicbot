@@ -1,14 +1,13 @@
 import logging
 import os
 import random
-import tempfile
 from contextlib import suppress
 from pathlib import Path
 
 from pyrogram import filters
-from pyrogram.enums import ChatMemberStatus
+from pyrogram.enums import ChatMemberStatus, ChatType
 from pyrogram.errors import RPCError
-from pytgcalls.types import AudioQuality, VideoQuality, MediaStream
+
 
 from config import OWNER_ID, SUDO_USERS
 
@@ -36,7 +35,7 @@ async def _target_chat(client, message, args):
         except (RPCError, ValueError):
             return None
         return chat
-    if message.chat and message.chat.type in ("group", "supergroup"):
+    if message.chat and message.chat.type in (ChatType.GROUP, ChatType.SUPERGROUP):
         return message.chat
     return None
 
@@ -65,7 +64,7 @@ def register_vc_raid_handlers(app, stream, assistant):
 
     async def resolve_target(client, message, args):
         chat = await _target_chat(client, message, args)
-        if not chat or chat.type not in ("group", "supergroup"):
+        if not chat or chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP):
             await message.reply_text("❌ Target group nahi mila. Group ke andar command chalao ya group ID/username do.")
             return None
         if not await _bot_is_admin(client, chat.id):

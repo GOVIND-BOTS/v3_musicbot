@@ -13,6 +13,7 @@ Pillow>=10.0.0
 numpy
 psutil
 speedtest-cli
+phonenumbers>=8.13.0
 
 yt-dlp[default] @ https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 yt-dlp-getpot-wpc

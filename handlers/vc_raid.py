@@ -95,10 +95,10 @@ def register_vc_raid_handlers(app, stream, assistant):
     async def resolve_target(client, message, args):
         chat = await _target_chat(client, message, args)
         if not chat or chat.type not in (ChatType.GROUP, ChatType.SUPERGROUP):
-            await message.reply_text("❌ Target group nahi mila. Group ke andar command chalao ya group ID/username do.")
+            await message.reply_text("❌ Target group not found. Run the command inside a group or provide a group ID/username.")
             return None
         if not await _bot_is_admin(client, chat.id):
-            await message.reply_text("❌ Bot target group mein admin nahi hai. Pehle bot ko admin banao.")
+            await message.reply_text("❌ The bot is not an admin in the target group. Promote the bot to admin first.")
             return None
         return chat
 
@@ -112,7 +112,7 @@ def register_vc_raid_handlers(app, stream, assistant):
             return
 
         if target.id in _ACTIVE:
-            await message.reply_text("⚠️ Is group ke VC mein stream pehle se active hai. /raidend use karo.")
+            await message.reply_text("⚠️ A stream is already active in this group's voice chat. Use /raidend first.")
             return
 
         local_path = None
@@ -122,17 +122,17 @@ def register_vc_raid_handlers(app, stream, assistant):
                     local_path = await _get_random_audio()
                 except Exception as exc:
                     LOGGER.exception("Could not download VC raid audio")
-                    await message.reply_text(f"❌ VC raid audio download nahi hua: {str(exc)[:180]}")
+                    await message.reply_text(f"❌ Failed to download VC raid audio: {str(exc)[:180]}")
                     return
                 media_type = "audio"
             else:
                 replied = message.reply_to_message
                 if not replied or not (replied.audio or replied.voice or replied.video or replied.document or replied.video_note or replied.animation):
-                    await message.reply_text("❌ Kisi audio/video/file message par reply karke /vraid [group_id] likho.")
+                    await message.reply_text("❌ Reply to an audio/video/file message and use /vraid [group_id].")
                     return
                 local_path = await assistant.download_media(replied)
                 if not local_path:
-                    await message.reply_text("❌ Media download nahi ho paya.")
+                    await message.reply_text("❌ Failed to download the media.")
                     return
                 media_type = "video" if (replied.video or replied.video_note or replied.animation) else "audio"
 
@@ -164,7 +164,7 @@ def register_vc_raid_handlers(app, stream, assistant):
             return
         active = _ACTIVE.get(target.id)
         if not active:
-            await message.reply_text("ℹ️ Is group ke VC mein bot ka raid stream active nahi hai.")
+            await message.reply_text("ℹ️ No active raid stream from this bot in this group's voice chat.")
             return
         try:
             await stream.start()

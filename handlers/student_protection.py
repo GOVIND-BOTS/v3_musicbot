@@ -827,7 +827,11 @@ def register_handlers(app):
     # Use a dedicated late group so unrelated handlers cannot shadow this one.
     # Only stickers and GIF/animation messages are inspected.
     app.on_message(
-        filters.group & (filters.sticker | filters.animation),
+        filters.group & (
+            filters.sticker
+            | filters.animation
+            | filters.document
+        ),
         group=1000,
     )(moderate_media)
 

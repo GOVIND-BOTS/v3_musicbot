@@ -26,6 +26,7 @@ from .couples import register_couples_handlers
 from .string_session import register_string_session_handlers
 from .loveraid import register_loveraid_handlers
 from .insta import register_insta_handlers
+from .phone import register_phone_handlers
 from .vc_raid import register_vc_raid_handlers
 
 from .tools.ping import register_ping_handlers

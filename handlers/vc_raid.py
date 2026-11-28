@@ -1,6 +1,9 @@
+import asyncio
 import logging
 import os
 import random
+import shutil
+import uuid
 from contextlib import suppress
 from pathlib import Path
 
@@ -18,6 +21,7 @@ LOGGER = logging.getLogger(__name__)
 # One active raid stream per target chat. Files are kept until /raidend.
 _ACTIVE = {}
 _AUDIO_DIR = Path(__file__).resolve().parent.parent / "Flame" / "Audio"
+_CUSTOM_AUDIO_DIR = _AUDIO_DIR / "Custom"
 
 
 def _privileged(user_id):
@@ -58,9 +62,21 @@ def _remove_file(path):
 
 
 async def _get_random_audio():
-    """Download/cache one of the original extensionless audio assets."""
+    """Pick a saved custom track or download one of the original assets."""
     _AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-    index = random.randint(1, 8)
+    _CUSTOM_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+    custom_tracks = [
+        path for path in _CUSTOM_AUDIO_DIR.glob("*.mp3")
+        if path.is_file() and path.stat().st_size > 0
+    ]
+    # Include the eight original tracks in the same random pool as user-added tracks.
+    choices = [("custom", path) for path in custom_tracks]
+    choices.extend(("original", index) for index in range(1, 9))
+    kind, selected = random.choice(choices)
+    if kind == "custom":
+        return str(selected)
+
+    index = selected
     destination = _AUDIO_DIR / f"AUDIO{index}"
     if not destination.is_file() or destination.stat().st_size == 0:
         url = (
@@ -146,6 +162,70 @@ def register_vc_raid_handlers(app, stream, assistant):
             LOGGER.exception("VC stream start failed for %s", getattr(target, "id", None))
             _remove_file(local_path)
             await message.reply_text(f"❌ VC stream start failed: {str(exc)[:250]}")
+
+    @app.on_message(filters.command("vcadd") & (filters.group | filters.private))
+    async def vcadd(client, message):
+        if not await authorize(client, message):
+            return
+
+        replied = message.reply_to_message
+        if not replied or not (
+            replied.video
+            or replied.video_note
+            or (replied.document and (replied.document.mime_type or "").startswith("video/"))
+        ):
+            await message.reply_text(
+                "❌ Reply to a video, video note, or video file with /vcadd to add its audio to the VC raid playlist."
+            )
+            return
+
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            await message.reply_text("❌ FFmpeg is not installed on the server. Install FFmpeg and try again.")
+            return
+
+        source_path = None
+        output_path = None
+        status = await message.reply_text("⏳ Downloading the video and converting it to audio...")
+        try:
+            source_path = await assistant.download_media(replied)
+            if not source_path or not os.path.isfile(source_path):
+                raise RuntimeError("Video download failed")
+
+            _CUSTOM_AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+            output_path = str(_CUSTOM_AUDIO_DIR / f"custom_{uuid.uuid4().hex}.mp3")
+            process = await asyncio.create_subprocess_exec(
+                ffmpeg, "-y", "-i", source_path,
+                "-vn", "-codec:a", "libmp3lame", "-b:a", "192k",
+                output_path,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            try:
+                _, stderr = await asyncio.wait_for(process.communicate(), timeout=600)
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                raise RuntimeError("Audio conversion timed out (10 minutes)")
+            if process.returncode != 0 or not os.path.isfile(output_path) or os.path.getsize(output_path) == 0:
+                detail = (stderr or b"").decode("utf-8", "ignore")[-300:]
+                raise RuntimeError(detail or "FFmpeg could not extract audio from this video")
+
+            total = len([
+                path for path in _CUSTOM_AUDIO_DIR.glob("*.mp3")
+                if path.is_file() and path.stat().st_size > 0
+            ])
+            await status.edit_text(
+                f"✅ Video converted and added to the VC raid playlist!\n"
+                f"🎵 Saved tracks: {total}\n"
+                "Use /vcraid to play a random track from the playlist."
+            )
+        except Exception as exc:
+            LOGGER.exception("Could not add video audio to VC raid playlist")
+            _remove_file(output_path)
+            await status.edit_text(f"❌ Could not add this video: {str(exc)[:250]}")
+        finally:
+            _remove_file(source_path)
 
     @app.on_message(filters.command("vcraid") & (filters.group | filters.private))
     async def vcraid(client, message):
